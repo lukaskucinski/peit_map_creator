@@ -8,9 +8,8 @@ Author: Created with Claude Code
 Repository: https://github.com/lukaskucinski/appeit_map_creator.git
 """
 
-# ============================================================================
+# %%
 # Cell 1: Imports and Configuration Setup
-# ============================================================================
 
 import geopandas as gpd
 import folium
@@ -55,9 +54,8 @@ print(f"Output directory: {OUTPUT_DIR}")
 print()
 
 
-# ============================================================================
+# %%
 # Cell 2: Input Polygon Reader Function
-# ============================================================================
 
 def read_input_polygon(file_path: str) -> gpd.GeoDataFrame:
     """
@@ -104,9 +102,8 @@ def read_input_polygon(file_path: str) -> gpd.GeoDataFrame:
     return gdf
 
 
-# ============================================================================
+# %%
 # Cell 3: ArcGIS FeatureServer Query Function
-# ============================================================================
 
 def query_arcgis_layer(
     layer_url: str,
@@ -182,7 +179,7 @@ def query_arcgis_layer(
             # Check if result exceeded limit
             if 'exceededTransferLimit' in data and data['exceededTransferLimit']:
                 metadata['warning'] = f"Result exceeded server limit. Showing first {len(gdf)} features."
-                print(f"      WARNING: {metadata['warning']}")
+                print(f"    ï¿½ WARNING: {metadata['warning']}")
 
             print(f"     Found {len(gdf)} intersecting features")
 
@@ -208,9 +205,8 @@ def query_arcgis_layer(
         return None, metadata
 
 
-# ============================================================================
+# %%
 # Cell 4: Process All Layers Function
-# ============================================================================
 
 def process_all_layers(
     polygon_gdf: gpd.GeoDataFrame,
@@ -271,9 +267,8 @@ def process_all_layers(
     return results, metadata
 
 
-# ============================================================================
+# %%
 # Cell 5: Create Leaflet Map with Folium
-# ============================================================================
 
 def create_web_map(
     polygon_gdf: gpd.GeoDataFrame,
@@ -450,9 +445,8 @@ def create_web_map(
     return m
 
 
-# ============================================================================
+# %%
 # Cell 6: Generate Output Files and Structure
-# ============================================================================
 
 def generate_output(
     map_obj: folium.Map,
@@ -551,9 +545,8 @@ def generate_output(
     return output_path
 
 
-# ============================================================================
+# %%
 # Cell 7: Main Execution Workflow
-# ============================================================================
 
 def main(input_file: str, output_name: Optional[str] = None):
     """
@@ -581,7 +574,7 @@ def main(input_file: str, output_name: Optional[str] = None):
 
         # Check if any results found
         if not layer_results:
-            print("  WARNING: No intersecting features found in any layer.")
+            print("ï¿½ WARNING: No intersecting features found in any layer.")
             print("The output map will only show the input polygon.")
             print()
 
@@ -615,9 +608,8 @@ def main(input_file: str, output_name: Optional[str] = None):
         return None
 
 
-# ============================================================================
-# Example Usage (uncomment to run)
-# ============================================================================
+# %%
+# Cell 8: Example Usage
 
 if __name__ == "__main__":
     # Example: Process the Pennsylvania test file
