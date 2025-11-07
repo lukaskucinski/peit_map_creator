@@ -1,3 +1,4 @@
+# %%
 """
 APPEIT Map Creator
 ==================
@@ -51,6 +52,7 @@ print("APPEIT Map Creator - Environmental Layer Intersection Tool")
 print("=" * 80)
 print(f"Configuration loaded: {len(CONFIG['layers'])} layers defined")
 print(f"Output directory: {OUTPUT_DIR}")
+print("✓ Cell 1 completed: Imports and configuration loaded successfully")
 print()
 
 
@@ -101,6 +103,9 @@ def read_input_polygon(file_path: str) -> gpd.GeoDataFrame:
 
     return gdf
 
+print("✓ Cell 2 completed: Input polygon reader function defined")
+print()
+
 
 # %%
 # Cell 3: ArcGIS FeatureServer Query Function
@@ -146,38 +151,79 @@ def query_arcgis_layer(
         # Construct query URL
         query_url = f"{layer_url}/{layer_id}/query"
 
-        # Get polygon geometry as JSON
-        polygon_json = mapping(polygon_geom.geometry.iloc[0])
+        # Get bounding box (envelope) for spatial query
+        bounds = polygon_geom.total_bounds
+        envelope = {
+            'xmin': bounds[0],
+            'ymin': bounds[1],
+            'xmax': bounds[2],
+            'ymax': bounds[3],
+            'spatialReference': {'wkid': 4326}
+        }
 
-        # Build query parameters
+        # Build query parameters (using POST to avoid 414 URI too long errors)
         params = {
             'where': '1=1',
-            'geometry': json.dumps(polygon_json),
-            'geometryType': 'esriGeometryPolygon',
+            'geometry': json.dumps(envelope),
+            'geometryType': 'esriGeometryEnvelope',
             'spatialRel': 'esriSpatialRelIntersects',
             'outFields': '*',
             'returnGeometry': 'true',
-            'f': 'geojson',
-            'returnExceededLimitFeatures': 'false',
+            'f': 'json',
             'inSR': '4326',
             'outSR': '4326'
         }
 
-        # Make request
-        response = requests.get(query_url, params=params, timeout=30)
+        # Make POST request (avoids URL length limitations)
+        response = requests.post(query_url, data=params, timeout=60)
         response.raise_for_status()
 
         # Parse response
-        data = response.json()
+        result = response.json()
 
         # Check for features
-        if 'features' in data and len(data['features']) > 0:
+        if 'features' in result and len(result['features']) > 0:
+            # Convert ESRI JSON to GeoDataFrame
+            features = []
+            for feature in result['features']:
+                geom = feature.get('geometry')
+                props = feature.get('attributes', {})
+
+                # Convert ESRI geometry to GeoJSON format
+                if geom and 'x' in geom and 'y' in geom:
+                    # Point geometry
+                    geojson_feat = {
+                        'type': 'Feature',
+                        'geometry': {'type': 'Point', 'coordinates': [geom['x'], geom['y']]},
+                        'properties': props
+                    }
+                elif geom and 'paths' in geom:
+                    # LineString geometry
+                    coords = geom['paths'][0] if len(geom['paths']) == 1 else geom['paths']
+                    geom_type = 'LineString' if len(geom['paths']) == 1 else 'MultiLineString'
+                    geojson_feat = {
+                        'type': 'Feature',
+                        'geometry': {'type': geom_type, 'coordinates': coords},
+                        'properties': props
+                    }
+                elif geom and 'rings' in geom:
+                    # Polygon geometry
+                    geojson_feat = {
+                        'type': 'Feature',
+                        'geometry': {'type': 'Polygon', 'coordinates': geom['rings']},
+                        'properties': props
+                    }
+                else:
+                    continue
+
+                features.append(geojson_feat)
+
             # Convert to GeoDataFrame
-            gdf = gpd.GeoDataFrame.from_features(data['features'], crs='EPSG:4326')
+            gdf = gpd.GeoDataFrame.from_features(features, crs='EPSG:4326')
             metadata['feature_count'] = len(gdf)
 
             # Check if result exceeded limit
-            if 'exceededTransferLimit' in data and data['exceededTransferLimit']:
+            if result.get('exceededTransferLimit', False):
                 metadata['warning'] = f"Result exceeded server limit. Showing first {len(gdf)} features."
                 print(f"    � WARNING: {metadata['warning']}")
 
@@ -203,6 +249,9 @@ def query_arcgis_layer(
         metadata['error'] = error_msg
         metadata['query_time'] = time.time() - start_time
         return None, metadata
+
+print("✓ Cell 3 completed: ArcGIS FeatureServer query function defined")
+print()
 
 
 # %%
@@ -265,6 +314,9 @@ def process_all_layers(
     print()
 
     return results, metadata
+
+print("✓ Cell 4 completed: Process all layers function defined")
+print()
 
 
 # %%
@@ -338,6 +390,12 @@ def create_web_map(
             continue
 
         gdf = layer_results[layer_name]
+
+        # Skip if no features
+        if len(gdf) == 0:
+            print(f"  - Skipping {layer_name} (0 features)")
+            continue
+
         print(f"  - Adding {layer_name} ({len(gdf)} features)...")
 
         # Check if clustering should be used
@@ -371,6 +429,7 @@ def create_web_map(
                 ).add_to(marker_cluster)
 
             marker_cluster.add_to(m)
+            print(f"    ✓ Added {len(gdf)} clustered markers to map")
 
         else:
             # Add as GeoJSON layer
@@ -396,6 +455,7 @@ def create_web_map(
                     ).add_to(feature_group)
 
                 feature_group.add_to(m)
+                print(f"    ✓ Added {len(gdf)} point markers to map")
 
             else:
                 # Use GeoJSON for lines/polygons
@@ -424,6 +484,7 @@ def create_web_map(
                         localize=True
                     )
                 ).add_to(m)
+                print(f"    ✓ Added {len(gdf)} features as GeoJSON layer")
 
     # Add layer control
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
@@ -443,6 +504,9 @@ def create_web_map(
     print("   Map created successfully\n")
 
     return m
+
+print("✓ Cell 5 completed: Web map creation function defined")
+print()
 
 
 # %%
@@ -544,6 +608,9 @@ def generate_output(
 
     return output_path
 
+print("✓ Cell 6 completed: Output generation function defined")
+print()
+
 
 # %%
 # Cell 7: Main Execution Workflow
@@ -606,6 +673,9 @@ def main(input_file: str, output_name: Optional[str] = None):
         import traceback
         traceback.print_exc()
         return None
+
+print("✓ Cell 7 completed: Main execution workflow function defined")
+print()
 
 
 # %%
