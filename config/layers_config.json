@@ -1,0 +1,51 @@
+{
+  "layers": [
+    {
+      "name": "RCRA Sites",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Resource_Conservation_and_Recovery_Act__RCRA/FeatureServer",
+      "layer_id": 0,
+      "color": "#FF5733",
+      "icon": "recycle",
+      "icon_color": "red",
+      "description": "Resource Conservation and Recovery Act (RCRA) regulated facilities",
+      "geometry_type": "point"
+    },
+    {
+      "name": "NPDES Sites",
+      "url": "https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/FRS_INTERESTS_NPDES/FeatureServer",
+      "layer_id": 0,
+      "color": "#3498DB",
+      "icon": "tint",
+      "icon_color": "blue",
+      "description": "National Pollutant Discharge Elimination System (NPDES) Sites",
+      "geometry_type": "point"
+    },
+    {
+      "name": "Navigable Waterways",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Commercially_Navigable_Waterways/FeatureServer",
+      "layer_id": 0,
+      "color": "#1ABC9C",
+      "icon": "ship",
+      "icon_color": "green",
+      "description": "USACE Navigable Waterway Network",
+      "geometry_type": "line"
+    },
+    {
+      "name": "Historic Places",
+      "url": "https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/nrhp_points_v1/FeatureServer",
+      "layer_id": 0,
+      "color": "#9B59B6",
+      "icon": "landmark",
+      "icon_color": "purple",
+      "description": "National Register of Historic Places - Points",
+      "geometry_type": "point"
+    }
+  ],
+  "settings": {
+    "max_features_per_layer": 1000,
+    "enable_clustering": true,
+    "cluster_threshold": 50,
+    "default_zoom": 10,
+    "tile_layer": "OpenStreetMap"
+  }
+}
