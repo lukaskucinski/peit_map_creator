@@ -336,6 +336,89 @@ print()
 # %%
 # Cell 5: Create Leaflet Map with Folium
 
+def generate_layer_download_sections(layer_results: Dict[str, gpd.GeoDataFrame], config: Dict, input_filename: str) -> str:
+    """
+    Generate HTML for individual layer download sections.
+
+    Parameters:
+    -----------
+    layer_results : Dict[str, gpd.GeoDataFrame]
+        Dictionary of layer results
+    config : Dict
+        Configuration dictionary
+    input_filename : str
+        Name of input file for the input polygon section
+
+    Returns:
+    --------
+    str
+        HTML string for layer download sections
+    """
+    sections_html = ""
+
+    # Add input polygon section first
+    sections_html += f"""
+        <div class="download-section">
+            <div class="download-layer-name">{input_filename} (Input Area)</div>
+            <div class="download-format-buttons">
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'geojson')">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'shp')">SHP</button>
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'kmz')">KMZ</button>
+            </div>
+        </div>
+        """
+
+    # Add sections for each intersected layer
+    for layer_config in config['layers']:
+        layer_name = layer_config['name']
+
+        # Skip layers without features
+        if layer_name not in layer_results or len(layer_results[layer_name]) == 0:
+            continue
+
+        feature_count = len(layer_results[layer_name])
+
+        sections_html += f"""
+        <div class="download-section">
+            <div class="download-layer-name">{layer_name} ({feature_count})</div>
+            <div class="download-format-buttons">
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'geojson')">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'shp')">SHP</button>
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'kmz')">KMZ</button>
+            </div>
+        </div>
+        """
+
+    return sections_html
+
+
+def generate_layer_data_mapping(layer_results: Dict[str, gpd.GeoDataFrame]) -> str:
+    """
+    Generate JavaScript object mapping layer names to file paths.
+
+    Parameters:
+    -----------
+    layer_results : Dict[str, gpd.GeoDataFrame]
+        Dictionary of layer results
+
+    Returns:
+    --------
+    str
+        JavaScript string mapping layers to data files
+    """
+    mappings = []
+
+    # Add input polygon
+    mappings.append("'Input Polygon': 'data/input_polygon.geojson'")
+
+    # Add each intersected layer
+    for layer_name in layer_results.keys():
+        safe_name = layer_name.replace(' ', '_').replace('/', '_').lower()
+        mappings.append(f"'{layer_name}': 'data/{safe_name}.geojson'")
+
+    return ",\n        ".join(mappings)
+
+
 def format_popup_value(col: str, value) -> str:
     """
     Format popup values, converting URLs to clickable hyperlinks.
@@ -546,37 +629,565 @@ def create_web_map(
     # Add mouse position
     plugins.MousePosition().add_to(m)
 
-    # Add About section
+    # Add CDN libraries for download functionality
     from folium import Element
-    about_html = """
-    <div style="position: fixed; top: 10px; left: 60px; width: 320px; z-index: 9999;">
-        <details style="background: white; padding: 12px; border: 2px solid rgba(0,0,0,0.2);
-                       border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                       font-family: Arial, sans-serif;">
-            <summary style="cursor: pointer; font-weight: bold; font-size: 14px;
-                           margin-bottom: 8px; color: #333;">ℹ️ About APPEIT Map Creator</summary>
-            <div style="margin-top: 10px; font-size: 12px; line-height: 1.6; color: #444;">
-                <p style="margin: 8px 0;">
-                    The <strong>APPEIT Map Creator</strong> replicates NTIA's APPEIT tool functionality
-                    without requiring an ArcGIS Pro license. This tool queries ESRI-hosted FeatureServer
-                    REST APIs to perform spatial intersection analysis.
-                </p>
-                <p style="margin: 8px 0;">
-                    <strong>Features:</strong> Interactive Leaflet maps, multi-layer visualization,
-                    marker clustering, and GeoJSON export capabilities.
-                </p>
-                <p style="margin: 8px 0; font-size: 11px;">
-                    <strong>Data Sources:</strong> EPA RCRA Sites, NPDES Permits, USACE Navigable
-                    Waterways, National Register of Historic Places, and other environmental datasets.
-                </p>
-                <p style="margin: 8px 0; font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px;">
-                    Generated with Claude Code | Open source environmental analysis tool
-                </p>
-            </div>
-        </details>
-    </div>
+
+    libraries_html = """
+    <script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
+    <script src="https://unpkg.com/tokml@0.4.0/tokml.js"></script>
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     """
-    m.get_root().html.add_child(Element(about_html))
+    m.get_root().html.add_child(Element(libraries_html))
+
+    # Add download control button
+    download_control_html = f"""
+    <style>
+        /* Download control container */
+        .leaflet-control-download {{
+            position: fixed;
+            bottom: 60px;
+            left: 10px;
+            z-index: 1000;
+        }}
+
+        /* Main download button - matches Leaflet control style */
+        .download-button {{
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #333;
+            transition: background 0.2s;
+        }}
+
+        .download-button:hover {{
+            background: #f4f4f4;
+        }}
+
+        /* Expanded menu panel */
+        .download-menu {{
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+            padding: 12px;
+            min-width: 240px;
+            display: none;
+            max-height: 500px;
+            overflow-y: auto;
+        }}
+
+        .download-menu.active {{
+            display: block;
+        }}
+
+        .download-menu-header {{
+            font-weight: bold;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #ddd;
+            font-size: 14px;
+            color: #333;
+        }}
+
+        .download-section {{
+            margin-bottom: 14px;
+        }}
+
+        .download-layer-name {{
+            font-weight: 600;
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 6px;
+        }}
+
+        .download-format-buttons {{
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }}
+
+        .download-format-btn {{
+            background: #0078A8;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }}
+
+        .download-format-btn:hover {{
+            background: #005a80;
+        }}
+
+        .download-format-btn:active {{
+            background: #004060;
+        }}
+
+        .download-all-section {{
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 14px;
+            border: 1px solid #d0e8ff;
+        }}
+
+        .download-all-section .download-layer-name {{
+            color: #0078A8;
+            font-size: 13px;
+        }}
+    </style>
+
+    <div class="leaflet-control-download">
+        <div class="download-button" onclick="toggleDownloadMenu()" title="Download Layers">
+            <i class="fa fa-download"></i>
+        </div>
+
+        <div class="download-menu" id="download-menu">
+            <div class="download-menu-header">
+                <i class="fa fa-download"></i> Download Layers
+            </div>
+
+            <!-- Download All Section -->
+            <div class="download-all-section">
+                <div class="download-layer-name">All Layers</div>
+                <div class="download-format-buttons">
+                    <button class="download-format-btn" onclick="downloadAll('geojson')">GeoJSON</button>
+                    <button class="download-format-btn" onclick="downloadAll('shp')">Shapefile</button>
+                    <button class="download-format-btn" onclick="downloadAll('kmz')">KMZ</button>
+                </div>
+            </div>
+
+            <!-- Individual Layer Sections -->
+            {generate_layer_download_sections(layer_results, config, input_filename)}
+        </div>
+    </div>
+
+    <script>
+        // Layer data embedded in page (relative paths to data files)
+        const layerData = {{
+            {generate_layer_data_mapping(layer_results)}
+        }};
+
+        function toggleDownloadMenu() {{
+            const menu = document.getElementById('download-menu');
+            menu.classList.toggle('active');
+        }}
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {{
+            const control = document.querySelector('.leaflet-control-download');
+            const menu = document.getElementById('download-menu');
+            if (!control.contains(event.target) && menu.classList.contains('active')) {{
+                menu.classList.remove('active');
+            }}
+        }});
+
+        // Load GeoJSON from relative path
+        async function loadGeoJSON(path) {{
+            const response = await fetch(path);
+            return await response.json();
+        }}
+
+        // Download individual layer in specified format
+        async function downloadLayer(layerName, format) {{
+            const layerPath = layerData[layerName];
+            const geojson = await loadGeoJSON(layerPath);
+            const fileName = layerName.replace(/\\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+            switch(format) {{
+                case 'geojson':
+                    downloadGeoJSON(geojson, fileName);
+                    break;
+                case 'shp':
+                    downloadShapefile(geojson, fileName);
+                    break;
+                case 'kmz':
+                    downloadKMZ(geojson, fileName);
+                    break;
+            }}
+        }}
+
+        // Download all layers as a single ZIP file
+        async function downloadAll(format) {{
+            const zip = new JSZip();
+
+            for (const [layerName, layerPath] of Object.entries(layerData)) {{
+                const geojson = await loadGeoJSON(layerPath);
+                const fileName = layerName.replace(/\\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+                switch(format) {{
+                    case 'geojson':
+                        zip.file(fileName + '.geojson', JSON.stringify(geojson, null, 2));
+                        break;
+                    case 'shp':
+                        // Add shapefile as nested zip
+                        const shpData = shpwrite.zip(geojson);
+                        const shpBlob = await fetch('data:application/zip;base64,' + shpData).then(r => r.blob());
+                        zip.file(fileName + '_shapefile.zip', shpBlob);
+                        break;
+                    case 'kmz':
+                        const kml = tokml(geojson);
+                        const kmzBlob = await createKMZBlob(kml);
+                        zip.file(fileName + '.kmz', kmzBlob);
+                        break;
+                }}
+            }}
+
+            // Generate and download ZIP
+            const content = await zip.generateAsync({{type: 'blob'}});
+            saveAs(content, 'all_layers_' + format + '.zip');
+        }}
+
+        // Format-specific download functions
+        function downloadGeoJSON(geojson, fileName) {{
+            const blob = new Blob([JSON.stringify(geojson, null, 2)], {{type: 'application/json'}});
+            saveAs(blob, fileName + '.geojson');
+        }}
+
+        function downloadShapefile(geojson, fileName) {{
+            // shp-write returns a base64 encoded zip file containing .shp, .shx, .dbf, .prj
+            const shpData = shpwrite.zip(geojson);
+            const byteCharacters = atob(shpData);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {{
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }}
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], {{type: 'application/zip'}});
+            saveAs(blob, fileName + '_shapefile.zip');
+        }}
+
+        async function downloadKMZ(geojson, fileName) {{
+            const kml = tokml(geojson);
+            const kmzBlob = await createKMZBlob(kml);
+            saveAs(kmzBlob, fileName + '.kmz');
+        }}
+
+        async function createKMZBlob(kml) {{
+            const zip = new JSZip();
+            zip.file('doc.kml', kml);
+            return await zip.generateAsync({{type: 'blob'}});
+        }}
+    </script>
+    """
+    m.get_root().html.add_child(Element(download_control_html))
+
+    # Add collapsible side panel with About section and dynamic legend
+
+    # Generate legend HTML for layers with features
+    legend_items_html = ""
+    for layer_config in config['layers']:
+        layer_name = layer_config['name']
+
+        # Skip layers without features
+        if layer_name not in layer_results or len(layer_results[layer_name]) == 0:
+            continue
+
+        feature_count = len(layer_results[layer_name])
+        geometry_type = layer_config['geometry_type']
+
+        # Create legend item based on geometry type
+        if geometry_type == 'point':
+            # Point layer: show icon
+            icon = layer_config['icon']
+            icon_color = layer_config['icon_color']
+            legend_items_html += f"""
+            <div class="legend-item" data-layer-name="{layer_name}">
+                <i class="fa fa-{icon}" style="color: {icon_color}; margin-right: 8px;"></i>
+                <span>{layer_name} ({feature_count})</span>
+            </div>
+            """
+        elif geometry_type == 'line':
+            # Line layer: show line sample
+            color = layer_config['color']
+            legend_items_html += f"""
+            <div class="legend-item" data-layer-name="{layer_name}">
+                <svg width="30" height="15" style="margin-right: 8px; vertical-align: middle;">
+                    <line x1="0" y1="7" x2="30" y2="7" style="stroke:{color}; stroke-width:3;" />
+                </svg>
+                <span>{layer_name} ({feature_count})</span>
+            </div>
+            """
+        elif geometry_type == 'polygon':
+            # Polygon layer: show filled rectangle
+            color = layer_config['color']
+            legend_items_html += f"""
+            <div class="legend-item" data-layer-name="{layer_name}">
+                <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                    <rect width="20" height="15" style="fill:{color}; stroke:{color}; stroke-width:1; opacity:0.6;" />
+                </svg>
+                <span>{layer_name} ({feature_count})</span>
+            </div>
+            """
+
+    # Build complete side panel HTML with CSS and JavaScript
+    side_panel_html = f"""
+    <style>
+        /* Side panel container */
+        #side-panel {{
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 350px;
+            height: calc(100vh - 80px);
+            background: white;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: transform 0.3s ease-in-out;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }}
+
+        #side-panel.collapsed {{
+            transform: translateX(-350px);
+        }}
+
+        /* Adjust Leaflet controls position to account for panel */
+        body:not(.panel-collapsed) .leaflet-left {{
+            left: 350px !important;
+            transition: left 0.3s ease-in-out;
+        }}
+
+        body.panel-collapsed .leaflet-left {{
+            left: 0 !important;
+            transition: left 0.3s ease-in-out;
+        }}
+
+        /* Toggle button */
+        #panel-toggle {{
+            position: absolute;
+            top: 50%;
+            right: -25px;
+            transform: translateY(-50%);
+            width: 25px;
+            height: 60px;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 2px 0 6px rgba(0,0,0,0.15);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #333;
+            transition: background 0.2s;
+        }}
+
+        #panel-toggle:hover {{
+            background: #f5f5f5;
+        }}
+
+        /* Panel content area */
+        .panel-content {{
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }}
+
+        /* About section */
+        .about-section {{
+            margin-bottom: 20px;
+        }}
+
+        .about-section details {{
+            background: #f8f9fa;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }}
+
+        .about-section summary {{
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            user-select: none;
+        }}
+
+        .about-section summary:hover {{
+            color: #007bff;
+        }}
+
+        .about-content {{
+            margin-top: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #444;
+        }}
+
+        .about-content p {{
+            margin: 8px 0;
+        }}
+
+        /* Legend section */
+        .legend-section {{
+            border-top: 2px solid #ddd;
+            padding-top: 15px;
+        }}
+
+        .legend-section h4 {{
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }}
+
+        .legend-items {{
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }}
+
+        .legend-item {{
+            padding: 8px 0;
+            font-size: 13px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }}
+
+        .legend-item:last-child {{
+            border-bottom: none;
+        }}
+
+        .legend-item i {{
+            font-size: 16px;
+        }}
+
+        .legend-item span {{
+            flex: 1;
+        }}
+
+        /* Custom scrollbar */
+        .legend-items::-webkit-scrollbar {{
+            width: 8px;
+        }}
+
+        .legend-items::-webkit-scrollbar-track {{
+            background: #f1f1f1;
+            border-radius: 4px;
+        }}
+
+        .legend-items::-webkit-scrollbar-thumb {{
+            background: #888;
+            border-radius: 4px;
+        }}
+
+        .legend-items::-webkit-scrollbar-thumb:hover {{
+            background: #555;
+        }}
+    </style>
+
+    <div id="side-panel">
+        <div id="panel-toggle" onclick="togglePanel()">
+            <span id="toggle-icon">◄</span>
+        </div>
+
+        <div class="panel-content">
+            <!-- About Section -->
+            <div class="about-section">
+                <details open>
+                    <summary>ℹ️ About APPEIT Map Creator</summary>
+                    <div class="about-content">
+                        <p>
+                            The <strong>APPEIT Map Creator</strong> replicates NTIA's APPEIT tool functionality
+                            without requiring an ArcGIS Pro license. This tool queries ESRI-hosted FeatureServer
+                            REST APIs to perform spatial intersection analysis.
+                        </p>
+                        <p>
+                            <strong>Features:</strong> Interactive Leaflet maps, multi-layer visualization,
+                            marker clustering, and GeoJSON export capabilities.
+                        </p>
+                        <p style="font-size: 11px;">
+                            <strong>Data Sources:</strong> EPA RCRA Sites, NPDES Permits, USACE Navigable
+                            Waterways, National Register of Historic Places, and other environmental datasets.
+                        </p>
+                        <p style="font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px;">
+                            Generated with Claude Code | Open source environmental analysis tool
+                        </p>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Legend Section -->
+            <div class="legend-section">
+                <h4>Active Layers</h4>
+                <div class="legend-items">
+                    {legend_items_html}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle panel collapse/expand
+        function togglePanel() {{
+            var panel = document.getElementById('side-panel');
+            var icon = document.getElementById('toggle-icon');
+
+            panel.classList.toggle('collapsed');
+            document.body.classList.toggle('panel-collapsed');
+            icon.textContent = panel.classList.contains('collapsed') ? '►' : '◄';
+        }}
+
+        // Update legend based on layer visibility
+        document.addEventListener('DOMContentLoaded', function() {{
+            // Get the map object (it's stored in a global variable)
+            var mapElement = document.querySelector('.folium-map');
+            if (mapElement && mapElement._leaflet_id) {{
+                var map = window[Object.keys(window).find(key =>
+                    window[key] instanceof L.Map && window[key]._container === mapElement
+                )];
+
+                if (map) {{
+                    // Listen for layer add/remove events
+                    map.on('overlayadd', function(e) {{
+                        var layerName = e.name;
+                        var legendItem = document.querySelector('.legend-item[data-layer-name="' + layerName + '"]');
+                        if (legendItem) {{
+                            legendItem.style.display = 'flex';
+                        }}
+                    }});
+
+                    map.on('overlayremove', function(e) {{
+                        var layerName = e.name;
+                        var legendItem = document.querySelector('.legend-item[data-layer-name="' + layerName + '"]');
+                        if (legendItem) {{
+                            legendItem.style.display = 'none';
+                        }}
+                    }});
+
+                    // Initialize legend to show all layers (all are visible by default)
+                    setTimeout(function() {{
+                        var legendItems = document.querySelectorAll('.legend-item');
+                        legendItems.forEach(function(item) {{
+                            item.style.display = 'flex';
+                        }});
+                    }}, 500);
+                }}
+            }}
+        }});
+    </script>
+    """
+    m.get_root().html.add_child(Element(side_panel_html))
 
     # Fit bounds to polygon
     m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
