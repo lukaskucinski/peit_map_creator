@@ -336,11 +336,41 @@ print()
 # %%
 # Cell 5: Create Leaflet Map with Folium
 
+def format_popup_value(col: str, value) -> str:
+    """
+    Format popup values, converting URLs to clickable hyperlinks.
+
+    Parameters:
+    -----------
+    col : str
+        Column name
+    value : any
+        Value to format
+
+    Returns:
+    --------
+    str
+        Formatted HTML string
+    """
+    if value is None or (isinstance(value, float) and value != value):  # Check for NaN
+        return 'None'
+
+    value_str = str(value)
+
+    # Check if this is a URL field (by column name or value content)
+    if 'url' in col.lower() or value_str.startswith(('http://', 'https://')):
+        # Truncate long URLs for display
+        display_text = value_str if len(value_str) <= 60 else f"{value_str[:57]}..."
+        return f'<a href="{value_str}" target="_blank" style="word-break: break-all; color: #0066cc;">{display_text}</a>'
+
+    return value_str
+
 def create_web_map(
     polygon_gdf: gpd.GeoDataFrame,
     layer_results: Dict[str, gpd.GeoDataFrame],
     metadata: Dict[str, Dict],
-    config: Dict
+    config: Dict,
+    input_filename: Optional[str] = None
 ) -> folium.Map:
     """
     Create an interactive Leaflet map with all layers.
@@ -355,6 +385,8 @@ def create_web_map(
         Layer metadata
     config : Dict
         Configuration dictionary
+    input_filename : Optional[str]
+        Name of input file (without extension) for layer naming
 
     Returns:
     --------
@@ -379,20 +411,22 @@ def create_web_map(
 
     # Add additional tile layers
     folium.TileLayer('CartoDB positron', name='CartoDB Positron').add_to(m)
+    folium.TileLayer('CartoDB dark_matter', name='CartoDB Dark Matter').add_to(m)
     folium.TileLayer('Esri WorldImagery', name='Esri Satellite').add_to(m)
 
     # Add input polygon
     print("  - Adding input polygon...")
+    layer_name = input_filename if input_filename else 'Input Area'
     folium.GeoJson(
         polygon_gdf,
-        name='Input Area',
+        name=layer_name,
         style_function=lambda x: {
             'fillColor': '#FFD700',
             'color': '#FF8C00',
             'weight': 3,
             'fillOpacity': 0.2
         },
-        tooltip='Input Polygon'
+        tooltip=layer_name
     ).add_to(m)
 
     # Add each layer with appropriate styling
@@ -423,18 +457,18 @@ def create_web_map(
             print(f"    (Using marker clustering)")
             marker_cluster = plugins.MarkerCluster(name=layer_name)
 
-            for idx, row in gdf.iterrows():
+            for _, row in gdf.iterrows():
                 # Create popup with all attributes
                 popup_html = f"<b>{layer_name}</b><br>"
                 popup_html += "<hr>"
                 for col in gdf.columns:
                     if col != 'geometry':
-                        popup_html += f"<b>{col}:</b> {row[col]}<br>"
+                        popup_html += f"<b>{col}:</b> {format_popup_value(col, row[col])}<br>"
 
                 # Add marker to cluster
                 folium.Marker(
                     location=[row.geometry.y, row.geometry.x],
-                    popup=folium.Popup(popup_html, max_width=300),
+                    popup=folium.Popup(popup_html, max_width=400),
                     icon=folium.Icon(
                         color=layer_config['icon_color'],
                         icon=layer_config['icon'],
@@ -451,16 +485,16 @@ def create_web_map(
                 # Use markers for points
                 feature_group = folium.FeatureGroup(name=layer_name)
 
-                for idx, row in gdf.iterrows():
+                for _, row in gdf.iterrows():
                     popup_html = f"<b>{layer_name}</b><br>"
                     popup_html += "<hr>"
                     for col in gdf.columns:
                         if col != 'geometry':
-                            popup_html += f"<b>{col}:</b> {row[col]}<br>"
+                            popup_html += f"<b>{col}:</b> {format_popup_value(col, row[col])}<br>"
 
                     folium.Marker(
                         location=[row.geometry.y, row.geometry.x],
-                        popup=folium.Popup(popup_html, max_width=300),
+                        popup=folium.Popup(popup_html, max_width=400),
                         icon=folium.Icon(
                             color=layer_config['icon_color'],
                             icon=layer_config['icon'],
@@ -511,6 +545,38 @@ def create_web_map(
 
     # Add mouse position
     plugins.MousePosition().add_to(m)
+
+    # Add About section
+    from folium import Element
+    about_html = """
+    <div style="position: fixed; top: 10px; left: 60px; width: 320px; z-index: 9999;">
+        <details style="background: white; padding: 12px; border: 2px solid rgba(0,0,0,0.2);
+                       border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                       font-family: Arial, sans-serif;">
+            <summary style="cursor: pointer; font-weight: bold; font-size: 14px;
+                           margin-bottom: 8px; color: #333;">ℹ️ About APPEIT Map Creator</summary>
+            <div style="margin-top: 10px; font-size: 12px; line-height: 1.6; color: #444;">
+                <p style="margin: 8px 0;">
+                    The <strong>APPEIT Map Creator</strong> replicates NTIA's APPEIT tool functionality
+                    without requiring an ArcGIS Pro license. This tool queries ESRI-hosted FeatureServer
+                    REST APIs to perform spatial intersection analysis.
+                </p>
+                <p style="margin: 8px 0;">
+                    <strong>Features:</strong> Interactive Leaflet maps, multi-layer visualization,
+                    marker clustering, and GeoJSON export capabilities.
+                </p>
+                <p style="margin: 8px 0; font-size: 11px;">
+                    <strong>Data Sources:</strong> EPA RCRA Sites, NPDES Permits, USACE Navigable
+                    Waterways, National Register of Historic Places, and other environmental datasets.
+                </p>
+                <p style="margin: 8px 0; font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px;">
+                    Generated with Claude Code | Open source environmental analysis tool
+                </p>
+            </div>
+        </details>
+    </div>
+    """
+    m.get_root().html.add_child(Element(about_html))
 
     # Fit bounds to polygon
     m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
@@ -650,6 +716,9 @@ def main(input_file: str, output_name: Optional[str] = None):
         # Step 1: Read input polygon
         polygon_gdf = read_input_polygon(input_file)
 
+        # Extract filename for layer naming
+        input_filename = Path(input_file).stem
+
         # Step 2: Process all layers
         layer_results, metadata = process_all_layers(polygon_gdf, CONFIG)
 
@@ -660,7 +729,7 @@ def main(input_file: str, output_name: Optional[str] = None):
             print()
 
         # Step 3: Create web map
-        map_obj = create_web_map(polygon_gdf, layer_results, metadata, CONFIG)
+        map_obj = create_web_map(polygon_gdf, layer_results, metadata, CONFIG, input_filename)
 
         # Step 4: Generate output
         output_path = generate_output(
