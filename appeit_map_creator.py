@@ -15,6 +15,7 @@ Repository: https://github.com/lukaskucinski/appeit_map_creator.git
 import geopandas as gpd
 import folium
 from folium import plugins
+from folium.plugins import Geocoder
 import requests
 import json
 from pathlib import Path
@@ -620,6 +621,18 @@ def create_web_map(
     # Add layer control
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
 
+    # Add geocoding search control (address and coordinate search)
+    geocoder_config = config.get('settings', {}).get('geocoder', {})
+    if geocoder_config.get('enabled', True):
+        Geocoder(
+            collapsed=geocoder_config.get('collapsed', True),
+            position=geocoder_config.get('position', 'topright'),
+            add_marker=True,
+            zoom=geocoder_config.get('search_zoom', 15),
+            provider='nominatim',
+            placeholder='Search address or coordinates...'
+        ).add_to(m)
+
     # Add scale bar
     plugins.MeasureControl(position='bottomleft', primary_length_unit='miles').add_to(m)
 
@@ -941,10 +954,10 @@ def create_web_map(
         /* Side panel container */
         #side-panel {{
             position: fixed;
-            top: 60px;
+            top: 0;
             left: 0;
             width: 350px;
-            height: calc(100vh - 80px);
+            height: 100vh;
             background: white;
             box-shadow: 2px 0 8px rgba(0,0,0,0.2);
             z-index: 1001;
@@ -959,12 +972,14 @@ def create_web_map(
         }}
 
         /* Adjust Leaflet controls position to account for panel */
-        body:not(.panel-collapsed) .leaflet-left {{
+        body:not(.panel-collapsed) .leaflet-left,
+        body:not(.panel-collapsed) .leaflet-control-download {{
             left: 350px !important;
             transition: left 0.3s ease-in-out;
         }}
 
-        body.panel-collapsed .leaflet-left {{
+        body.panel-collapsed .leaflet-left,
+        body.panel-collapsed .leaflet-control-download {{
             left: 0 !important;
             transition: left 0.3s ease-in-out;
         }}
