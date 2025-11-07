@@ -220,12 +220,26 @@ def query_arcgis_layer(
 
             # Convert to GeoDataFrame
             gdf = gpd.GeoDataFrame.from_features(features, crs='EPSG:4326')
+            initial_count = len(gdf)
+
+            print(f"    - Bounding box returned {initial_count} features")
+
+            # Client-side filtering: precise polygon intersection
+            # This filters out features that are in the bbox but not in the actual polygon
+            polygon_geometry = polygon_geom.geometry.iloc[0]
+            gdf = gdf[gdf.intersects(polygon_geometry)]
+
             metadata['feature_count'] = len(gdf)
+            metadata['bbox_count'] = initial_count
+            metadata['filtered_count'] = initial_count - len(gdf)
 
             # Check if result exceeded limit
             if result.get('exceededTransferLimit', False):
                 metadata['warning'] = f"Result exceeded server limit. Showing first {len(gdf)} features."
-                print(f"    � WARNING: {metadata['warning']}")
+                print(f"    ⚠ WARNING: {metadata['warning']}")
+
+            if initial_count != len(gdf):
+                print(f"    - Filtered to {len(gdf)} features (removed {initial_count - len(gdf)} outside polygon)")
 
             print(f"     Found {len(gdf)} intersecting features")
 
