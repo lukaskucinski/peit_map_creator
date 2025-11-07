@@ -15,6 +15,7 @@ Repository: https://github.com/lukaskucinski/appeit_map_creator.git
 import geopandas as gpd
 import folium
 from folium import plugins
+from folium.plugins import Geocoder
 import requests
 import json
 from pathlib import Path
@@ -619,6 +620,18 @@ def create_web_map(
 
     # Add layer control
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
+
+    # Add geocoding search control (address and coordinate search)
+    geocoder_config = config.get('settings', {}).get('geocoder', {})
+    if geocoder_config.get('enabled', True):
+        Geocoder(
+            collapsed=geocoder_config.get('collapsed', True),
+            position=geocoder_config.get('position', 'topright'),
+            add_marker=True,
+            zoom=geocoder_config.get('search_zoom', 15),
+            provider='nominatim',
+            placeholder='Search address or coordinates...'
+        ).add_to(m)
 
     # Add scale bar
     plugins.MeasureControl(position='bottomleft', primary_length_unit='miles').add_to(m)
