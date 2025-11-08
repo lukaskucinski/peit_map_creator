@@ -697,7 +697,7 @@ def create_web_map(
         .download-menu {{
             position: absolute;
             bottom: 0;
-            left: 0;
+            right: 0;
             background: white;
             border: 2px solid rgba(0,0,0,0.2);
             border-radius: 4px;
@@ -978,16 +978,24 @@ def create_web_map(
         }}
 
         /* Adjust Leaflet controls position to account for panel */
-        body:not(.panel-collapsed) .leaflet-left,
-        body:not(.panel-collapsed) .leaflet-control-download {{
+        body:not(.panel-collapsed) .leaflet-left {{
             left: 350px !important;
             transition: left 0.3s ease-in-out;
         }}
 
-        body.panel-collapsed .leaflet-left,
-        body.panel-collapsed .leaflet-control-download {{
+        body:not(.panel-collapsed) .leaflet-control-download {{
+            right: 10px !important;
+            transition: right 0.3s ease-in-out;
+        }}
+
+        body.panel-collapsed .leaflet-left {{
             left: 0 !important;
             transition: left 0.3s ease-in-out;
+        }}
+
+        body.panel-collapsed .leaflet-control-download {{
+            right: 10px !important;
+            transition: right 0.3s ease-in-out;
         }}
 
         /* Toggle button */
