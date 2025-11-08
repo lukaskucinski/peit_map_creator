@@ -46,6 +46,12 @@
     "enable_clustering": true,
     "cluster_threshold": 50,
     "default_zoom": 10,
-    "tile_layer": "OpenStreetMap"
+    "tile_layer": "OpenStreetMap",
+    "geocoder": {
+      "enabled": true,
+      "collapsed": true,
+      "position": "topright",
+      "search_zoom": 15
+    }
   }
 }
