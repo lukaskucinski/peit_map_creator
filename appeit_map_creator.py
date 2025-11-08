@@ -667,8 +667,8 @@ def create_web_map(
         /* Download control container */
         .leaflet-control-download {{
             position: fixed;
-            bottom: 50px;
-            left: 10px;
+            bottom: 10px;
+            left: 56px;
             z-index: 1000;
         }}
 
