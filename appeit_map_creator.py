@@ -393,29 +393,37 @@ def generate_layer_download_sections(layer_results: Dict[str, gpd.GeoDataFrame],
     return sections_html
 
 
-def generate_layer_data_mapping(layer_results: Dict[str, gpd.GeoDataFrame]) -> str:
+def generate_layer_data_mapping(
+    layer_results: Dict[str, gpd.GeoDataFrame],
+    polygon_gdf: gpd.GeoDataFrame
+) -> str:
     """
-    Generate JavaScript object mapping layer names to file paths.
+    Generate JavaScript object with embedded GeoJSON data.
 
     Parameters:
     -----------
     layer_results : Dict[str, gpd.GeoDataFrame]
         Dictionary of layer results
+    polygon_gdf : gpd.GeoDataFrame
+        Input polygon GeoDataFrame
 
     Returns:
     --------
     str
-        JavaScript string mapping layers to data files
+        JavaScript string with embedded GeoJSON objects
     """
     mappings = []
 
-    # Add input polygon
-    mappings.append("'Input Polygon': 'data/input_polygon.geojson'")
+    # Add input polygon (convert GeoDataFrame to GeoJSON dict)
+    input_geojson = json.loads(polygon_gdf.to_json())
+    input_geojson_str = json.dumps(input_geojson, separators=(',', ':'))
+    mappings.append(f"'Input Polygon': {input_geojson_str}")
 
     # Add each intersected layer
-    for layer_name in layer_results.keys():
-        safe_name = layer_name.replace(' ', '_').replace('/', '_').lower()
-        mappings.append(f"'{layer_name}': 'data/{safe_name}.geojson'")
+    for layer_name, gdf in layer_results.items():
+        layer_geojson = json.loads(gdf.to_json())
+        layer_geojson_str = json.dumps(layer_geojson, separators=(',', ':'))
+        mappings.append(f"'{layer_name}': {layer_geojson_str}")
 
     return ",\n        ".join(mappings)
 
@@ -659,7 +667,7 @@ def create_web_map(
         /* Download control container */
         .leaflet-control-download {{
             position: fixed;
-            bottom: 60px;
+            bottom: 50px;
             left: 10px;
             z-index: 1000;
         }}
@@ -791,9 +799,9 @@ def create_web_map(
     </div>
 
     <script>
-        // Layer data embedded in page (relative paths to data files)
+        // Layer data embedded in page (GeoJSON objects)
         const layerData = {{
-            {generate_layer_data_mapping(layer_results)}
+            {generate_layer_data_mapping(layer_results, polygon_gdf)}
         }};
 
         function toggleDownloadMenu() {{
@@ -810,16 +818,14 @@ def create_web_map(
             }}
         }});
 
-        // Load GeoJSON from relative path
-        async function loadGeoJSON(path) {{
-            const response = await fetch(path);
-            return await response.json();
+        // Get GeoJSON from embedded data (no fetch needed - fixes CORS issue)
+        async function loadGeoJSON(layerName) {{
+            return layerData[layerName];
         }}
 
         // Download individual layer in specified format
         async function downloadLayer(layerName, format) {{
-            const layerPath = layerData[layerName];
-            const geojson = await loadGeoJSON(layerPath);
+            const geojson = await loadGeoJSON(layerName);
             const fileName = layerName.replace(/\\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
             switch(format) {{
@@ -839,8 +845,8 @@ def create_web_map(
         async function downloadAll(format) {{
             const zip = new JSZip();
 
-            for (const [layerName, layerPath] of Object.entries(layerData)) {{
-                const geojson = await loadGeoJSON(layerPath);
+            for (const layerName of Object.keys(layerData)) {{
+                const geojson = await loadGeoJSON(layerName);
                 const fileName = layerName.replace(/\\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
                 switch(format) {{
