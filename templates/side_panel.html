@@ -47,9 +47,9 @@
     #panel-toggle {
         position: absolute;
         top: 50%;
-        right: -25px;
+        right: -20px;
         transform: translateY(-50%);
-        width: 25px;
+        width: 20px;
         height: 60px;
         background: white;
         border: 2px solid rgba(0,0,0,0.2);
@@ -66,7 +66,7 @@
     }
 
     #panel-toggle:hover {
-        background: #f5f5f5;
+        background: #e0e0e0;
     }
 
     /* Panel content area */
@@ -222,41 +222,37 @@
         icon.textContent = panel.classList.contains('collapsed') ? '►' : '◄';
     }
 
-    // Update legend based on layer visibility
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get the map object (it's stored in a global variable)
-        var mapElement = document.querySelector('.folium-map');
-        if (mapElement && mapElement._leaflet_id) {
-            var map = window[Object.keys(window).find(key =>
-                window[key] instanceof L.Map && window[key]._container === mapElement
-            )];
+    // Update legend based on layer visibility from custom layer control
+    function updateLegendVisibility() {
+        // Check each legend item against layer control checkboxes
+        var legendItems = document.querySelectorAll('.legend-item');
+        legendItems.forEach(function(legendItem) {
+            var layerName = legendItem.dataset.layerName;
+            if (!layerName) return;
 
-            if (map) {
-                // Listen for layer add/remove events
-                map.on('overlayadd', function(e) {
-                    var layerName = e.name;
-                    var legendItem = document.querySelector('.legend-item[data-layer-name="' + layerName + '"]');
-                    if (legendItem) {
-                        legendItem.style.display = 'flex';
-                    }
-                });
+            // Find corresponding checkbox in layer control
+            var layerCheckbox = document.querySelector('.layer-item[data-layer-name="' + layerName + '"] input[type="checkbox"]');
 
-                map.on('overlayremove', function(e) {
-                    var layerName = e.name;
-                    var legendItem = document.querySelector('.legend-item[data-layer-name="' + layerName + '"]');
-                    if (legendItem) {
-                        legendItem.style.display = 'none';
-                    }
-                });
-
-                // Initialize legend to show all layers (all are visible by default)
-                setTimeout(function() {
-                    var legendItems = document.querySelectorAll('.legend-item');
-                    legendItems.forEach(function(item) {
-                        item.style.display = 'flex';
-                    });
-                }, 500);
+            if (layerCheckbox) {
+                // Show/hide based on checkbox state
+                legendItem.style.display = layerCheckbox.checked ? 'flex' : 'none';
+            } else {
+                // If no checkbox found, show by default
+                legendItem.style.display = 'flex';
             }
-        }
+        });
+    }
+
+    // Listen for custom layer visibility change events
+    document.addEventListener('layerVisibilityChanged', function(e) {
+        updateLegendVisibility();
+    });
+
+    // Initialize legend visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait for layer control to initialize
+        setTimeout(function() {
+            updateLegendVisibility();
+        }, 500);
     });
 </script>

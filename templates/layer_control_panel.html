@@ -1,0 +1,522 @@
+<!-- Layer Control Panel UI Template for APPEIT Map Creator -->
+<!-- This template provides the collapsible right panel with grouped layer controls and search -->
+
+<style>
+    /* Right side panel container */
+    #layer-control-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 350px;
+        height: 100vh;
+        background: white;
+        box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+        z-index: 1001;
+        transition: transform 0.3s ease-in-out;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #layer-control-panel.collapsed {
+        transform: translateX(350px);
+    }
+
+    /* Adjust Leaflet controls position to account for right panel */
+    body:not(.panel-right-collapsed) .leaflet-right {
+        right: 350px !important;
+        transition: right 0.3s ease-in-out;
+    }
+
+    body.panel-right-collapsed .leaflet-right {
+        right: 0 !important;
+        transition: right 0.3s ease-in-out;
+    }
+
+    /* Adjust download control position to account for right panel */
+    body:not(.panel-right-collapsed) .leaflet-control-download {
+        right: 360px !important;
+        transition: right 0.3s ease-in-out;
+    }
+
+    body.panel-right-collapsed .leaflet-control-download {
+        right: 10px !important;
+        transition: right 0.3s ease-in-out;
+    }
+
+    /* Toggle button - positioned on left edge of panel */
+    #layer-panel-toggle {
+        position: absolute;
+        top: 50%;
+        left: -20px;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 60px;
+        background: white;
+        border: 2px solid rgba(0,0,0,0.2);
+        border-right: none;
+        border-radius: 8px 0 0 8px;
+        box-shadow: -2px 0 6px rgba(0,0,0,0.15);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: #333;
+        transition: background 0.2s;
+    }
+
+    #layer-panel-toggle:hover {
+        background: #e0e0e0;
+    }
+
+    /* Panel content area */
+    .layer-panel-content {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    /* Search section */
+    .search-section {
+        margin-bottom: 15px;
+    }
+
+    .search-section input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: Arial, sans-serif;
+        box-sizing: border-box;
+    }
+
+    .search-section input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+    }
+
+    /* Layer groups section */
+    .layer-groups {
+        margin-top: 10px;
+    }
+
+    .layer-group {
+        margin-bottom: 15px;
+    }
+
+    .group-header {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .group-header:hover {
+        background: #f8f9fa;
+    }
+
+    .group-header input[type="checkbox"] {
+        margin-right: 8px;
+        cursor: pointer;
+        width: 16px;
+        height: 16px;
+    }
+
+    .group-header label {
+        flex: 1;
+        font-weight: bold;
+        font-size: 13px;
+        color: #333;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .group-chevron {
+        font-size: 12px;
+        color: #666;
+        transition: transform 0.2s;
+        margin-left: 5px;
+    }
+
+    .layer-group.collapsed .group-chevron {
+        transform: rotate(-90deg);
+    }
+
+    .group-layers {
+        padding-left: 10px;
+        transition: max-height 0.3s ease-in-out;
+        overflow: hidden;
+    }
+
+    .layer-group.collapsed .group-layers {
+        max-height: 0 !important;
+    }
+
+    .layer-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 8px;
+        margin: 4px 0;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .layer-item:hover {
+        background: #f0f0f0;
+    }
+
+    .drag-handle {
+        font-size: 12px;
+        color: #999;
+        margin-right: 8px;
+        cursor: grab;
+    }
+
+    .layer-item input[type="checkbox"] {
+        margin-right: 8px;
+        cursor: pointer;
+        width: 14px;
+        height: 14px;
+    }
+
+    .layer-item i {
+        font-size: 14px;
+        margin-right: 8px;
+    }
+
+    .layer-item label {
+        flex: 1;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .layer-count {
+        font-size: 11px;
+        color: #666;
+        margin-left: 5px;
+    }
+
+    /* Line symbol for line layers */
+    .line-symbol {
+        width: 20px;
+        height: 2px;
+        margin-right: 8px;
+        display: inline-block;
+    }
+
+    /* Polygon symbol for polygon layers */
+    .polygon-symbol {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        display: inline-block;
+        border: 2px solid;
+    }
+
+    /* No results message */
+    .no-results {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+        font-size: 13px;
+        display: none;
+    }
+
+    /* Custom scrollbar */
+    .layer-panel-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .layer-panel-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .layer-panel-content::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .layer-panel-content::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+
+<div id="layer-control-panel">
+    <div id="layer-panel-toggle" onclick="toggleLayerPanel()">
+        <span id="layer-toggle-icon">◄</span>
+    </div>
+
+    <div class="layer-panel-content">
+        <!-- Search Box -->
+        <div class="search-section">
+            <input type="text"
+                   id="layer-search"
+                   placeholder="🔍 Search layers..."
+                   oninput="filterLayers(this.value)">
+        </div>
+
+        <!-- Layer Groups -->
+        <div class="layer-groups" id="layer-groups-container">
+            {% for group in groups %}
+            <div class="layer-group" data-group="{{ group.name }}">
+                <div class="group-header" onclick="toggleGroupExpand('{{ group.name }}')">
+                    <input type="checkbox"
+                           id="group-{{ group.name|replace(' ', '-')|replace('/', '-')|lower }}"
+                           checked
+                           onclick="event.stopPropagation(); toggleGroup('{{ group.name }}', this.checked)">
+                    <label onclick="event.stopPropagation(); document.getElementById('group-{{ group.name|replace(' ', '-')|replace('/', '-')|lower }}').click();">
+                        {{ group.name }}
+                    </label>
+                    <span class="group-chevron">▼</span>
+                </div>
+
+                <div class="group-layers">
+                    {% for layer in group.layers %}
+                    <div class="layer-item"
+                         data-layer-name="{{ layer.name }}"
+                         data-description="{{ layer.description }}"
+                         data-group="{{ layer.group }}">
+                        <span class="drag-handle">⋮⋮</span>
+                        <input type="checkbox"
+                               id="layer-{{ layer.name|replace(' ', '-')|lower }}"
+                               checked
+                               onchange="toggleLayer('{{ layer.name }}', this.checked)">
+
+                        {% if layer.geometry_type == 'point' %}
+                        <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.color }}"></i>
+                        {% elif layer.geometry_type == 'line' %}
+                        <span class="line-symbol" style="background-color: {{ layer.color }}"></span>
+                        {% elif layer.geometry_type == 'polygon' %}
+                        <span class="polygon-symbol" style="border-color: {{ layer.color }}; background-color: {{ layer.color }}33;"></span>
+                        {% endif %}
+
+                        <label onclick="document.getElementById('layer-{{ layer.name|replace(' ', '-')|lower }}').click();">
+                            {{ layer.name }} <span class="layer-count">({{ layer.feature_count }})</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- No results message -->
+        <div class="no-results" id="no-results">
+            No layers found matching your search.
+        </div>
+    </div>
+</div>
+
+<script>
+    // Store layer objects for show/hide functionality
+    const mapLayers = {};
+    const layerStates = {};
+    const groupLayerStates = {};
+
+    // Toggle layer control panel collapse/expand
+    function toggleLayerPanel() {
+        var panel = document.getElementById('layer-control-panel');
+        var icon = document.getElementById('layer-toggle-icon');
+
+        panel.classList.toggle('collapsed');
+        document.body.classList.toggle('panel-right-collapsed');
+        icon.textContent = panel.classList.contains('collapsed') ? '►' : '◄';
+    }
+
+    // Toggle group expand/collapse (visual only)
+    function toggleGroupExpand(groupName) {
+        var groupElement = document.querySelector('.layer-group[data-group="' + groupName + '"]');
+        if (groupElement) {
+            groupElement.classList.toggle('collapsed');
+        }
+    }
+
+    // Toggle all layers in a group
+    function toggleGroup(groupName, isChecked) {
+        // Get all layer checkboxes in this group
+        var groupElement = document.querySelector('.layer-group[data-group="' + groupName + '"]');
+        if (!groupElement) return;
+
+        var layerCheckboxes = groupElement.querySelectorAll('.layer-item input[type="checkbox"]');
+
+        // If turning on group, restore previous individual states
+        if (isChecked) {
+            if (groupLayerStates[groupName]) {
+                // Restore previous states
+                layerCheckboxes.forEach(function(checkbox) {
+                    var layerName = checkbox.id.replace('layer-', '').replace(/-/g, ' ');
+                    var layerItem = checkbox.closest('.layer-item');
+                    var actualLayerName = layerItem ? layerItem.dataset.layerName : null;
+
+                    if (actualLayerName && groupLayerStates[groupName][actualLayerName] !== undefined) {
+                        checkbox.checked = groupLayerStates[groupName][actualLayerName];
+                        toggleLayer(actualLayerName, checkbox.checked);
+                    } else {
+                        checkbox.checked = true;
+                        if (actualLayerName) {
+                            toggleLayer(actualLayerName, true);
+                        }
+                    }
+                });
+            } else {
+                // Turn all on
+                layerCheckboxes.forEach(function(checkbox) {
+                    var layerItem = checkbox.closest('.layer-item');
+                    var layerName = layerItem ? layerItem.dataset.layerName : null;
+                    if (layerName) {
+                        checkbox.checked = true;
+                        toggleLayer(layerName, true);
+                    }
+                });
+            }
+        } else {
+            // Save current states before turning off
+            if (!groupLayerStates[groupName]) {
+                groupLayerStates[groupName] = {};
+            }
+
+            layerCheckboxes.forEach(function(checkbox) {
+                var layerItem = checkbox.closest('.layer-item');
+                var layerName = layerItem ? layerItem.dataset.layerName : null;
+                if (layerName) {
+                    groupLayerStates[groupName][layerName] = checkbox.checked;
+                    checkbox.checked = false;
+                    toggleLayer(layerName, false);
+                }
+            });
+        }
+
+        // Dispatch custom event for legend sync
+        document.dispatchEvent(new CustomEvent('layerVisibilityChanged'));
+    }
+
+    // Toggle individual layer visibility
+    function toggleLayer(layerName, isVisible) {
+        // Store layer state
+        layerStates[layerName] = isVisible;
+
+        // Get the layer object from the map
+        var layer = mapLayers[layerName];
+
+        if (layer && window.mapObject) {
+            if (isVisible) {
+                window.mapObject.addLayer(layer);
+            } else {
+                window.mapObject.removeLayer(layer);
+            }
+        }
+
+        // Update group checkbox state
+        updateGroupCheckboxState(layerName);
+
+        // Dispatch custom event for legend sync
+        document.dispatchEvent(new CustomEvent('layerVisibilityChanged', {
+            detail: { layerName: layerName, isVisible: isVisible }
+        }));
+    }
+
+    // Update group checkbox based on child layer states
+    function updateGroupCheckboxState(layerName) {
+        // Find which group this layer belongs to
+        var layerItem = document.querySelector('.layer-item[data-layer-name="' + layerName + '"]');
+        if (!layerItem) return;
+
+        var groupName = layerItem.dataset.group;
+        var groupCheckbox = document.getElementById('group-' + groupName.replace(/ /g, '-').replace(/\//g, '-').toLowerCase());
+        if (!groupCheckbox) return;
+
+        // Check if all layers in group are checked
+        var groupElement = document.querySelector('.layer-group[data-group="' + groupName + '"]');
+        var layerCheckboxes = groupElement.querySelectorAll('.layer-item input[type="checkbox"]');
+        var allChecked = Array.from(layerCheckboxes).every(cb => cb.checked);
+        var noneChecked = Array.from(layerCheckboxes).every(cb => !cb.checked);
+
+        if (allChecked) {
+            groupCheckbox.checked = true;
+            groupCheckbox.indeterminate = false;
+        } else if (noneChecked) {
+            groupCheckbox.checked = false;
+            groupCheckbox.indeterminate = false;
+        } else {
+            groupCheckbox.checked = false;
+            groupCheckbox.indeterminate = true;
+        }
+    }
+
+    // Filter layers by search term
+    function filterLayers(searchTerm) {
+        var term = searchTerm.toLowerCase().trim();
+        var layerItems = document.querySelectorAll('.layer-item');
+        var groups = document.querySelectorAll('.layer-group');
+        var hasVisibleLayers = false;
+
+        if (term === '') {
+            // Show all
+            layerItems.forEach(function(item) {
+                item.style.display = 'flex';
+            });
+            groups.forEach(function(group) {
+                group.style.display = 'block';
+            });
+            document.getElementById('no-results').style.display = 'none';
+            return;
+        }
+
+        // Filter layers
+        layerItems.forEach(function(item) {
+            var name = item.dataset.layerName.toLowerCase();
+            var description = item.dataset.description.toLowerCase();
+            var group = item.dataset.group.toLowerCase();
+
+            var matches = name.includes(term) || description.includes(term) || group.includes(term);
+
+            if (matches) {
+                item.style.display = 'flex';
+                hasVisibleLayers = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Hide groups with no visible layers
+        groups.forEach(function(group) {
+            var visibleLayers = group.querySelectorAll('.layer-item[style*="flex"]');
+            if (visibleLayers.length > 0) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        });
+
+        // Show/hide no results message
+        document.getElementById('no-results').style.display = hasVisibleLayers ? 'none' : 'block';
+    }
+
+    // Initialize layer states
+    document.addEventListener('DOMContentLoaded', function() {
+        // All layers start as visible
+        var layerCheckboxes = document.querySelectorAll('.layer-item input[type="checkbox"]');
+        layerCheckboxes.forEach(function(checkbox) {
+            var layerItem = checkbox.closest('.layer-item');
+            var layerName = layerItem ? layerItem.dataset.layerName : null;
+            if (layerName) {
+                layerStates[layerName] = true;
+            }
+        });
+
+        // Set initial max-height for group layers to enable collapse animation
+        var groupLayers = document.querySelectorAll('.group-layers');
+        groupLayers.forEach(function(group) {
+            group.style.maxHeight = group.scrollHeight + 'px';
+        });
+    });
+</script>

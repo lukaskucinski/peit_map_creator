@@ -8,7 +8,8 @@
       "icon": "recycle",
       "icon_color": "red",
       "description": "Resource Conservation and Recovery Act (RCRA) regulated facilities",
-      "geometry_type": "point"
+      "geometry_type": "point",
+      "group": "EPA Programs"
     },
     {
       "name": "NPDES Sites",
@@ -18,7 +19,8 @@
       "icon": "tint",
       "icon_color": "blue",
       "description": "National Pollutant Discharge Elimination System (NPDES) Sites",
-      "geometry_type": "point"
+      "geometry_type": "point",
+      "group": "EPA Programs"
     },
     {
       "name": "Navigable Waterways",
@@ -28,7 +30,8 @@
       "icon": "ship",
       "icon_color": "green",
       "description": "USACE Navigable Waterway Network",
-      "geometry_type": "line"
+      "geometry_type": "line",
+      "group": "Federal/Tribal Land"
     },
     {
       "name": "Historic Places",
@@ -38,7 +41,8 @@
       "icon": "landmark",
       "icon_color": "purple",
       "description": "National Register of Historic Places - Points",
-      "geometry_type": "point"
+      "geometry_type": "point",
+      "group": "Historic Places"
     }
   ],
   "settings": {

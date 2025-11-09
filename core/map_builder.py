@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from utils.html_generators import generate_layer_download_sections, generate_layer_data_mapping
 from utils.popup_formatters import format_popup_value
+from utils.layer_control_helpers import organize_layers_by_group, generate_layer_control_data, generate_layer_geojson_data
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -105,7 +106,11 @@ def create_web_map(
         tooltip=layer_name
     ).add_to(m)
 
+    # Store layer variable names for JavaScript reference
+    layer_var_names = {}
+
     # Add each layer with appropriate styling
+    # Note: Layers are added to map but will be controlled via custom layer control panel
     for layer_config in config['layers']:
         layer_name = layer_config['name']
 
@@ -131,7 +136,8 @@ def create_web_map(
 
         if use_clustering:
             logger.info("    (Using marker clustering)")
-            marker_cluster = plugins.MarkerCluster(name=layer_name)
+            # Don't add 'name' parameter - prevents layer from appearing in LayerControl
+            marker_cluster = plugins.MarkerCluster()
 
             for _, row in gdf.iterrows():
                 # Find name column (case-insensitive search for first column containing 'name')
@@ -165,13 +171,15 @@ def create_web_map(
                 ).add_to(marker_cluster)
 
             marker_cluster.add_to(m)
+            layer_var_names[layer_name] = 'cluster'
             logger.info(f"    ✓ Added {len(gdf)} clustered markers to map")
 
         else:
             # Add as GeoJSON layer
             if layer_config['geometry_type'] == 'point':
                 # Use markers for points
-                feature_group = folium.FeatureGroup(name=layer_name)
+                # Don't add 'name' parameter - prevents layer from appearing in LayerControl
+                feature_group = folium.FeatureGroup()
 
                 for _, row in gdf.iterrows():
                     # Find name column (case-insensitive search for first column containing 'name')
@@ -204,6 +212,7 @@ def create_web_map(
                     ).add_to(feature_group)
 
                 feature_group.add_to(m)
+                layer_var_names[layer_name] = 'featuregroup'
                 logger.info(f"    ✓ Added {len(gdf)} point markers to map")
 
             else:
@@ -222,9 +231,9 @@ def create_web_map(
                         'opacity': 1.0
                     }
 
+                # Don't add 'name' parameter - prevents layer from appearing in LayerControl
                 folium.GeoJson(
                     gdf,
-                    name=layer_name,
                     style_function=style_function,
                     highlight_function=highlight_function,
                     tooltip=folium.GeoJsonTooltip(
@@ -233,10 +242,23 @@ def create_web_map(
                         localize=True
                     )
                 ).add_to(m)
+                layer_var_names[layer_name] = 'geojson'
                 logger.info(f"    ✓ Added {len(gdf)} features as GeoJSON layer")
 
-    # Add layer control
+    # Add LayerControl for base map switching
+    # Note: Overlay layers will be hidden via CSS since they're controlled by custom panel
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
+
+    # Hide overlay section of LayerControl using CSS (show only base maps)
+    hide_overlays_css = """
+<style>
+/* Hide overlay layers from LayerControl - they're managed by custom right panel */
+.leaflet-control-layers-overlays {
+    display: none !important;
+}
+</style>
+"""
+    m.get_root().html.add_child(Element(hide_overlays_css))
 
     # Add geocoding search control (address and coordinate search)
     geocoder_config = config.get('settings', {}).get('geocoder', {})
@@ -324,6 +346,96 @@ def create_web_map(
         legend_items=legend_items_html
     )
     m.get_root().html.add_child(Element(side_panel_html))
+
+    # Render layer control panel (right side)
+    logger.info("  - Adding layer control panel...")
+    groups = organize_layers_by_group(config, layer_results)
+    control_data = generate_layer_control_data(groups, layer_results, config)
+
+    layer_control_template = env.get_template('layer_control_panel.html')
+    layer_control_html = layer_control_template.render(
+        groups=control_data['groups']
+    )
+    m.get_root().html.add_child(Element(layer_control_html))
+
+    # Add JavaScript to create and manage layer objects from GeoJSON
+    logger.info("  - Adding layer management JavaScript...")
+    geojson_data_js = generate_layer_geojson_data(layer_results, polygon_gdf)
+
+    layer_management_script = f"""
+    <script>
+    // Embed GeoJSON data
+    {geojson_data_js}
+
+    // Store layer references by iterating through map layers and matching them
+    // Since we removed 'name' from layers to prevent them appearing in LayerControl,
+    // we need to store them by order of creation and match with layer list
+    const layerNames = {list(layer_results.keys())};
+    let layerIndex = 0;
+
+    // Function to find and store map object
+    function initializeLayerControl() {{
+        // Find the Leaflet map object
+        const mapElement = document.querySelector('.folium-map');
+        if (!mapElement) {{
+            console.error('Map element not found');
+            return;
+        }}
+
+        // Store map reference globally
+        window.mapObject = null;
+
+        // Find map in Folium's generated variables
+        for (let key in window) {{
+            if (window[key] && window[key] instanceof L.Map) {{
+                window.mapObject = window[key];
+                break;
+            }}
+        }}
+
+        if (!window.mapObject) {{
+            console.error('Map object not found');
+            return;
+        }}
+
+        // Get all non-base layers from the map (in order of addition)
+        const dataLayers = [];
+        window.mapObject.eachLayer(function(layer) {{
+            // Skip tile layers and the input polygon GeoJSON layer
+            if (layer instanceof L.TileLayer) return;
+
+            // Input polygon is the first GeoJSON layer added
+            if (layer instanceof L.GeoJSON && dataLayers.length === 0) return;
+
+            // Collect all other layers (MarkerClusters, FeatureGroups, GeoJSON)
+            if (layer instanceof L.MarkerClusterGroup ||
+                layer instanceof L.FeatureGroup ||
+                layer instanceof L.GeoJSON) {{
+                dataLayers.push(layer);
+            }}
+        }});
+
+        // Map layers to their names based on order
+        layerNames.forEach(function(name, index) {{
+            if (index < dataLayers.length) {{
+                mapLayers[name] = dataLayers[index];
+                console.log('Stored layer:', name, dataLayers[index]);
+            }}
+        }});
+
+        console.log('Layer control initialized with', Object.keys(mapLayers).length, 'layers');
+    }}
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', initializeLayerControl);
+    }} else {{
+        initializeLayerControl();
+    }}
+    </script>
+    """
+
+    m.get_root().html.add_child(Element(layer_management_script))
 
     # Fit bounds to polygon
     m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
