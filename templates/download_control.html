@@ -1,5 +1,6 @@
 <!-- Download Control UI Template for APPEIT Map Creator -->
 <!-- This template provides the download button and menu interface -->
+<!-- @ts-nocheck - This is a Jinja2 template file, not pure JavaScript -->
 
 <!-- CDN Libraries for Download Functionality -->
 <script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
@@ -115,6 +116,73 @@
         color: #0078A8;
         font-size: 13px;
     }
+
+    /* Coordinate Context Menu (Google Maps-style) */
+    .coordinate-context-menu {
+        position: absolute;
+        background: white;
+        border-radius: 2px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        padding: 0;
+        min-width: 200px;
+        z-index: 10000;
+        display: none;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .coordinate-context-menu.active {
+        display: block;
+    }
+
+    .context-menu-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: #202124;
+        transition: background 0.1s;
+    }
+
+    .context-menu-item:hover {
+        background: #f1f3f4;
+    }
+
+    .context-menu-item .coord-text {
+        flex: 1;
+        font-family: monospace;
+        font-size: 13px;
+    }
+
+    .context-menu-item i {
+        color: #5f6368;
+        margin-left: 12px;
+        font-size: 14px;
+    }
+
+    /* Copy Notification (Google Maps-style) */
+    .copy-notification {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: #323232;
+        color: white;
+        padding: 14px 24px;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        z-index: 10001;
+        opacity: 0;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .copy-notification.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 </style>
 
 <div class="leaflet-control-download">
@@ -122,8 +190,8 @@
         <i class="fa fa-download"></i>
     </div>
 
-    <div class="download-menu" id="download-menu">
-        <div class="download-menu-header">
+    <div class="download-menu" id="download-menu" onclick="closeDownloadMenuOnWhitespace(event)">
+        <div class="download-menu-header" onclick="closeDownloadMenu()">
             <i class="fa fa-download"></i> Download Layers
         </div>
 
@@ -131,9 +199,9 @@
         <div class="download-all-section">
             <div class="download-layer-name">All Layers</div>
             <div class="download-format-buttons">
-                <button class="download-format-btn" onclick="downloadAll('geojson')">GeoJSON</button>
-                <button class="download-format-btn" onclick="downloadAll('shp')">Shapefile</button>
-                <button class="download-format-btn" onclick="downloadAll('kmz')">KMZ</button>
+                <button class="download-format-btn" onclick="downloadAll('geojson'); event.stopPropagation();">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadAll('shp'); event.stopPropagation();">Shapefile</button>
+                <button class="download-format-btn" onclick="downloadAll('kmz'); event.stopPropagation();">KMZ</button>
             </div>
         </div>
 
@@ -142,8 +210,22 @@
     </div>
 </div>
 
+<!-- Coordinate Context Menu -->
+<div id="coordinate-menu" class="coordinate-context-menu">
+    <div class="context-menu-item" onclick="copyCoordinates()">
+        <span class="coord-text" id="coord-display"></span>
+        <i class="fa fa-copy"></i>
+    </div>
+</div>
+
+<!-- Copy Notification -->
+<div id="copy-notification" class="copy-notification">
+    Coordinates copied to clipboard
+</div>
+
 <script>
     // Layer data embedded in page (GeoJSON objects)
+    // Note: layer_data is Jinja2 template syntax, replaced at render time
     const layerData = {
         {{ layer_data|safe }}
     };
@@ -151,6 +233,19 @@
     function toggleDownloadMenu() {
         const menu = document.getElementById('download-menu');
         menu.classList.toggle('active');
+    }
+
+    function closeDownloadMenu() {
+        const menu = document.getElementById('download-menu');
+        menu.classList.remove('active');
+    }
+
+    // Close menu when clicking on whitespace or header
+    function closeDownloadMenuOnWhitespace(event) {
+        // Only close if clicking directly on the menu container (whitespace), not on its children
+        if (event.target === event.currentTarget) {
+            closeDownloadMenu();
+        }
     }
 
     // Close menu when clicking outside
@@ -245,5 +340,110 @@
         const zip = new JSZip();
         zip.file('doc.kml', kml);
         return await zip.generateAsync({type: 'blob'});
+    }
+
+    // ========== Coordinate Context Menu Functions ==========
+
+    let currentCoordinates = null;
+    let leafletMap = null;
+
+    // Initialize context menu after map is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Find Leaflet map object - Folium creates variables like map_xxxxx
+        setTimeout(function() {
+            console.log('Searching for Leaflet map object...');
+
+            // Search for map variable in window (Folium pattern: map_xxxxx)
+            for (let key in window) {
+                if (key.startsWith('map_') &&
+                    window[key] &&
+                    typeof window[key] === 'object' &&
+                    typeof window[key].on === 'function') {
+                    leafletMap = window[key];
+                    console.log('Found Leaflet map object:', key);
+
+                    // Use Leaflet's native contextmenu event
+                    leafletMap.on('contextmenu', function(e) {
+                        handleMapRightClick(e);
+                    });
+                    console.log('Context menu attached via Leaflet API');
+                    break;
+                }
+            }
+
+            if (!leafletMap) {
+                console.error('Could not find Leaflet map object in window');
+                // Log all window properties starting with 'map'
+                console.log('Window properties starting with "map":',
+                    Object.keys(window).filter(k => k.toLowerCase().includes('map')));
+            }
+        }, 2000);  // Increased timeout to ensure map is fully loaded
+
+        // Close context menu when clicking anywhere
+        document.addEventListener('click', closeCoordinateMenu);
+    });
+
+    function handleMapRightClick(e) {
+        console.log('Right-click detected via Leaflet!', e);
+
+        // Leaflet provides coordinates directly in e.latlng
+        const lat = e.latlng.lat.toFixed(6);
+        const lng = e.latlng.lng.toFixed(6);
+
+        // Store coordinates
+        currentCoordinates = `${lat}, ${lng}`;
+        console.log('Coordinates:', currentCoordinates);
+
+        // Update menu display
+        document.getElementById('coord-display').textContent = currentCoordinates;
+
+        // Position menu using the original DOM event
+        const coordMenu = document.getElementById('coordinate-menu');
+        coordMenu.style.left = e.originalEvent.pageX + 'px';
+        coordMenu.style.top = e.originalEvent.pageY + 'px';
+        coordMenu.classList.add('active');
+        console.log('Context menu shown at:', e.originalEvent.pageX, e.originalEvent.pageY);
+    }
+
+    function closeCoordinateMenu() {
+        const coordMenu = document.getElementById('coordinate-menu');
+        coordMenu.classList.remove('active');
+    }
+
+    async function copyCoordinates() {
+        if (!currentCoordinates) return;
+
+        try {
+            await navigator.clipboard.writeText(currentCoordinates);
+            showCopyNotification();
+            closeCoordinateMenu();
+        } catch (err) {
+            console.error('Failed to copy coordinates:', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = currentCoordinates;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopyNotification();
+                closeCoordinateMenu();
+            } catch (err2) {
+                console.error('Fallback copy failed:', err2);
+            }
+            document.body.removeChild(textArea);
+        }
+    }
+
+    function showCopyNotification() {
+        const notification = document.getElementById('copy-notification');
+        notification.classList.add('show');
+
+        // Hide after 2 seconds (Google Maps style)
+        setTimeout(function() {
+            notification.classList.remove('show');
+        }, 2000);
     }
 </script>

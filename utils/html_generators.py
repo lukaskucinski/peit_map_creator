@@ -56,9 +56,9 @@ def generate_layer_download_sections(
         <div class="download-section">
             <div class="download-layer-name">{input_filename} (Input Area)</div>
             <div class="download-format-buttons">
-                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'geojson')">GeoJSON</button>
-                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'shp')">SHP</button>
-                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'kmz')">KMZ</button>
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'geojson'); event.stopPropagation();">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'shp'); event.stopPropagation();">SHP</button>
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'kmz'); event.stopPropagation();">KMZ</button>
             </div>
         </div>
         """
@@ -77,9 +77,9 @@ def generate_layer_download_sections(
         <div class="download-section">
             <div class="download-layer-name">{layer_name} ({feature_count})</div>
             <div class="download-format-buttons">
-                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'geojson')">GeoJSON</button>
-                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'shp')">SHP</button>
-                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'kmz')">KMZ</button>
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'geojson'); event.stopPropagation();">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'shp'); event.stopPropagation();">SHP</button>
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'kmz'); event.stopPropagation();">KMZ</button>
             </div>
         </div>
         """
@@ -110,20 +110,23 @@ def generate_layer_data_mapping(
         JavaScript string defining layerData object
 
     Example Output:
-        'Input Polygon': {type: "FeatureCollection", features: [...]},
-        'RCRA Sites': {type: "FeatureCollection", features: [...]}
+        "Input Polygon": {type: "FeatureCollection", features: [...]},
+        "RCRA Sites": {type: "FeatureCollection", features: [...]}
     """
     mappings = []
 
     # Add input polygon (convert GeoDataFrame to GeoJSON dict)
     input_geojson = json.loads(polygon_gdf.to_json())
     input_geojson_str = json.dumps(input_geojson, separators=(',', ':'))
-    mappings.append(f"'Input Polygon': {input_geojson_str}")
+    # Use double quotes to avoid conflicts with apostrophes in layer names
+    mappings.append(f'"Input Polygon": {input_geojson_str}')
 
     # Add each intersected layer
     for layer_name, gdf in layer_results.items():
         layer_geojson = json.loads(gdf.to_json())
         layer_geojson_str = json.dumps(layer_geojson, separators=(',', ':'))
-        mappings.append(f"'{layer_name}': {layer_geojson_str}")
+        # Escape any double quotes in the layer name and use double quotes
+        escaped_name = layer_name.replace('"', '\\"')
+        mappings.append(f'"{escaped_name}": {layer_geojson_str}')
 
     return ",\n        ".join(mappings)
