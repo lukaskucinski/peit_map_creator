@@ -58,6 +58,16 @@
         display: block;
     }
 
+    /* Adjust menu position when right panel is OPEN to create margin between button and menu */
+    body:not(.panel-right-collapsed) .download-menu.active {
+        right: 45px;  /* Margin between download button and menu */
+    }
+
+    /* Adjust menu position when right panel is CLOSED to prevent overlap with button and toggle */
+    body.panel-right-collapsed .download-menu.active {
+        right: 45px;  /* Clear download button (36px) + toggle button (20px) + gaps */
+    }
+
     .download-menu-header {
         font-weight: bold;
         margin-bottom: 12px;
