@@ -1,0 +1,249 @@
+<!-- Download Control UI Template for APPEIT Map Creator -->
+<!-- This template provides the download button and menu interface -->
+
+<!-- CDN Libraries for Download Functionality -->
+<script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
+<script src="https://unpkg.com/tokml@0.4.0/tokml.js"></script>
+<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<style>
+    /* Download control container */
+    .leaflet-control-download {
+        position: fixed;
+        bottom: 50px;
+        right: 10px;
+        z-index: 1000;
+    }
+
+    /* Main download button - matches Leaflet control style */
+    .download-button {
+        background: white;
+        border: 2px solid rgba(0,0,0,0.2);
+        border-radius: 4px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #333;
+        transition: background 0.2s;
+    }
+
+    .download-button:hover {
+        background: #f4f4f4;
+    }
+
+    /* Expanded menu panel */
+    .download-menu {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: white;
+        border: 2px solid rgba(0,0,0,0.2);
+        border-radius: 4px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        padding: 12px;
+        min-width: 240px;
+        display: none;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .download-menu.active {
+        display: block;
+    }
+
+    .download-menu-header {
+        font-weight: bold;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #ddd;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .download-section {
+        margin-bottom: 14px;
+    }
+
+    .download-layer-name {
+        font-weight: 600;
+        font-size: 12px;
+        color: #555;
+        margin-bottom: 6px;
+    }
+
+    .download-format-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .download-format-btn {
+        background: #0078A8;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 500;
+        transition: background 0.2s;
+    }
+
+    .download-format-btn:hover {
+        background: #005a80;
+    }
+
+    .download-format-btn:active {
+        background: #004060;
+    }
+
+    .download-all-section {
+        background: #f0f8ff;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 14px;
+        border: 1px solid #d0e8ff;
+    }
+
+    .download-all-section .download-layer-name {
+        color: #0078A8;
+        font-size: 13px;
+    }
+</style>
+
+<div class="leaflet-control-download">
+    <div class="download-button" onclick="toggleDownloadMenu()" title="Download Layers">
+        <i class="fa fa-download"></i>
+    </div>
+
+    <div class="download-menu" id="download-menu">
+        <div class="download-menu-header">
+            <i class="fa fa-download"></i> Download Layers
+        </div>
+
+        <!-- Download All Section -->
+        <div class="download-all-section">
+            <div class="download-layer-name">All Layers</div>
+            <div class="download-format-buttons">
+                <button class="download-format-btn" onclick="downloadAll('geojson')">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadAll('shp')">Shapefile</button>
+                <button class="download-format-btn" onclick="downloadAll('kmz')">KMZ</button>
+            </div>
+        </div>
+
+        <!-- Individual Layer Sections (injected by template) -->
+        {{ layer_sections|safe }}
+    </div>
+</div>
+
+<script>
+    // Layer data embedded in page (GeoJSON objects)
+    const layerData = {
+        {{ layer_data|safe }}
+    };
+
+    function toggleDownloadMenu() {
+        const menu = document.getElementById('download-menu');
+        menu.classList.toggle('active');
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(event) {
+        const control = document.querySelector('.leaflet-control-download');
+        const menu = document.getElementById('download-menu');
+        if (!control.contains(event.target) && menu.classList.contains('active')) {
+            menu.classList.remove('active');
+        }
+    });
+
+    // Get GeoJSON from embedded data (no fetch needed - fixes CORS issue)
+    async function loadGeoJSON(layerName) {
+        return layerData[layerName];
+    }
+
+    // Download individual layer in specified format
+    async function downloadLayer(layerName, format) {
+        const geojson = await loadGeoJSON(layerName);
+        const fileName = layerName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+        switch(format) {
+            case 'geojson':
+                downloadGeoJSON(geojson, fileName);
+                break;
+            case 'shp':
+                downloadShapefile(geojson, fileName);
+                break;
+            case 'kmz':
+                downloadKMZ(geojson, fileName);
+                break;
+        }
+    }
+
+    // Download all layers as a single ZIP file
+    async function downloadAll(format) {
+        const zip = new JSZip();
+
+        for (const layerName of Object.keys(layerData)) {
+            const geojson = await loadGeoJSON(layerName);
+            const fileName = layerName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+            switch(format) {
+                case 'geojson':
+                    zip.file(fileName + '.geojson', JSON.stringify(geojson, null, 2));
+                    break;
+                case 'shp':
+                    // Add shapefile as nested zip
+                    const shpData = shpwrite.zip(geojson);
+                    const shpBlob = await fetch('data:application/zip;base64,' + shpData).then(r => r.blob());
+                    zip.file(fileName + '_shapefile.zip', shpBlob);
+                    break;
+                case 'kmz':
+                    const kml = tokml(geojson);
+                    const kmzBlob = await createKMZBlob(kml);
+                    zip.file(fileName + '.kmz', kmzBlob);
+                    break;
+            }
+        }
+
+        // Generate and download ZIP
+        const content = await zip.generateAsync({type: 'blob'});
+        saveAs(content, 'all_layers_' + format + '.zip');
+    }
+
+    // Format-specific download functions
+    function downloadGeoJSON(geojson, fileName) {
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], {type: 'application/json'});
+        saveAs(blob, fileName + '.geojson');
+    }
+
+    function downloadShapefile(geojson, fileName) {
+        // shp-write returns a base64 encoded zip file containing .shp, .shx, .dbf, .prj
+        const shpData = shpwrite.zip(geojson);
+        const byteCharacters = atob(shpData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], {type: 'application/zip'});
+        saveAs(blob, fileName + '_shapefile.zip');
+    }
+
+    async function downloadKMZ(geojson, fileName) {
+        const kml = tokml(geojson);
+        const kmzBlob = await createKMZBlob(kml);
+        saveAs(kmzBlob, fileName + '.kmz');
+    }
+
+    async function createKMZBlob(kml) {
+        const zip = new JSZip();
+        zip.file('doc.kml', kml);
+        return await zip.generateAsync({type: 'blob'});
+    }
+</script>

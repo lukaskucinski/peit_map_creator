@@ -1,0 +1,262 @@
+<!-- Side Panel UI Template for APPEIT Map Creator -->
+<!-- This template provides the collapsible side panel with About section and legend -->
+
+<style>
+    /* Side panel container */
+    #side-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 350px;
+        height: 100vh;
+        background: white;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+        z-index: 1001;
+        transition: transform 0.3s ease-in-out;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #side-panel.collapsed {
+        transform: translateX(-350px);
+    }
+
+    /* Adjust Leaflet controls position to account for panel */
+    body:not(.panel-collapsed) .leaflet-left {
+        left: 350px !important;
+        transition: left 0.3s ease-in-out;
+    }
+
+    body:not(.panel-collapsed) .leaflet-control-download {
+        right: 10px !important;
+        transition: right 0.3s ease-in-out;
+    }
+
+    body.panel-collapsed .leaflet-left {
+        left: 0 !important;
+        transition: left 0.3s ease-in-out;
+    }
+
+    body.panel-collapsed .leaflet-control-download {
+        right: 10px !important;
+        transition: right 0.3s ease-in-out;
+    }
+
+    /* Toggle button */
+    #panel-toggle {
+        position: absolute;
+        top: 50%;
+        right: -25px;
+        transform: translateY(-50%);
+        width: 25px;
+        height: 60px;
+        background: white;
+        border: 2px solid rgba(0,0,0,0.2);
+        border-left: none;
+        border-radius: 0 8px 8px 0;
+        box-shadow: 2px 0 6px rgba(0,0,0,0.15);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: #333;
+        transition: background 0.2s;
+    }
+
+    #panel-toggle:hover {
+        background: #f5f5f5;
+    }
+
+    /* Panel content area */
+    .panel-content {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    /* About section */
+    .about-section {
+        margin-bottom: 20px;
+    }
+
+    .about-section details {
+        background: #f8f9fa;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .about-section summary {
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+        color: #333;
+        user-select: none;
+    }
+
+    .about-section summary:hover {
+        color: #007bff;
+    }
+
+    .about-content {
+        margin-top: 10px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: #444;
+    }
+
+    .about-content p {
+        margin: 8px 0;
+    }
+
+    /* Legend section */
+    .legend-section {
+        border-top: 2px solid #ddd;
+        padding-top: 15px;
+    }
+
+    .legend-section h4 {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .legend-items {
+        max-height: calc(100vh - 400px);
+        overflow-y: auto;
+    }
+
+    .legend-item {
+        padding: 8px 0;
+        font-size: 13px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+    }
+
+    .legend-item:last-child {
+        border-bottom: none;
+    }
+
+    .legend-item i {
+        font-size: 16px;
+    }
+
+    .legend-item span {
+        flex: 1;
+    }
+
+    /* Custom scrollbar */
+    .legend-items::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .legend-items::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .legend-items::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .legend-items::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+
+<div id="side-panel">
+    <div id="panel-toggle" onclick="togglePanel()">
+        <span id="toggle-icon">◄</span>
+    </div>
+
+    <div class="panel-content">
+        <!-- About Section -->
+        <div class="about-section">
+            <details open>
+                <summary>ℹ️ About APPEIT Map Creator</summary>
+                <div class="about-content">
+                    <p>
+                        The <strong>APPEIT Map Creator</strong> replicates NTIA's APPEIT tool functionality
+                        without requiring an ArcGIS Pro license. This tool queries ESRI-hosted FeatureServer
+                        REST APIs to perform spatial intersection analysis.
+                    </p>
+                    <p>
+                        <strong>Features:</strong> Interactive Leaflet maps, multi-layer visualization,
+                        marker clustering, and GeoJSON export capabilities.
+                    </p>
+                    <p style="font-size: 11px;">
+                        <strong>Data Sources:</strong> EPA RCRA Sites, NPDES Permits, USACE Navigable
+                        Waterways, National Register of Historic Places, and other environmental datasets.
+                    </p>
+                    <p style="font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px;">
+                        Created by <a href="https://www.linkedin.com/in/lukas-kucinski-3303a9148/" target="_blank" style="color: #0066cc; text-decoration: none;">Lukas Kucinski</a> | Open source environmental analysis tool
+                    </p>
+                </div>
+            </details>
+        </div>
+
+        <!-- Legend Section -->
+        <div class="legend-section">
+            <h4>Active Layers</h4>
+            <div class="legend-items">
+                {{ legend_items|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle panel collapse/expand
+    function togglePanel() {
+        var panel = document.getElementById('side-panel');
+        var icon = document.getElementById('toggle-icon');
+
+        panel.classList.toggle('collapsed');
+        document.body.classList.toggle('panel-collapsed');
+        icon.textContent = panel.classList.contains('collapsed') ? '►' : '◄';
+    }
+
+    // Update legend based on layer visibility
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the map object (it's stored in a global variable)
+        var mapElement = document.querySelector('.folium-map');
+        if (mapElement && mapElement._leaflet_id) {
+            var map = window[Object.keys(window).find(key =>
+                window[key] instanceof L.Map && window[key]._container === mapElement
+            )];
+
+            if (map) {
+                // Listen for layer add/remove events
+                map.on('overlayadd', function(e) {
+                    var layerName = e.name;
+                    var legendItem = document.querySelector('.legend-item[data-layer-name="' + layerName + '"]');
+                    if (legendItem) {
+                        legendItem.style.display = 'flex';
+                    }
+                });
+
+                map.on('overlayremove', function(e) {
+                    var layerName = e.name;
+                    var legendItem = document.querySelector('.legend-item[data-layer-name="' + layerName + '"]');
+                    if (legendItem) {
+                        legendItem.style.display = 'none';
+                    }
+                });
+
+                // Initialize legend to show all layers (all are visible by default)
+                setTimeout(function() {
+                    var legendItems = document.querySelectorAll('.legend-item');
+                    legendItems.forEach(function(item) {
+                        item.style.display = 'flex';
+                    });
+                }, 500);
+            }
+        }
+    });
+</script>
