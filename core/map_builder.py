@@ -77,17 +77,18 @@ def create_web_map(
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
 
-    # Initialize map
+    # Initialize map with no default tiles
     m = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=config['settings']['default_zoom'],
-        tiles='OpenStreetMap'
+        tiles=None
     )
 
-    # Add additional tile layers
-    folium.TileLayer('CartoDB positron', name='CartoDB Positron').add_to(m)
-    folium.TileLayer('CartoDB dark_matter', name='CartoDB Dark Matter').add_to(m)
-    folium.TileLayer('Esri WorldImagery', name='Esri Satellite').add_to(m)
+    # Add tile layers with custom names
+    folium.TileLayer('OpenStreetMap', name='Street Map', control=True).add_to(m)
+    folium.TileLayer('CartoDB positron', name='Light Theme').add_to(m)
+    folium.TileLayer('CartoDB dark_matter', name='Dark Theme').add_to(m)
+    folium.TileLayer('Esri WorldImagery', name='Satellite Imagery').add_to(m)
 
     # Add input polygon
     logger.info("  - Adding input polygon...")
@@ -133,9 +134,21 @@ def create_web_map(
             marker_cluster = plugins.MarkerCluster(name=layer_name)
 
             for _, row in gdf.iterrows():
+                # Find name column (case-insensitive search for first column containing 'name')
+                name_col = None
+                name_value = None
+                for col in gdf.columns:
+                    if col != 'geometry' and 'name' in col.lower():
+                        name_col = col
+                        name_value = row[col]
+                        break
+
                 # Create popup with all attributes
-                popup_html = f"<b>{layer_name}</b><br>"
-                popup_html += "<hr>"
+                popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
+                if name_value:
+                    popup_html += f"<div style='font-size: 14px; font-weight: bold; margin: 5px 0;'>{name_value}</div>"
+                popup_html += "<hr style='margin: 5px 0;'>"
+
                 for col in gdf.columns:
                     if col != 'geometry':
                         popup_html += f"<b>{col}:</b> {format_popup_value(col, row[col])}<br>"
@@ -161,8 +174,21 @@ def create_web_map(
                 feature_group = folium.FeatureGroup(name=layer_name)
 
                 for _, row in gdf.iterrows():
-                    popup_html = f"<b>{layer_name}</b><br>"
-                    popup_html += "<hr>"
+                    # Find name column (case-insensitive search for first column containing 'name')
+                    name_col = None
+                    name_value = None
+                    for col in gdf.columns:
+                        if col != 'geometry' and 'name' in col.lower():
+                            name_col = col
+                            name_value = row[col]
+                            break
+
+                    # Create popup with all attributes
+                    popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
+                    if name_value:
+                        popup_html += f"<div style='font-size: 14px; font-weight: bold; margin: 5px 0;'>{name_value}</div>"
+                    popup_html += "<hr style='margin: 5px 0;'>"
+
                     for col in gdf.columns:
                         if col != 'geometry':
                             popup_html += f"<b>{col}:</b> {format_popup_value(col, row[col])}<br>"
