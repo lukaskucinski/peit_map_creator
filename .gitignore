@@ -41,6 +41,8 @@ venv.bak/
 # Project specific
 outputs/
 temp/
+logs/
+*.log
 *.gpkg
 *.shp
 *.shx
