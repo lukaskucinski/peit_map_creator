@@ -40,7 +40,7 @@
                     <td>
                         {% if row.resource_areas %}
                             {% for ra in row.resource_areas %}
-                                <a href="{{ ra.url }}" class="resource-link">{{ ra.code }}</a>{% if not loop.last %}, {% endif %}
+                                <a href="{{ ra.url }}" class="resource-link" target="_blank">{{ ra.code }}</a>{% if not loop.last %}, {% endif %}
                             {% endfor %}
                         {% else %}
                             —
@@ -57,7 +57,7 @@
         <h2>Best Management Practices (BMP) Resource Links</h2>
 
         <p class="bmp-master-link">
-            <a href="{{ bmp_master_url }}">{{ bmp_master_url }}</a>
+            <a href="{{ bmp_master_url }}" target="_blank">{{ bmp_master_url }}</a>
         </p>
 
         <table class="resource-table">
@@ -65,7 +65,7 @@
                 <tr>
                     <th>Resource Area</th>
                     <th>Resource Area Name</th>
-                    <th>Url</th>
+                    <th>URL</th>
                 </tr>
             </thead>
             <tbody>
@@ -73,7 +73,7 @@
                 <tr>
                     <td>{{ link.code }}</td>
                     <td>{{ link.name }}</td>
-                    <td><a href="{{ link.url }}">{{ link.url }}</a></td>
+                    <td><a href="{{ link.url }}" target="_blank">{{ link.url }}</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
