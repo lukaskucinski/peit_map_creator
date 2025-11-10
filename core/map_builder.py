@@ -400,18 +400,30 @@ def create_web_map(
 
         // Get all non-base layers from the map (in order of addition)
         const dataLayers = [];
+        window.inputPolygonLayer = null;
+
         window.mapObject.eachLayer(function(layer) {{
-            // Skip tile layers and the input polygon GeoJSON layer
+            // Skip tile layers
             if (layer instanceof L.TileLayer) return;
 
-            // Input polygon is the first GeoJSON layer added
-            if (layer instanceof L.GeoJSON && dataLayers.length === 0) return;
+            // Identify and skip ONLY the input polygon by checking its name property
+            // The input polygon is added as a GeoJSON layer with a specific name
+            if (layer instanceof L.GeoJSON &&
+                layer.options &&
+                (layer.options.name === '{input_filename if input_filename else "Input Area"}' ||
+                 layer.options.name === 'Input Area')) {{
+                // Store input polygon separately for input geometry toggle
+                window.inputPolygonLayer = layer;
+                console.log('Found input polygon layer:', layer.options.name);
+                return;
+            }}
 
-            // Collect all other layers (MarkerClusters, FeatureGroups, GeoJSON)
+            // Collect all environmental data layers (MarkerClusters, FeatureGroups, GeoJSON)
             if (layer instanceof L.MarkerClusterGroup ||
                 layer instanceof L.FeatureGroup ||
                 layer instanceof L.GeoJSON) {{
                 dataLayers.push(layer);
+                console.log('Found data layer:', layer);
             }}
         }});
 
