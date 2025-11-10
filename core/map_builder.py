@@ -354,7 +354,8 @@ def create_web_map(
 
     layer_control_template = env.get_template('layer_control_panel.html')
     layer_control_html = layer_control_template.render(
-        groups=control_data['groups']
+        groups=control_data['groups'],
+        input_filename=input_filename or 'Input Geometry'
     )
     m.get_root().html.add_child(Element(layer_control_html))
 
@@ -401,24 +402,22 @@ def create_web_map(
         // Get all non-base layers from the map (in order of addition)
         const dataLayers = [];
         window.inputPolygonLayer = null;
+        let firstGeoJSONFound = false;
 
         window.mapObject.eachLayer(function(layer) {{
             // Skip tile layers
             if (layer instanceof L.TileLayer) return;
 
-            // Identify and skip ONLY the input polygon by checking its name property
-            // The input polygon is added as a GeoJSON layer with a specific name
-            if (layer instanceof L.GeoJSON &&
-                layer.options &&
-                (layer.options.name === '{input_filename if input_filename else "Input Area"}' ||
-                 layer.options.name === 'Input Area')) {{
-                // Store input polygon separately for input geometry toggle
+            // The input polygon is ALWAYS the first GeoJSON layer added (Python line 96-107)
+            // Identify it by order, not by name property (more reliable than name matching)
+            if (layer instanceof L.GeoJSON && !firstGeoJSONFound) {{
                 window.inputPolygonLayer = layer;
-                console.log('Found input polygon layer:', layer.options.name);
-                return;
+                firstGeoJSONFound = true;
+                console.log('Found input polygon layer (first GeoJSON)');
+                return;  // Skip adding to dataLayers - this is the fix!
             }}
 
-            // Collect all environmental data layers (MarkerClusters, FeatureGroups, GeoJSON)
+            // Collect all environmental data layers (MarkerClusters, FeatureGroups, and other GeoJSON)
             if (layer instanceof L.MarkerClusterGroup ||
                 layer instanceof L.FeatureGroup ||
                 layer instanceof L.GeoJSON) {{
