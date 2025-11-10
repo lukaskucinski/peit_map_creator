@@ -13,9 +13,10 @@ import geopandas as gpd
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from config.config_loader import OUTPUT_DIR
 from utils.logger import get_logger
+from utils.xlsx_generator import generate_xlsx_report
 
 logger = get_logger(__name__)
 
@@ -25,15 +26,17 @@ def generate_output(
     polygon_gdf: gpd.GeoDataFrame,
     layer_results: Dict[str, gpd.GeoDataFrame],
     metadata: Dict[str, Dict],
+    config: Dict,
     output_name: Optional[str] = None
-) -> Path:
+) -> Tuple[Path, Optional[str]]:
     """
-    Generate output directory with HTML map and GeoJSON data files.
+    Generate output directory with HTML map, GeoJSON data files, and XLSX report.
 
     Creates a timestamped output directory containing:
     - index.html: Interactive Leaflet map
     - metadata.json: Summary statistics and query information
     - data/: GeoJSON files for input polygon and all layers
+    - PEIT_Report_YYYYMMDD_HHMMSS.xlsx: Summary report with hyperlinked resource areas
 
     Parameters:
     -----------
@@ -45,18 +48,24 @@ def generate_output(
         Dictionary of layer results (layer name -> GeoDataFrame)
     metadata : Dict[str, Dict]
         Layer metadata
+    config : Dict
+        Configuration dictionary with layer definitions
     output_name : Optional[str]
         Custom output directory name (defaults to timestamped name)
 
     Returns:
     --------
-    Path
-        Path to output directory
+    Tuple[Path, Optional[str]]
+        Tuple of (output_path, xlsx_relative_path)
+        - output_path: Path to output directory
+        - xlsx_relative_path: Relative path to XLSX file (for template linking), or None if generation failed
 
     Example:
-        >>> output_path = generate_output(map_obj, polygon_gdf, results, metadata)
+        >>> output_path, xlsx_file = generate_output(map_obj, polygon_gdf, results, metadata, config)
         >>> output_path
         Path('outputs/appeit_map_20250108_143022')
+        >>> xlsx_file
+        'PEIT_Report_20250108_143022.xlsx'
     """
     logger.info("=" * 80)
     logger.info("Generating Output Files")
@@ -66,6 +75,12 @@ def generate_output(
     if output_name is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_name = f"appeit_map_{timestamp}"
+    else:
+        # Extract timestamp from output_name (e.g., "appeit_map_20250110_143022" -> "20250110_143022")
+        if "_" in output_name:
+            timestamp = "_".join(output_name.split("_")[-2:])
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     output_path = OUTPUT_DIR / output_name
     output_path.mkdir(exist_ok=True)
@@ -112,6 +127,15 @@ def generate_output(
     with open(metadata_file, 'w', encoding='utf-8') as f:
         json.dump(summary, f, indent=2)
 
+    # Generate XLSX report
+    logger.info("  - Generating XLSX report...")
+    xlsx_path = generate_xlsx_report(layer_results, config, output_path, timestamp)
+
+    # Get relative path for template linking (just the filename)
+    xlsx_relative_path = None
+    if xlsx_path:
+        xlsx_relative_path = xlsx_path.name
+
     logger.info("")
     logger.info("=" * 80)
     logger.info("✓ Output Generation Complete")
@@ -120,8 +144,10 @@ def generate_output(
     logger.info("  - index.html (interactive map)")
     logger.info("  - metadata.json (summary statistics)")
     logger.info(f"  - data/ ({len(layer_results) + 1} GeoJSON files)")
+    if xlsx_relative_path:
+        logger.info(f"  - {xlsx_relative_path} (PEIT report)")
     logger.info("")
     logger.info(f"To view the map, open: {map_file}")
     logger.info("=" * 80)
 
-    return output_path
+    return output_path, xlsx_relative_path

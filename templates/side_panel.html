@@ -194,7 +194,13 @@
                         <strong>Data Sources:</strong> EPA RCRA Sites, NPDES Permits, USACE Navigable
                         Waterways, National Register of Historic Places, and other environmental datasets.
                     </p>
-                    <p style="font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px;">
+                    {% if xlsx_file %}
+                    <p style="font-size: 11px; margin-top: 10px;">
+                        📊 <strong>PEIT Report:</strong> <a href="{{ xlsx_file }}" download style="color: #0066cc; text-decoration: none; font-weight: 500;">Download XLSX Report</a>
+                        <br><span style="font-size: 10px; color: #666;">Summary table with hyperlinked resource areas</span>
+                    </p>
+                    {% endif %}
+                    <p style="font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px; margin-top: 10px;">
                         Created by <a href="https://www.linkedin.com/in/lukas-kucinski-3303a9148/" target="_blank" style="color: #0066cc; text-decoration: none;">Lukas Kucinski</a> | Open source environmental analysis tool
                     </p>
                 </div>
