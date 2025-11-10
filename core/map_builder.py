@@ -33,7 +33,8 @@ def create_web_map(
     layer_results: Dict[str, gpd.GeoDataFrame],
     metadata: Dict[str, Dict],
     config: Dict,
-    input_filename: Optional[str] = None
+    input_filename: Optional[str] = None,
+    xlsx_relative_path: Optional[str] = None
 ) -> folium.Map:
     """
     Create an interactive Leaflet map with all layers.
@@ -60,6 +61,8 @@ def create_web_map(
         Configuration dictionary
     input_filename : Optional[str]
         Name of input file (without extension) for layer naming
+    xlsx_relative_path : Optional[str]
+        Relative path to XLSX report file (for About section link)
 
     Returns:
     --------
@@ -356,7 +359,8 @@ def create_web_map(
     # Render side panel template
     side_panel_template = env.get_template('side_panel.html')
     side_panel_html = side_panel_template.render(
-        legend_items=legend_items_html
+        legend_items=legend_items_html,
+        xlsx_file=xlsx_relative_path
     )
     m.get_root().html.add_child(Element(side_panel_html))
 

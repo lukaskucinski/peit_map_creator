@@ -90,14 +90,23 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
             logger.warning("The output map will only show the input polygon.")
             logger.info("")
 
-        # Step 3: Create web map
+        # Generate timestamp for consistent naming across map and xlsx
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        xlsx_filename = f"PEIT_Report_{timestamp}.xlsx"
+
+        # Step 3: Create web map (with XLSX filename for About section link)
         map_obj = create_web_map(
-            polygon_gdf, layer_results, metadata, config, input_filename
+            polygon_gdf, layer_results, metadata, config, input_filename,
+            xlsx_relative_path=xlsx_filename
         )
 
-        # Step 4: Generate output
-        output_path = generate_output(
-            map_obj, polygon_gdf, layer_results, metadata, output_name
+        # Step 4: Generate output (uses same timestamp)
+        if output_name is None:
+            output_name = f"appeit_map_{timestamp}"
+
+        output_path, xlsx_file = generate_output(
+            map_obj, polygon_gdf, layer_results, metadata, config, output_name
         )
 
         logger.info("")
