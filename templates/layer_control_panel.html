@@ -82,10 +82,24 @@
         margin-bottom: 15px;
     }
 
+    .search-container {
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6e6e6e;
+        font-size: 14px;
+        pointer-events: none;
+    }
+
     .search-section input {
         width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #ddd;
+        padding: 8px 12px 8px 32px;  /* Extra left padding for icon */
+        border: 1px solid #ccc;
         border-radius: 4px;
         font-size: 13px;
         font-family: Arial, sans-serif;
@@ -94,8 +108,20 @@
 
     .search-section input:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+        border-color: #0078A8;
+        box-shadow: 0 0 0 2px rgba(0, 120, 168, 0.1);
+    }
+
+    /* Input geometry section */
+    .input-geometry-section {
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .input-geometry-section .layer-label {
+        font-weight: 600;
+        color: #555;
     }
 
     /* Layer groups section */
@@ -252,16 +278,37 @@
 
 <div id="layer-control-panel">
     <div id="layer-panel-toggle" onclick="toggleLayerPanel()">
-        <span id="layer-toggle-icon">◄</span>
+        <span id="layer-toggle-icon">►</span>
     </div>
 
     <div class="layer-panel-content">
         <!-- Search Box -->
         <div class="search-section">
-            <input type="text"
-                   id="layer-search"
-                   placeholder="🔍 Search layers..."
-                   oninput="filterLayers(this.value)">
+            <div class="search-container">
+                <i class="fa fa-search search-icon"></i>
+                <input type="text"
+                       id="layer-search"
+                       placeholder="Search layers..."
+                       oninput="filterLayers(this.value)">
+            </div>
+        </div>
+
+        <!-- Input Geometry Toggle Section -->
+        <div class="input-geometry-section">
+            <div class="layer-item">
+                <input type="checkbox"
+                       id="input-geometry-toggle"
+                       class="layer-checkbox"
+                       checked
+                       onchange="toggleInputGeometry(this.checked)">
+                <label for="input-geometry-toggle" class="layer-label">
+                    <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                        <rect width="20" height="15"
+                              style="fill:#FFD700; stroke:#FF8C00; stroke-width:2; opacity:0.4;" />
+                    </svg>
+                    <span>{{ input_filename }}</span>
+                </label>
+            </div>
         </div>
 
         <!-- Layer Groups -->
@@ -329,7 +376,19 @@
 
         panel.classList.toggle('collapsed');
         document.body.classList.toggle('panel-right-collapsed');
-        icon.textContent = panel.classList.contains('collapsed') ? '►' : '◄';
+        // Fixed: arrow points in direction panel will move when clicked
+        icon.textContent = panel.classList.contains('collapsed') ? '◄' : '►';
+    }
+
+    // Toggle input geometry visibility
+    function toggleInputGeometry(visible) {
+        if (window.inputPolygonLayer && window.mapObject) {
+            if (visible) {
+                window.mapObject.addLayer(window.inputPolygonLayer);
+            } else {
+                window.mapObject.removeLayer(window.inputPolygonLayer);
+            }
+        }
     }
 
     // Toggle group expand/collapse (visual only)
@@ -473,9 +532,10 @@
 
         // Filter layers
         layerItems.forEach(function(item) {
-            var name = item.dataset.layerName.toLowerCase();
-            var description = item.dataset.description.toLowerCase();
-            var group = item.dataset.group.toLowerCase();
+            // Add null/undefined checks to prevent errors on elements without data attributes
+            var name = (item.dataset.layerName || '').toLowerCase();
+            var description = (item.dataset.description || '').toLowerCase();
+            var group = (item.dataset.group || '').toLowerCase();
 
             var matches = name.includes(term) || description.includes(term) || group.includes(term);
 

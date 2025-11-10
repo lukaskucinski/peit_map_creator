@@ -101,13 +101,17 @@ def create_web_map(
             'fillColor': '#FFD700',
             'color': '#FF8C00',
             'weight': 3,
-            'fillOpacity': 0.2
+            'fillOpacity': 0.2,
+            'className': 'appeit-input-polygon'  # Unique identifier for JavaScript detection
         },
         tooltip=layer_name
     ).add_to(m)
 
     # Store layer variable names for JavaScript reference
     layer_var_names = {}
+
+    # Track point layers for centralized identifier injection
+    point_layer_info = []
 
     # Add each layer with appropriate styling
     # Note: Layers are added to map but will be controlled via custom layer control panel
@@ -136,8 +140,8 @@ def create_web_map(
 
         if use_clustering:
             logger.info("    (Using marker clustering)")
-            # Don't add 'name' parameter - prevents layer from appearing in LayerControl
-            marker_cluster = plugins.MarkerCluster()
+            # Add name for JavaScript layer identification (doesn't show in LayerControl)
+            marker_cluster = plugins.MarkerCluster(name=layer_name)
 
             for _, row in gdf.iterrows():
                 # Find name column (case-insensitive search for first column containing 'name')
@@ -171,6 +175,10 @@ def create_web_map(
                 ).add_to(marker_cluster)
 
             marker_cluster.add_to(m)
+
+            # Track this layer for centralized identifier injection later
+            point_layer_info.append({'name': layer_name, 'type': 'cluster'})
+
             layer_var_names[layer_name] = 'cluster'
             logger.info(f"    ✓ Added {len(gdf)} clustered markers to map")
 
@@ -178,8 +186,8 @@ def create_web_map(
             # Add as GeoJSON layer
             if layer_config['geometry_type'] == 'point':
                 # Use markers for points
-                # Don't add 'name' parameter - prevents layer from appearing in LayerControl
-                feature_group = folium.FeatureGroup()
+                # Add name for JavaScript layer identification (doesn't show in LayerControl)
+                feature_group = folium.FeatureGroup(name=layer_name)
 
                 for _, row in gdf.iterrows():
                     # Find name column (case-insensitive search for first column containing 'name')
@@ -212,16 +220,25 @@ def create_web_map(
                     ).add_to(feature_group)
 
                 feature_group.add_to(m)
+
+                # Track this layer for centralized identifier injection later
+                point_layer_info.append({'name': layer_name, 'type': 'featuregroup'})
+
                 layer_var_names[layer_name] = 'featuregroup'
                 logger.info(f"    ✓ Added {len(gdf)} point markers to map")
 
             else:
                 # Use GeoJSON for lines/polygons
+                # Add className for JavaScript layer identification
+                sanitized_name = layer_name.replace(' ', '-').replace("'", '').lower()
+                layer_class = f'appeit-layer-{sanitized_name}'
+
                 def style_function(feature):
                     return {
                         'color': layer_config['color'],
                         'weight': 3,
-                        'opacity': 0.8
+                        'opacity': 0.8,
+                        'className': layer_class  # Unique identifier for JavaScript
                     }
 
                 def highlight_function(feature):
@@ -231,9 +248,10 @@ def create_web_map(
                         'opacity': 1.0
                     }
 
-                # Don't add 'name' parameter - prevents layer from appearing in LayerControl
+                # Add name for JavaScript layer identification (doesn't show in LayerControl if no control param)
                 folium.GeoJson(
                     gdf,
+                    name=layer_name,
                     style_function=style_function,
                     highlight_function=highlight_function,
                     tooltip=folium.GeoJsonTooltip(
@@ -354,9 +372,103 @@ def create_web_map(
 
     layer_control_template = env.get_template('layer_control_panel.html')
     layer_control_html = layer_control_template.render(
-        groups=control_data['groups']
+        groups=control_data['groups'],
+        input_filename=input_filename or 'Input Geometry'
     )
     m.get_root().html.add_child(Element(layer_control_html))
+
+    # Add centralized point layer identifier script (if there are point layers)
+    if point_layer_info:
+        logger.info("  - Adding point layer identifiers...")
+        # Build identifier function calls
+        identifier_assignments = []
+        for info in point_layer_info:
+            escaped_name = info['name'].replace("'", "\\'").replace('"', '\\"')
+            if info['type'] == 'cluster':
+                identifier_assignments.append(f"            identifyCluster('{escaped_name}');")
+            else:
+                identifier_assignments.append(f"            identifyFeatureGroup('{escaped_name}');")
+
+        assignments_js = "\n".join(identifier_assignments)
+
+        point_identifier_script = f"""
+    <script>
+    (function() {{
+        // Find and tag point layers with custom identifiers
+        // This runs after Folium has added all layers to the Leaflet map
+        function identifyCluster(name) {{
+            var clusters = [];
+            // Find map object
+            var mapObj = null;
+            for (var key in window) {{
+                if (window[key] && window[key] instanceof L.Map) {{
+                    mapObj = window[key];
+                    break;
+                }}
+            }}
+
+            if (!mapObj) return;
+
+            // Collect unidentified clusters
+            mapObj.eachLayer(function(layer) {{
+                if (layer instanceof L.MarkerClusterGroup && !layer._appeitLayerName) {{
+                    clusters.push(layer);
+                }}
+            }});
+
+            // Tag the first unidentified cluster
+            if (clusters.length > 0) {{
+                clusters[0]._appeitLayerName = name;
+                console.log('Added identifier to MarkerCluster:', name);
+            }}
+        }}
+
+        function identifyFeatureGroup(name) {{
+            var groups = [];
+            // Find map object
+            var mapObj = null;
+            for (var key in window) {{
+                if (window[key] && window[key] instanceof L.Map) {{
+                    mapObj = window[key];
+                    break;
+                }}
+            }}
+
+            if (!mapObj) return;
+
+            // Collect unidentified feature groups (excluding clusters)
+            mapObj.eachLayer(function(layer) {{
+                if (layer instanceof L.FeatureGroup &&
+                    !(layer instanceof L.MarkerClusterGroup) &&
+                    !layer._appeitLayerName) {{
+                    groups.push(layer);
+                }}
+            }});
+
+            // Tag the first unidentified feature group
+            if (groups.length > 0) {{
+                groups[0]._appeitLayerName = name;
+                console.log('Added identifier to FeatureGroup:', name);
+            }}
+        }}
+
+        // Wait for map to be ready, then add identifiers in order
+        function addIdentifiers() {{
+{assignments_js}
+        }}
+
+        // Run after DOM is loaded with slight delay to ensure layers are rendered
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', function() {{
+                setTimeout(addIdentifiers, 100);
+            }});
+        }} else {{
+            setTimeout(addIdentifiers, 100);
+        }}
+    }})();
+    </script>
+    """
+        m.get_root().html.add_child(Element(point_identifier_script))
 
     # Add JavaScript to create and manage layer objects from GeoJSON
     logger.info("  - Adding layer management JavaScript...")
@@ -398,39 +510,98 @@ def create_web_map(
             return;
         }}
 
-        // Get all non-base layers from the map (in order of addition)
-        const dataLayers = [];
+        // Get all non-base layers from the map
+        window.inputPolygonLayer = null;
+        const geojsonLayers = [];     // For lines/polygons (use className)
+        const pointLayerObjects = []; // For clusters/featuregroups (use order)
+
         window.mapObject.eachLayer(function(layer) {{
-            // Skip tile layers and the input polygon GeoJSON layer
+            // Skip tile layers
             if (layer instanceof L.TileLayer) return;
 
-            // Input polygon is the first GeoJSON layer added
-            if (layer instanceof L.GeoJSON && dataLayers.length === 0) return;
+            // Identify input polygon by className 'appeit-input-polygon'
+            if (layer instanceof L.GeoJSON) {{
+                const layerElements = Object.values(layer._layers || {{}});
 
-            // Collect all other layers (MarkerClusters, FeatureGroups, GeoJSON)
-            if (layer instanceof L.MarkerClusterGroup ||
-                layer instanceof L.FeatureGroup ||
-                layer instanceof L.GeoJSON) {{
-                dataLayers.push(layer);
+                // Check if this is the input polygon
+                const hasInputClass = layerElements.some(function(l) {{
+                    return l._path &&
+                           l._path.classList &&
+                           l._path.classList.contains('appeit-input-polygon');
+                }});
+
+                if (hasInputClass) {{
+                    window.inputPolygonLayer = layer;
+                    console.log('Found input polygon by className');
+                    return;
+                }}
+
+                // This is an environmental GeoJson layer (line/polygon)
+                geojsonLayers.push(layer);
+                console.log('Found GeoJson layer (will match by className)');
+            }}
+
+            // Collect point layers (MarkerCluster, FeatureGroup) with custom identifier
+            if (layer instanceof L.MarkerClusterGroup || layer instanceof L.FeatureGroup) {{
+                // Only collect layers that have our custom _appeitLayerName property
+                // This filters out phantom layers and Folium internal layers
+                if (layer._appeitLayerName) {{
+                    pointLayerObjects.push(layer);
+                    console.log('Found point layer:', layer.constructor.name, '- Name:', layer._appeitLayerName);
+                }} else {{
+                    console.log('Skipping point layer without identifier:', layer.constructor.name);
+                }}
             }}
         }});
 
-        // Map layers to their names based on order
-        layerNames.forEach(function(name, index) {{
-            if (index < dataLayers.length) {{
-                mapLayers[name] = dataLayers[index];
-                console.log('Stored layer:', name, dataLayers[index]);
+        // Match GeoJson layers by className
+        geojsonLayers.forEach(function(layer) {{
+            const layerElements = Object.values(layer._layers || {{}});
+
+            // Try to match with each layer name
+            for (let i = 0; i < layerNames.length; i++) {{
+                const layerName = layerNames[i];
+                const sanitized = layerName.replace(/\\s+/g, '-').replace(/'/g, '').toLowerCase();
+                const className = 'appeit-layer-' + sanitized;
+
+                const hasClass = layerElements.some(function(l) {{
+                    return l._path &&
+                           l._path.classList &&
+                           l._path.classList.contains(className);
+                }});
+
+                if (hasClass) {{
+                    mapLayers[layerName] = layer;
+                    console.log('Mapped GeoJson layer by className:', layerName);
+                    break;
+                }}
+            }}
+        }});
+
+        // Match point layers by custom property (not order)
+        // This is reliable because each layer has been tagged with _appeitLayerName during creation
+        pointLayerObjects.forEach(function(layer) {{
+            const layerName = layer._appeitLayerName;
+            // Verify this layer name is in our expected layer list
+            if (layerNames.includes(layerName)) {{
+                mapLayers[layerName] = layer;
+                console.log('Mapped point layer by property:', layerName);
+            }} else {{
+                console.warn('Found point layer with unexpected name:', layerName);
             }}
         }});
 
         console.log('Layer control initialized with', Object.keys(mapLayers).length, 'layers');
     }}
 
-    // Initialize when DOM is ready
+    // Initialize when DOM is ready with delay to wait for identifier script
+    // Identifier script runs at 100ms, so we wait 200ms to ensure it completes
     if (document.readyState === 'loading') {{
-        document.addEventListener('DOMContentLoaded', initializeLayerControl);
+        document.addEventListener('DOMContentLoaded', function() {{
+            setTimeout(initializeLayerControl, 200);
+        }});
     }} else {{
-        initializeLayerControl();
+        setTimeout(initializeLayerControl, 200);
     }}
     </script>
     """
