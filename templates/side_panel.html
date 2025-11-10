@@ -196,8 +196,15 @@
                     </p>
                     {% if xlsx_file %}
                     <p style="font-size: 11px; margin-top: 10px;">
-                        📊 <strong>PEIT Report:</strong> <a href="{{ xlsx_file }}" download style="color: #0066cc; text-decoration: none; font-weight: 500;">Download XLSX Report</a>
+                        📊 <strong>PEIT Report (XLSX):</strong> <a href="{{ xlsx_file }}" download style="color: #0066cc; text-decoration: none; font-weight: 500;">Download XLSX Report</a>
                         <br><span style="font-size: 10px; color: #666;">Summary table with hyperlinked resource areas</span>
+                    </p>
+                    {% endif %}
+
+                    {% if pdf_file %}
+                    <p style="font-size: 11px; margin-top: 10px;">
+                        📄 <strong>PEIT Report (PDF):</strong> <a href="{{ pdf_file }}" download style="color: #0066cc; text-decoration: none; font-weight: 500;">Download PDF Report</a>
+                        <br><span style="font-size: 10px; color: #666;">Formatted report with cover page and BMP links</span>
                     </p>
                     {% endif %}
                     <p style="font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px; margin-top: 10px;">

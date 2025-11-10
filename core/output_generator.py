@@ -17,6 +17,7 @@ from typing import Dict, Optional, Tuple
 from config.config_loader import OUTPUT_DIR
 from utils.logger import get_logger
 from utils.xlsx_generator import generate_xlsx_report
+from utils.pdf_generator import generate_pdf_report
 
 logger = get_logger(__name__)
 
@@ -28,15 +29,16 @@ def generate_output(
     metadata: Dict[str, Dict],
     config: Dict,
     output_name: Optional[str] = None
-) -> Tuple[Path, Optional[str]]:
+) -> Tuple[Path, Optional[str], Optional[str]]:
     """
-    Generate output directory with HTML map, GeoJSON data files, and XLSX report.
+    Generate output directory with HTML map, GeoJSON data files, XLSX and PDF reports.
 
     Creates a timestamped output directory containing:
     - index.html: Interactive Leaflet map
     - metadata.json: Summary statistics and query information
     - data/: GeoJSON files for input polygon and all layers
     - PEIT_Report_YYYYMMDD_HHMMSS.xlsx: Summary report with hyperlinked resource areas
+    - PEIT_Report_YYYYMMDD_HHMMSS.pdf: PDF version with cover page and BMP links
 
     Parameters:
     -----------
@@ -55,17 +57,20 @@ def generate_output(
 
     Returns:
     --------
-    Tuple[Path, Optional[str]]
-        Tuple of (output_path, xlsx_relative_path)
+    Tuple[Path, Optional[str], Optional[str]]
+        Tuple of (output_path, xlsx_relative_path, pdf_relative_path)
         - output_path: Path to output directory
-        - xlsx_relative_path: Relative path to XLSX file (for template linking), or None if generation failed
+        - xlsx_relative_path: Relative path to XLSX file, or None if generation failed
+        - pdf_relative_path: Relative path to PDF file, or None if generation failed
 
     Example:
-        >>> output_path, xlsx_file = generate_output(map_obj, polygon_gdf, results, metadata, config)
+        >>> output_path, xlsx_file, pdf_file = generate_output(map_obj, polygon_gdf, results, metadata, config)
         >>> output_path
         Path('outputs/appeit_map_20250108_143022')
         >>> xlsx_file
         'PEIT_Report_20250108_143022.xlsx'
+        >>> pdf_file
+        'PEIT_Report_20250108_143022.pdf'
     """
     logger.info("=" * 80)
     logger.info("Generating Output Files")
@@ -136,6 +141,15 @@ def generate_output(
     if xlsx_path:
         xlsx_relative_path = xlsx_path.name
 
+    # Generate PDF report
+    logger.info("  - Generating PDF report...")
+    pdf_path = generate_pdf_report(layer_results, config, output_path, timestamp)
+
+    # Get relative path for template linking (just the filename)
+    pdf_relative_path = None
+    if pdf_path:
+        pdf_relative_path = pdf_path.name
+
     logger.info("")
     logger.info("=" * 80)
     logger.info("✓ Output Generation Complete")
@@ -145,9 +159,11 @@ def generate_output(
     logger.info("  - metadata.json (summary statistics)")
     logger.info(f"  - data/ ({len(layer_results) + 1} GeoJSON files)")
     if xlsx_relative_path:
-        logger.info(f"  - {xlsx_relative_path} (PEIT report)")
+        logger.info(f"  - {xlsx_relative_path} (PEIT report - XLSX)")
+    if pdf_relative_path:
+        logger.info(f"  - {pdf_relative_path} (PEIT report - PDF)")
     logger.info("")
     logger.info(f"To view the map, open: {map_file}")
     logger.info("=" * 80)
 
-    return output_path, xlsx_relative_path
+    return output_path, xlsx_relative_path, pdf_relative_path

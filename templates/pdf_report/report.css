@@ -1,0 +1,169 @@
+/* PDF Report Styling for PEIT Report */
+
+@page {
+    size: Letter;
+    margin: 1in;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.4;
+    color: #000;
+}
+
+/* Page Breaks */
+.page {
+    page-break-after: always;
+}
+
+/* Cover Page */
+.cover-page {
+    text-align: center;
+    padding-top: 2in;
+}
+
+.cover-page h1 {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 1.5in;
+    line-height: 1.3;
+}
+
+.metadata {
+    text-align: center;
+    margin: 0 auto;
+    max-width: 400px;
+}
+
+.metadata-row {
+    margin-bottom: 0.5in;
+    text-align: center;
+}
+
+.metadata-row .label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4pt;
+}
+
+.metadata-row .value {
+    display: block;
+}
+
+/* Body Section (Data Table) */
+.body-section {
+    margin-top: 0;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-top: 0;
+}
+
+.data-table thead {
+    display: table-header-group;
+}
+
+.data-table th {
+    background-color: #000;
+    color: #fff;
+    padding: 8pt;
+    text-align: left;
+    border: 1pt solid #000;
+    font-weight: bold;
+    font-size: 10pt;
+}
+
+.data-table td {
+    padding: 6pt;
+    border: 1pt solid #ccc;
+    vertical-align: top;
+}
+
+.data-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Resource area hyperlinks in body table */
+.resource-link {
+    color: #0000EE;
+    text-decoration: underline;
+}
+
+/* End Page */
+.end-page {
+    margin-top: 0;
+}
+
+.end-page h2 {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-bottom: 12pt;
+}
+
+.bmp-master-link {
+    margin-bottom: 20pt;
+    word-break: break-all;
+}
+
+/* Resource Table on End Page */
+.resource-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+}
+
+.resource-table thead {
+    display: table-header-group;
+}
+
+.resource-table th {
+    background-color: #000;
+    color: #fff;
+    padding: 6pt;
+    text-align: left;
+    border: 1pt solid #000;
+    font-weight: bold;
+}
+
+.resource-table td {
+    padding: 5pt;
+    border: 1pt solid #ccc;
+    vertical-align: top;
+}
+
+.resource-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.resource-table td:nth-child(1) {
+    width: 20%;
+}
+
+.resource-table td:nth-child(2) {
+    width: 35%;
+}
+
+.resource-table td:nth-child(3) {
+    width: 45%;
+    word-break: break-all;
+}
+
+/* All Hyperlinks */
+a {
+    color: #0000EE;
+    text-decoration: underline;
+}
+
+a:visited {
+    color: #551A8B;
+}

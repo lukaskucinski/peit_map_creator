@@ -34,7 +34,8 @@ def create_web_map(
     metadata: Dict[str, Dict],
     config: Dict,
     input_filename: Optional[str] = None,
-    xlsx_relative_path: Optional[str] = None
+    xlsx_relative_path: Optional[str] = None,
+    pdf_relative_path: Optional[str] = None
 ) -> folium.Map:
     """
     Create an interactive Leaflet map with all layers.
@@ -63,6 +64,8 @@ def create_web_map(
         Name of input file (without extension) for layer naming
     xlsx_relative_path : Optional[str]
         Relative path to XLSX report file (for About section link)
+    pdf_relative_path : Optional[str]
+        Relative path to PDF report file (for About section link)
 
     Returns:
     --------
@@ -360,7 +363,8 @@ def create_web_map(
     side_panel_template = env.get_template('side_panel.html')
     side_panel_html = side_panel_template.render(
         legend_items=legend_items_html,
-        xlsx_file=xlsx_relative_path
+        xlsx_file=xlsx_relative_path,
+        pdf_file=pdf_relative_path
     )
     m.get_root().html.add_child(Element(side_panel_html))
 

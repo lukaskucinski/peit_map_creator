@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PEIT Report</title>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div class="page cover-page">
+        <h1>ArcGIS Pro Permitting &amp; Environmental Information (APPEIT) Report</h1>
+
+        <div class="metadata">
+            <div class="metadata-row">
+                <span class="label">Project Name:</span>
+                <span class="value">{{ project_name }}</span>
+            </div>
+
+            <div class="metadata-row">
+                <span class="label">Project ID:</span>
+                <span class="value">{{ project_id }}</span>
+            </div>
+
+            <div class="metadata-row">
+                <span class="label">Report Date:</span>
+                <span class="value">{{ report_date }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Body Table (auto page-break) -->
+    <div class="body-section">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Layer Name</th>
+                    <th>Area Name</th>
+                    <th>Resource Areas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_rows %}
+                <tr>
+                    <td>{{ row.category }}</td>
+                    <td>{{ row.layer_name }}</td>
+                    <td>{{ row.area_name }}</td>
+                    <td>
+                        {% if row.resource_areas %}
+                            {% for ra in row.resource_areas %}
+                                <a href="{{ ra.url }}" class="resource-link">{{ ra.code }}</a>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- End Page -->
+    <div class="page end-page">
+        <h2>Best Management Practices (BMP) Resource Links</h2>
+
+        <p class="bmp-master-link">
+            <a href="{{ bmp_master_url }}">{{ bmp_master_url }}</a>
+        </p>
+
+        <table class="resource-table">
+            <thead>
+                <tr>
+                    <th>Resource Area</th>
+                    <th>Resource Area Name</th>
+                    <th>Url</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for link in resource_area_links %}
+                <tr>
+                    <td>{{ link.code }}</td>
+                    <td>{{ link.name }}</td>
+                    <td><a href="{{ link.url }}">{{ link.url }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
