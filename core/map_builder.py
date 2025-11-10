@@ -101,7 +101,8 @@ def create_web_map(
             'fillColor': '#FFD700',
             'color': '#FF8C00',
             'weight': 3,
-            'fillOpacity': 0.2
+            'fillOpacity': 0.2,
+            'className': 'appeit-input-polygon'  # Unique identifier for JavaScript detection
         },
         tooltip=layer_name
     ).add_to(m)
@@ -136,8 +137,8 @@ def create_web_map(
 
         if use_clustering:
             logger.info("    (Using marker clustering)")
-            # Don't add 'name' parameter - prevents layer from appearing in LayerControl
-            marker_cluster = plugins.MarkerCluster()
+            # Add name for JavaScript layer identification (doesn't show in LayerControl)
+            marker_cluster = plugins.MarkerCluster(name=layer_name)
 
             for _, row in gdf.iterrows():
                 # Find name column (case-insensitive search for first column containing 'name')
@@ -178,8 +179,8 @@ def create_web_map(
             # Add as GeoJSON layer
             if layer_config['geometry_type'] == 'point':
                 # Use markers for points
-                # Don't add 'name' parameter - prevents layer from appearing in LayerControl
-                feature_group = folium.FeatureGroup()
+                # Add name for JavaScript layer identification (doesn't show in LayerControl)
+                feature_group = folium.FeatureGroup(name=layer_name)
 
                 for _, row in gdf.iterrows():
                     # Find name column (case-insensitive search for first column containing 'name')
@@ -231,9 +232,10 @@ def create_web_map(
                         'opacity': 1.0
                     }
 
-                # Don't add 'name' parameter - prevents layer from appearing in LayerControl
+                # Add name for JavaScript layer identification (doesn't show in LayerControl if no control param)
                 folium.GeoJson(
                     gdf,
+                    name=layer_name,
                     style_function=style_function,
                     highlight_function=highlight_function,
                     tooltip=folium.GeoJsonTooltip(
@@ -399,38 +401,59 @@ def create_web_map(
             return;
         }}
 
-        // Get all non-base layers from the map (in order of addition)
-        const dataLayers = [];
+        // Get all non-base layers from the map
         window.inputPolygonLayer = null;
-        let firstGeoJSONFound = false;
+        const foundLayers = [];  // Array of {{name, layer}} objects
 
         window.mapObject.eachLayer(function(layer) {{
             // Skip tile layers
             if (layer instanceof L.TileLayer) return;
 
-            // The input polygon is ALWAYS the first GeoJSON layer added (Python line 96-107)
-            // Identify it by order, not by name property (more reliable than name matching)
-            if (layer instanceof L.GeoJSON && !firstGeoJSONFound) {{
-                window.inputPolygonLayer = layer;
-                firstGeoJSONFound = true;
-                console.log('Found input polygon layer (first GeoJSON)');
-                return;  // Skip adding to dataLayers - this is the fix!
+            // Identify input polygon by className 'appeit-input-polygon'
+            if (layer instanceof L.GeoJSON) {{
+                // Check if this layer has the input polygon className
+                const hasInputClass = Object.values(layer._layers || {{}}).some(function(l) {{
+                    return l._path &&
+                           l._path.classList &&
+                           l._path.classList.contains('appeit-input-polygon');
+                }});
+
+                if (hasInputClass) {{
+                    window.inputPolygonLayer = layer;
+                    console.log('Found input polygon by className');
+                    return;  // Skip adding to foundLayers
+                }}
             }}
 
-            // Collect all environmental data layers (MarkerClusters, FeatureGroups, and other GeoJSON)
+            // Collect environmental data layers and try to get their names
             if (layer instanceof L.MarkerClusterGroup ||
                 layer instanceof L.FeatureGroup ||
                 layer instanceof L.GeoJSON) {{
-                dataLayers.push(layer);
-                console.log('Found data layer:', layer);
+
+                // Try to get the layer name from options
+                let layerName = null;
+                if (layer.options && layer.options.name) {{
+                    layerName = layer.options.name;
+                }}
+
+                foundLayers.push({{
+                    name: layerName,
+                    layer: layer
+                }});
+
+                console.log('Found layer:', layerName || 'unnamed', layer);
             }}
         }});
 
-        // Map layers to their names based on order
-        layerNames.forEach(function(name, index) {{
-            if (index < dataLayers.length) {{
-                mapLayers[name] = dataLayers[index];
-                console.log('Stored layer:', name, dataLayers[index]);
+        // Map layers by NAME, not by index position (order-independent!)
+        foundLayers.forEach(function(item) {{
+            if (item.name && layerNames.includes(item.name)) {{
+                mapLayers[item.name] = item.layer;
+                console.log('Mapped layer by name:', item.name);
+            }} else if (item.name) {{
+                console.warn('Found layer not in layerNames:', item.name);
+            }} else {{
+                console.warn('Found unnamed layer:', item.layer);
             }}
         }});
 
