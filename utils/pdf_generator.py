@@ -17,7 +17,8 @@ from datetime import datetime
 
 import geopandas as gpd
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML, CSS
+from xhtml2pdf import pisa
+from io import BytesIO
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -231,20 +232,43 @@ def generate_pdf_report(
         env = Environment(loader=FileSystemLoader(str(template_dir)))
         template = env.get_template('report_template.html')
 
-        # Render HTML
-        html_content = template.render(**context)
-
-        # Load CSS
+        # Render HTML with inline CSS (xhtml2pdf requires inline CSS)
+        # Read CSS file
         css_path = template_dir / 'report.css'
+        with open(css_path, 'r', encoding='utf-8') as f:
+            css_content = f.read()
+
+        # Inject CSS into HTML
+        html_with_css = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+{css_content}
+    </style>
+</head>
+<body>
+{template.render(**context)}
+</body>
+</html>
+"""
 
         # Generate PDF
         filename = f"PEIT_Report_{timestamp}.pdf"
         pdf_path = output_path / filename
 
-        HTML(string=html_content, base_url=str(template_dir)).write_pdf(
-            pdf_path,
-            stylesheets=[CSS(filename=str(css_path))]
-        )
+        # Convert HTML to PDF using xhtml2pdf
+        with open(pdf_path, 'wb') as pdf_file:
+            pisa_status = pisa.CreatePDF(
+                html_with_css,
+                dest=pdf_file,
+                encoding='utf-8'
+            )
+
+        if pisa_status.err:
+            logger.error(f"xhtml2pdf reported errors during PDF generation")
+            return None
 
         logger.info(f"✓ PDF report saved: {filename} ({len(table_rows)} features)")
 
