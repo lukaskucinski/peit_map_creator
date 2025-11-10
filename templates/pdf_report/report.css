@@ -2,13 +2,7 @@
 
 @page {
     size: Letter landscape;
-    margin: 0.75in 1in;
-
-    @bottom-center {
-        content: "Page " counter(page) " of " counter(pages);
-        font-size: 9pt;
-        color: #808080;
-    }
+    margin: 0.75in 1in 1in 1in;
 }
 
 * {
