@@ -1,0 +1,382 @@
+<!-- Custom Basemap Control with Thumbnails -->
+<!-- Replaces Folium's default LayerControl for basemaps -->
+
+<style>
+    /* Basemap Control Container - Fixed position top-right */
+    .leaflet-control-basemap {
+        position: fixed;
+        top: 60px;  /* Below geocoder control */
+        right: 10px;
+        z-index: 1000;
+        transition: right 0.3s ease-in-out;
+    }
+
+    /* Responsive positioning - shift with right panel */
+    body:not(.panel-right-collapsed) .leaflet-control-basemap {
+        right: 360px !important;
+    }
+
+    body.panel-right-collapsed .leaflet-control-basemap {
+        right: 10px !important;
+    }
+
+    /* Collapsed Button - Shows layers icon */
+    .basemap-toggle-btn {
+        width: 34px;
+        height: 34px;
+        background-color: white;
+        border: 2px solid rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+        transition: background-color 0.2s;
+    }
+
+    .basemap-toggle-btn:hover {
+        background-color: #f4f4f4;
+    }
+
+    .basemap-toggle-btn svg {
+        width: 16px;
+        height: 16px;
+        color: #333;
+    }
+
+    /* Expanded Panel - Shows basemap list */
+    .basemap-panel {
+        display: none;  /* Hidden by default (collapsed state) */
+        position: absolute;
+        top: 0;
+        right: 45px;  /* Offset from toggle button to prevent overlap */
+        width: 250px;
+        background-color: white;
+        border: 2px solid rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+        overflow: hidden;
+    }
+
+    .basemap-panel.expanded {
+        display: block;
+    }
+
+    /* Header with title and close button */
+    .basemap-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        background-color: #f8f8f8;
+        border-bottom: 1px solid #ddd;
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .basemap-close-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #666;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .basemap-close-btn:hover {
+        color: #333;
+    }
+
+    /* Basemap Items Container */
+    .basemap-items {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    /* Individual Basemap Row */
+    .basemap-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.2s;
+    }
+
+    .basemap-item:last-child {
+        border-bottom: none;
+    }
+
+    .basemap-item:hover {
+        background-color: #f0f0f0;
+    }
+
+    .basemap-item.active {
+        background-color: #e6f2ff;
+        border-left: 3px solid #0078d4;
+    }
+
+    .basemap-item.active:hover {
+        background-color: #d6e9ff;
+    }
+
+    /* Thumbnail Image */
+    .basemap-thumbnail {
+        width: 80px;
+        height: 60px;
+        object-fit: cover;
+        border: 1px solid #ccc;
+        border-radius: 2px;
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+
+    /* Basemap Name */
+    .basemap-name {
+        font-size: 13px;
+        color: #333;
+        flex: 1;
+    }
+
+    .basemap-item.active .basemap-name {
+        font-weight: 600;
+        color: #0078d4;
+    }
+</style>
+
+<!-- HTML Structure -->
+<div class="leaflet-control-basemap" id="basemap-control">
+    <!-- Collapsed Button (Default State) -->
+    <div class="basemap-toggle-btn" id="basemap-toggle-btn" onclick="toggleBasemapPanel()">
+        <!-- Custom SVG Icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="none" focusable="false" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" fill-rule="nonzero" d="M.1 6.9h6.8V.1H.1zm6-.8H3.985c.077-.403.25-.78.506-1.102a4.6 4.6 0 0 0 1.609.805zm0-1.128a3.8 3.8 0 0 1-1.006-.523c.31-.203.65-.358 1.006-.459zM6.1.9v2.266a4.2 4.2 0 0 0-1.613.73 6 6 0 0 1-1.1-1.767l.002-.004-.004-.001A8 8 0 0 1 2.99.9zM.9.9h1.266a9 9 0 0 0 .359 1.249A1.93 1.93 0 0 1 .9 3.188zm0 3.09a2.83 2.83 0 0 0 2.006-.966c.262.519.594 1 .987 1.428A3.37 3.37 0 0 0 3.17 6.1H.9zM9.1.1v6.8h6.8V.1zm.8.8h4.063a.37.37 0 0 1-.045.2.6.6 0 0 1-.438.176 1.64 1.64 0 0 0-1.175.49.9.9 0 0 0-.203.708c-.001.007-.114.736-.607.742a.74.74 0 0 0-.719.384.83.83 0 0 0-.026.6H9.9zm5.2 5.2H9.9V5h2.296l-.474-.639a1.6 1.6 0 0 1-.192-.346c1.041-.03 1.37-1.188 1.365-1.587a.2.2 0 0 1 .028-.154c.031-.037.166-.162.624-.2.419 0 .81-.205 1.049-.549a1.13 1.13 0 0 0 .16-.625h.344zm-15 9.8h6.8V9.1H.1zm.8-6h5.2v.46l-2 1.973v.867l-3.2-.089zm0 4.01 4 .112v-1.355l1.2-1.182V15.1H.9zm8.2 1.99h6.8V9.1H9.1zm6-.8h-1.792l-1.27-1.572 1.468-1.468 1.594 1.605zm0-5.2v2.628L12.49 9.9zm-5.2 0h1.46l1.581 1.592-1.978 1.98 1.316 1.628H9.9z"></path>
+        </svg>
+    </div>
+
+    <!-- Expanded Panel (Hidden by Default) -->
+    <div class="basemap-panel" id="basemap-panel">
+        <div class="basemap-header">
+            <span>Basemap</span>
+            <button class="basemap-close-btn" onclick="closeBasemapPanel()" title="Close">×</button>
+        </div>
+
+        <div class="basemap-items">
+            {% for basemap in basemaps %}
+            <div class="basemap-item"
+                 data-tile-name="{{ basemap.tile_name }}"
+                 data-tile-url="{{ basemap.tile_url }}"
+                 data-attribution="{{ basemap.attribution }}"
+                 onclick="switchBasemap('{{ basemap.tile_name }}')">
+                <img src="{{ basemap.thumbnail }}"
+                     class="basemap-thumbnail"
+                     alt="{{ basemap.display_name }}"
+                     loading="lazy">
+                <span class="basemap-name">{{ basemap.display_name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // @ts-nocheck
+    (function() {
+        // Wait for map to be fully loaded (500ms to ensure Folium has initialized)
+        setTimeout(function() {
+            initializeBasemapControl();
+        }, 500);
+
+        function initializeBasemapControl() {
+            // Find the Leaflet map object using proven pattern from download_control
+            console.log('Searching for Leaflet map object...');
+
+            var map = null;
+            // Search for map variable in window (Folium pattern: map_xxxxx)
+            for (var key in window) {
+                if (key.startsWith('map_') &&
+                    window[key] &&
+                    typeof window[key] === 'object' &&
+                    typeof window[key].on === 'function') {
+                    map = window[key];
+                    console.log('Found Leaflet map object:', key);
+                    break;
+                }
+            }
+
+            if (!map) {
+                console.error('Basemap control: Could not find Leaflet map');
+                // Log all window properties starting with 'map' for debugging
+                console.log('Window properties starting with "map":',
+                    Object.keys(window).filter(function(k) { return k.toLowerCase().includes('map'); }));
+                return;
+            }
+
+            // Store map reference globally for access by onclick handlers
+            window.basemapControlMap = map;
+
+            // Track all base layers (will store references to EXISTING Folium layers)
+            window.basemapLayers = {};
+            window.currentBasemapLayer = null;
+
+            // Find existing Folium tile layers on the map
+            console.log('Searching for existing Folium tile layers...');
+
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.TileLayer) {
+                    var layerUrl = layer._url;
+                    console.log('Found tile layer with URL:', layerUrl);
+
+                    // Match this layer to our basemap configurations by URL pattern
+                    if (layerUrl && layerUrl.includes('World_Imagery')) {
+                        window.basemapLayers['Esri WorldImagery'] = layer;
+                        console.log('Matched: Esri WorldImagery');
+                    } else if (layerUrl && layerUrl.includes('openstreetmap.org')) {
+                        window.basemapLayers['OpenStreetMap'] = layer;
+                        console.log('Matched: OpenStreetMap');
+                    } else if (layerUrl && layerUrl.includes('dark_all')) {
+                        window.basemapLayers['CartoDB dark_matter'] = layer;
+                        console.log('Matched: CartoDB dark_matter');
+                    } else if (layerUrl && layerUrl.includes('light_all')) {
+                        window.basemapLayers['CartoDB positron'] = layer;
+                        console.log('Matched: CartoDB positron');
+                    }
+
+                    // Check if this layer is currently visible on the map
+                    if (layer._map) {
+                        window.currentBasemapLayer = layer;
+                        console.log('Current visible layer:', layerUrl);
+                    }
+                }
+            });
+
+            // Determine which basemap is currently active by matching the visible layer
+            var currentTileName = null;
+            for (var tileName in window.basemapLayers) {
+                if (window.basemapLayers[tileName] === window.currentBasemapLayer) {
+                    currentTileName = tileName;
+                    console.log('Current active basemap:', tileName);
+                    break;
+                }
+            }
+
+            // Remove all layers except the default to create clean initial state
+            var defaultBasemap = 'Esri WorldImagery';  // Default visible basemap (Satellite Imagery)
+            console.log('Removing extra initial layers, keeping only:', defaultBasemap);
+
+            for (var tileName in window.basemapLayers) {
+                if (tileName !== defaultBasemap) {
+                    var layer = window.basemapLayers[tileName];
+                    if (map.hasLayer(layer)) {
+                        console.log('Removing extra initial layer:', tileName);
+                        map.removeLayer(layer);
+                    }
+                }
+            }
+
+            // Set current basemap to the default
+            window.currentBasemapLayer = window.basemapLayers[defaultBasemap];
+
+            // Update UI to show active basemap
+            updateActiveBasemapUI(defaultBasemap);
+
+            console.log('Basemap control initialized with', Object.keys(window.basemapLayers).length, 'basemaps');
+        }
+
+        // Toggle basemap panel (expand/collapse)
+        window.toggleBasemapPanel = function() {
+            var panel = document.getElementById('basemap-panel');
+
+            if (panel.classList.contains('expanded')) {
+                // Close panel
+                panel.classList.remove('expanded');
+            } else {
+                // Open panel
+                panel.classList.add('expanded');
+            }
+        };
+
+        // Close basemap panel
+        window.closeBasemapPanel = function() {
+            var panel = document.getElementById('basemap-panel');
+            panel.classList.remove('expanded');
+        };
+
+        // Switch to a different basemap
+        window.switchBasemap = function(tileName) {
+            console.log('switchBasemap called with:', tileName);
+
+            if (!window.basemapControlMap || !window.basemapLayers) {
+                console.error('Basemap control not initialized');
+                return;
+            }
+
+            var map = window.basemapControlMap;
+            var newLayer = window.basemapLayers[tileName];
+
+            if (!newLayer) {
+                console.error('Basemap layer not found:', tileName);
+                console.log('Available layers:', Object.keys(window.basemapLayers));
+                return;
+            }
+
+            // Don't switch if already active
+            if (newLayer === window.currentBasemapLayer) {
+                console.log('Basemap already active');
+                return;
+            }
+
+            // Remove ALL base layers from map to prevent stacking issues
+            for (var layerName in window.basemapLayers) {
+                var layer = window.basemapLayers[layerName];
+                if (map.hasLayer(layer)) {
+                    console.log('Removing layer from map:', layerName);
+                    map.removeLayer(layer);
+                }
+            }
+
+            // Add new base layer to map (at bottom, behind all other layers)
+            console.log('Adding new layer to map');
+            newLayer.addTo(map);
+            newLayer.bringToBack();
+
+            // Update current basemap tracking
+            window.currentBasemapLayer = newLayer;
+
+            // Update UI to show active state
+            updateActiveBasemapUI(tileName);
+
+            console.log('Successfully switched to basemap:', tileName);
+        };
+
+        // Update UI to highlight active basemap
+        function updateActiveBasemapUI(tileName) {
+            var basemapItems = document.querySelectorAll('.basemap-item');
+            basemapItems.forEach(function(item) {
+                if (item.getAttribute('data-tile-name') === tileName) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // Optional: Close panel when clicking outside
+        document.addEventListener('click', function(event) {
+            var basemapControl = document.getElementById('basemap-control');
+            var panel = document.getElementById('basemap-panel');
+
+            if (basemapControl && !basemapControl.contains(event.target) && panel.classList.contains('expanded')) {
+                window.closeBasemapPanel();
+            }
+        });
+    })();
+</script>

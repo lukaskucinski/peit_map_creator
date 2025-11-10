@@ -19,6 +19,7 @@ from typing import Dict, Optional
 from utils.html_generators import generate_layer_download_sections, generate_layer_data_mapping
 from utils.popup_formatters import format_popup_value
 from utils.layer_control_helpers import organize_layers_by_group, generate_layer_control_data, generate_layer_geojson_data
+from utils.basemap_helpers import get_basemap_config
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -86,10 +87,12 @@ def create_web_map(
     )
 
     # Add tile layers with custom names
+    # Only first layer has control=True to prevent conflicts with custom basemap control
+    # All layers added to map so JavaScript can find them, but extras removed in JavaScript init
     folium.TileLayer('OpenStreetMap', name='Street Map', control=True).add_to(m)
-    folium.TileLayer('CartoDB positron', name='Light Theme').add_to(m)
-    folium.TileLayer('CartoDB dark_matter', name='Dark Theme').add_to(m)
-    folium.TileLayer('Esri WorldImagery', name='Satellite Imagery').add_to(m)
+    folium.TileLayer('CartoDB positron', name='Light Theme', control=False).add_to(m)
+    folium.TileLayer('CartoDB dark_matter', name='Dark Theme', control=False).add_to(m)
+    folium.TileLayer('Esri WorldImagery', name='Satellite Imagery', control=False).add_to(m)
 
     # Add input polygon
     logger.info("  - Adding input polygon...")
@@ -263,21 +266,6 @@ def create_web_map(
                 layer_var_names[layer_name] = 'geojson'
                 logger.info(f"    ✓ Added {len(gdf)} features as GeoJSON layer")
 
-    # Add LayerControl for base map switching
-    # Note: Overlay layers will be hidden via CSS since they're controlled by custom panel
-    folium.LayerControl(position='topright', collapsed=False).add_to(m)
-
-    # Hide overlay section of LayerControl using CSS (show only base maps)
-    hide_overlays_css = """
-<style>
-/* Hide overlay layers from LayerControl - they're managed by custom right panel */
-.leaflet-control-layers-overlays {
-    display: none !important;
-}
-</style>
-"""
-    m.get_root().html.add_child(Element(hide_overlays_css))
-
     # Add geocoding search control (address and coordinate search)
     geocoder_config = config.get('settings', {}).get('geocoder', {})
     if geocoder_config.get('enabled', True):
@@ -301,6 +289,13 @@ def create_web_map(
 
     # Setup Jinja2 template environment
     env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)))
+
+    # Add custom basemap control with thumbnails
+    logger.info("  - Adding basemap control...")
+    basemaps = get_basemap_config()
+    basemap_template = env.get_template('basemap_control.html')
+    basemap_html = basemap_template.render(basemaps=basemaps)
+    m.get_root().html.add_child(Element(basemap_html))
 
     # Render download control template
     logger.info("  - Adding download control...")
