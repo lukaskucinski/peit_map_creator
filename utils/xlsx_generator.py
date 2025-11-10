@@ -2,13 +2,15 @@
 XLSX report generator for APPEIT Map Creator.
 
 This module generates an Excel (.xlsx) file summarizing intersected environmental
-layer features. Each row represents a single feature with hyperlinked resource areas.
+layer features. Each row represents a single feature with individual hyperlinked
+resource areas in separate columns.
 
 The generated report includes:
     - Category: Layer group from configuration
     - Layer Name: Specific environmental layer
     - Area Name: Feature-specific name from configured field
-    - Resource Areas: Hyperlinked resource area codes (e.g., "1.4, 1.9, 1.11")
+    - Resource Area 1, 2, 3: Individual hyperlinked codes (e.g., "1.4", "1.9", "1.11")
+      Each code has its own hyperlink to NTIA documentation, styled in blue with underline
 """
 
 import json
@@ -75,36 +77,28 @@ def get_category_resource_areas() -> Dict[str, List[str]]:
     }
 
 
-def create_resource_area_hyperlink(codes: List[str], url_mapping: Dict[str, str]) -> str:
+def create_resource_area_hyperlink(code: str, url_mapping: Dict[str, str]) -> str:
     """
-    Create an Excel hyperlink formula for resource area codes.
-
-    If multiple codes, creates a comma-separated list with the first code hyperlinked.
-    If single code, creates a simple hyperlink.
+    Create an Excel hyperlink formula for a single resource area code.
 
     Args:
-        codes: List of resource area codes (e.g., ['1.4', '1.9', '1.11'])
+        code: Single resource area code (e.g., '1.4')
         url_mapping: Dictionary mapping codes to URLs
 
     Returns:
-        Excel formula string, e.g., '=HYPERLINK("url", "1.4, 1.9, 1.11")'
+        Excel formula string, e.g., '=HYPERLINK("url", "1.4")'
     """
-    if not codes:
+    if not code:
         return ''
 
-    # Create display text with all codes
-    display_text = ', '.join(codes)
-
-    # Use first code's URL for the hyperlink
-    first_code = codes[0]
-    url = url_mapping.get(first_code, '')
+    url = url_mapping.get(code, '')
 
     if url:
-        # Excel hyperlink formula: =HYPERLINK("url", "display_text")
-        return f'=HYPERLINK("{url}", "{display_text}")'
+        # Excel hyperlink formula: =HYPERLINK("url", "code")
+        return f'=HYPERLINK("{url}", "{code}")'
     else:
         # If no URL found, just return plain text
-        return display_text
+        return code
 
 
 def generate_xlsx_report(
@@ -120,7 +114,10 @@ def generate_xlsx_report(
         - Category (layer group)
         - Layer Name
         - Area Name (from configured field)
-        - Resource Areas (hyperlinked codes)
+        - Resource Area 1, Resource Area 2, Resource Area 3 (individual hyperlinked codes)
+
+    Each resource area code gets its own column with individual hyperlink.
+    Empty cells for categories with fewer resource areas.
 
     Args:
         layer_results: Dictionary mapping layer names to GeoDataFrames
@@ -141,13 +138,19 @@ def generate_xlsx_report(
         # Get category -> resource areas mapping
         category_resources = get_category_resource_areas()
 
+        # Determine maximum number of resource areas across all categories
+        max_resource_areas = max(len(codes) for codes in category_resources.values()) if category_resources else 0
+
         # Create workbook and worksheet
         wb = Workbook()
         ws = wb.active
         ws.title = "Environmental Layers"
 
-        # Define headers
-        headers = ['Category', 'Layer Name', 'Area Name', 'Resource Areas']
+        # Define dynamic headers
+        headers = ['Category', 'Layer Name', 'Area Name']
+        for i in range(1, max_resource_areas + 1):
+            headers.append(f'Resource Area {i}')
+
         ws.append(headers)
 
         # Style header row
@@ -196,7 +199,6 @@ def generate_xlsx_report(
 
             # Get resource area codes for this category
             resource_codes = category_resources.get(category, [])
-            resource_area_formula = create_resource_area_hyperlink(resource_codes, url_mapping)
 
             # Add one row per feature
             for idx, row in gdf.iterrows():
@@ -206,13 +208,27 @@ def generate_xlsx_report(
                 if area_name is None or (isinstance(area_name, str) and not area_name.strip()):
                     area_name = 'N/A'
 
+                # Build row data with separate columns for each resource area
+                row_data = [category, layer_name, str(area_name)]
+
+                # Add individual resource area hyperlinks
+                for code in resource_codes:
+                    hyperlink_formula = create_resource_area_hyperlink(code, url_mapping)
+                    row_data.append(hyperlink_formula)
+
+                # Pad with empty cells if fewer resource areas than max
+                while len(row_data) < len(headers):
+                    row_data.append('')
+
                 # Add data row
-                ws.append([
-                    category,
-                    layer_name,
-                    str(area_name),
-                    resource_area_formula
-                ])
+                ws.append(row_data)
+                current_row = ws.max_row
+
+                # Apply blue hyperlink styling to resource area cells
+                for col_idx in range(4, 4 + len(resource_codes)):
+                    cell = ws.cell(row=current_row, column=col_idx)
+                    if cell.value and str(cell.value).startswith('=HYPERLINK'):
+                        cell.font = Font(underline='single', color='0563C1')
 
                 row_count += 1
 
@@ -227,8 +243,8 @@ def generate_xlsx_report(
                 ws.column_dimensions[column_letter].width = 40
             elif col_num == 3:  # Area Name
                 ws.column_dimensions[column_letter].width = 35
-            elif col_num == 4:  # Resource Areas
-                ws.column_dimensions[column_letter].width = 30
+            else:  # Resource Area columns (4+)
+                ws.column_dimensions[column_letter].width = 18
 
         # Freeze header row
         ws.freeze_panes = 'A2'
