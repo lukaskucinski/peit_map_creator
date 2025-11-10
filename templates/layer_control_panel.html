@@ -532,9 +532,10 @@
 
         // Filter layers
         layerItems.forEach(function(item) {
-            var name = item.dataset.layerName.toLowerCase();
-            var description = item.dataset.description.toLowerCase();
-            var group = item.dataset.group.toLowerCase();
+            // Add null/undefined checks to prevent errors on elements without data attributes
+            var name = (item.dataset.layerName || '').toLowerCase();
+            var description = (item.dataset.description || '').toLowerCase();
+            var group = (item.dataset.group || '').toLowerCase();
 
             var matches = name.includes(term) || description.includes(term) || group.includes(term);
 
