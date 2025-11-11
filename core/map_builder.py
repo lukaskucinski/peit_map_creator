@@ -254,18 +254,43 @@ def create_web_map(
                         'opacity': 1.0
                     }
 
-                # Add name for JavaScript layer identification (doesn't show in LayerControl if no control param)
-                folium.GeoJson(
+                # Create GeoJSON layer with custom click-based popups (matching point feature format)
+                geojson_layer = folium.GeoJson(
                     gdf,
                     name=layer_name,
                     style_function=style_function,
-                    highlight_function=highlight_function,
-                    tooltip=folium.GeoJsonTooltip(
-                        fields=list(gdf.columns.drop('geometry')),
-                        aliases=list(gdf.columns.drop('geometry')),
-                        localize=True
-                    )
-                ).add_to(m)
+                    highlight_function=highlight_function
+                )
+
+                # Add custom popup to each feature in the layer
+                for feature in geojson_layer.data['features']:
+                    props = feature['properties']
+
+                    # Find name field (case-insensitive)
+                    name_value = None
+                    for key in props.keys():
+                        if 'name' in key.lower():
+                            name_value = props[key]
+                            break
+
+                    # Build popup HTML (same format as point features)
+                    popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
+                    if name_value:
+                        popup_html += f"<div style='font-size: 14px; font-weight: bold; margin: 5px 0;'>{name_value}</div>"
+                    popup_html += "<hr style='margin: 5px 0;'>"
+
+                    for key, value in props.items():
+                        popup_html += f"<b>{key}:</b> {format_popup_value(key, value)}<br>"
+
+                    # Store popup HTML in feature properties for Folium to use
+                    feature['properties']['popup_html'] = popup_html
+
+                # Now add popup field to the GeoJson layer
+                geojson_layer.add_child(
+                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px;")
+                )
+
+                geojson_layer.add_to(m)
                 layer_var_names[layer_name] = 'geojson'
                 logger.info(f"    ✓ Added {len(gdf)} features as GeoJSON layer")
 
