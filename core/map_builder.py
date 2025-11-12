@@ -666,68 +666,32 @@ def create_web_map(
         setTimeout(initializeLayerControl, 500);
     }}
 
-    // Sync checkbox states with actual layer visibility on page load
-    // This handles browser back/forward navigation and page reloads
-    function syncCheckboxStates() {{
-        console.log('Syncing checkbox states with map layers...');
+    // Comprehensive page refresh detection for all navigation scenarios
+    // This ensures layer visibility and checkbox states are always in sync
 
-        if (!window.mapObject || typeof mapLayers === 'undefined') {{
-            console.warn('Cannot sync: map or mapLayers not initialized');
-            return;
-        }}
-
-        var syncedCount = 0;
-
-        // Check each layer in mapLayers
-        for (var layerName in mapLayers) {{
-            var layer = mapLayers[layerName];
-            var checkbox = document.querySelector('input[data-layer="' + layerName + '"]');
-
-            if (checkbox && layer) {{
-                // Check if layer is actually visible on the map
-                var isVisible = window.mapObject.hasLayer(layer);
-
-                // Update checkbox to match actual visibility
-                if (checkbox.checked !== isVisible) {{
-                    checkbox.checked = isVisible;
-                    syncedCount++;
-                    console.log('Synced checkbox for:', layerName, '- Visible:', isVisible);
-                }}
-            }}
-        }}
-
-        // Also sync input polygon checkbox
-        if (window.inputPolygonLayer) {{
-            var inputCheckbox = document.querySelector('input[data-layer="input-polygon"]');
-            if (inputCheckbox) {{
-                var isInputVisible = window.mapObject.hasLayer(window.inputPolygonLayer);
-                if (inputCheckbox.checked !== isInputVisible) {{
-                    inputCheckbox.checked = isInputVisible;
-                    syncedCount++;
-                    console.log('Synced input polygon checkbox - Visible:', isInputVisible);
-                }}
-            }}
-        }}
-
-        if (syncedCount > 0) {{
-            console.log('Synced ' + syncedCount + ' checkbox(es) with map state');
-        }} else {{
-            console.log('All checkboxes already in sync');
-        }}
-    }}
-
-    // Run sync on page load and after browser navigation
-    window.addEventListener('load', function() {{
-        // Wait for layer control to initialize
-        setTimeout(syncCheckboxStates, 1200);  // After initializeLayerControl (at 500ms) completes
-    }});
-
-    // Handle back/forward browser navigation (bfcache)
+    // Method 1: Detect bfcache restoration (standard approach)
     window.addEventListener('pageshow', function(event) {{
         if (event.persisted) {{
-            // Page was restored from bfcache (back button)
-            console.log('Page restored from cache, re-syncing checkboxes...');
-            setTimeout(syncCheckboxStates, 500);
+            console.log('Page restored from bfcache, refreshing...');
+            window.location.reload();
+        }}
+    }});
+
+    // Method 2: Detect back/forward navigation (works for file:// protocol)
+    window.addEventListener('load', function() {{
+        // Check if page was loaded via back/forward button
+        if (performance.navigation && performance.navigation.type === 2) {{
+            console.log('Back/forward navigation detected, refreshing...');
+            window.location.reload();
+        }}
+
+        // Modern browsers: use Navigation Timing API Level 2
+        if (performance.getEntriesByType) {{
+            var navEntries = performance.getEntriesByType('navigation');
+            if (navEntries.length > 0 && navEntries[0].type === 'back_forward') {{
+                console.log('Back/forward navigation detected (Navigation API), refreshing...');
+                window.location.reload();
+            }}
         }}
     }});
     </script>
