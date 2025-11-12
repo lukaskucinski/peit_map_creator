@@ -493,13 +493,30 @@ def create_web_map(
                     return;
                 }}
 
-                // Collect unidentified feature groups (excluding clusters)
+                // Collect unidentified feature groups (excluding clusters and input polygon)
                 mapObj.eachLayer(function(layer) {{
                     var isFeatureGroup = layer instanceof L.FeatureGroup;
                     var isMarkerCluster = (typeof L.MarkerClusterGroup !== 'undefined') && (layer instanceof L.MarkerClusterGroup);
 
                     if (isFeatureGroup && !isMarkerCluster && !layer._appeitLayerName) {{
-                        groups.push(layer);
+                        // Check if this is the input polygon wrapper by looking for className
+                        var isInputPolygon = false;
+
+                        if (layer._layers) {{
+                            for (var layerId in layer._layers) {{
+                                var subLayer = layer._layers[layerId];
+                                if (subLayer._path && subLayer._path.classList &&
+                                    subLayer._path.classList.contains('appeit-input-polygon')) {{
+                                    isInputPolygon = true;
+                                    console.log('Skipping input polygon wrapper during identification');
+                                    break;
+                                }}
+                            }}
+                        }}
+
+                        if (!isInputPolygon) {{
+                            groups.push(layer);
+                        }}
                     }}
                 }});
 
