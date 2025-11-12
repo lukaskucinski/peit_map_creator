@@ -227,19 +227,28 @@ def create_web_map(
                 layer_class = f'appeit-layer-{sanitized_name}'
 
                 def style_function(feature):
-                    return {
+                    style = {
                         'color': layer_config['color'],
                         'weight': 3,
                         'opacity': 0.8,
                         'className': layer_class  # Unique identifier for JavaScript
                     }
+                    # Add fill properties for polygon layers if configured
+                    if layer_config['geometry_type'] == 'polygon':
+                        style['fillColor'] = layer_config.get('fill_color', layer_config['color'])
+                        style['fillOpacity'] = layer_config.get('fill_opacity', 0.6)
+                    return style
 
                 def highlight_function(feature):
-                    return {
+                    highlight = {
                         'color': layer_config['color'],
                         'weight': 5,
                         'opacity': 1.0
                     }
+                    # Increase fill opacity on hover for polygon layers
+                    if layer_config['geometry_type'] == 'polygon':
+                        highlight['fillOpacity'] = min(layer_config.get('fill_opacity', 0.6) + 0.2, 1.0)
+                    return highlight
 
                 # Create GeoJSON layer with custom click-based popups (matching point feature format)
                 # NOTE: Do NOT add 'name' parameter - environmental layers should not appear in default LayerControl
@@ -358,11 +367,13 @@ def create_web_map(
             """
         elif geometry_type == 'polygon':
             # Polygon layer: show filled rectangle
-            color = layer_config['color']
+            border_color = layer_config['color']
+            fill_color = layer_config.get('fill_color', border_color)
+            fill_opacity = layer_config.get('fill_opacity', 0.6)
             legend_items_html += f"""
             <div class="legend-item" data-layer-name="{layer_name}">
                 <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                    <rect width="20" height="15" style="fill:{color}; stroke:{color}; stroke-width:1; opacity:0.6;" />
+                    <rect width="20" height="15" style="fill:{fill_color}; stroke:{border_color}; stroke-width:1; opacity:{fill_opacity};" />
                 </svg>
                 <span>{layer_name} ({feature_count})</span>
             </div>

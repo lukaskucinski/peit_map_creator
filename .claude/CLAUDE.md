@@ -365,11 +365,33 @@ Configuration file: `config/layers_config.json`
   "color": "#HEX_COLOR",
   "icon": "font-awesome-icon-name",
   "icon_color": "red|blue|green|purple|orange|darkred|lightred|beige|darkblue|darkgreen|cadetblue|darkpurple|white|pink|lightblue|lightgreen|gray|black|lightgray",
+  "fill_color": "#HEX_COLOR",
+  "fill_opacity": 0.5,
   "description": "Layer description",
   "geometry_type": "point|line|polygon",
   "group": "Group Name"
 }
 ```
+
+**Field descriptions**:
+- `name`: Display name for the layer (required)
+- `url`: ArcGIS FeatureServer REST API endpoint (required)
+- `layer_id`: Layer ID within the FeatureServer (required, typically 0)
+- `color`: Border/stroke color for lines and polygons (required, hex format)
+- `icon`: Font Awesome icon name (required for point layers only)
+- `icon_color`: Marker color (required for point layers only)
+- `fill_color`: Fill color for polygon layers (optional, defaults to `color` value)
+- `fill_opacity`: Fill transparency for polygon layers (optional, 0.0-1.0, defaults to 0.6)
+- `description`: Human-readable description (required)
+- `geometry_type`: Feature geometry type (required: "point", "line", or "polygon")
+- `group`: Category for layer organization (required)
+- `area_name_field`: Attribute field containing primary name (optional but recommended)
+
+**Notes**:
+- `icon` and `icon_color` are only used for point layers
+- `fill_color` and `fill_opacity` are only used for polygon layers
+- If `fill_color` is not specified for polygons, the `color` value will be used for both border and fill
+- Fill opacity of 0.0 = fully transparent, 1.0 = fully opaque
 
 **Layer Groups:**
 Layers are organized into groups for the custom layer control panel:

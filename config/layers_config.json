@@ -47,6 +47,18 @@
       "geometry_type": "point",
       "group": "Historic Places",
       "area_name_field": "RESNAME"
+    },
+    {
+      "name": "NPS Land",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/NPS_Land_Permitting_Layer/FeatureServer",
+      "layer_id": 0,
+      "color": "#A3FF73",
+      "fill_color": "#A3FF73",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the National Park Service lands which was obtained from the USGS PAD 3.0 Data. This NPS land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
     }
   ],
   "geometry_settings": {
