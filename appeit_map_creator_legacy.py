@@ -1405,7 +1405,7 @@ print()
 # Cell 8: Example Usage
 
 if __name__ == "__main__":
-    # Example: Process the Pennsylvania test file
+    # Example: Process the Vermont project area test file
     INPUT_FILE = r"C:\Users\lukas\Downloads\pa045_mpb.gpkg"
 
     # Run the workflow

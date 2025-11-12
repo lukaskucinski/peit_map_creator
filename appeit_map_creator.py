@@ -132,7 +132,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
 
 if __name__ == "__main__":
-    # Example: Process the Pennsylvania test file
+    # Example: Process the Vermont Project Area (PA) test file
     INPUT_FILE = r"C:\Users\lukas\Downloads\pa045_mpb.gpkg"
 
     # Run the workflow

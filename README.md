@@ -207,7 +207,7 @@ Use the included test file to verify functionality:
 C:\Users\lukas\Downloads\pa045_mpb.gpkg
 ```
 
-This Pennsylvania test polygon should intersect with multiple environmental layers.
+This Vermont project area test polygon should intersect with multiple environmental layers.
 
 ### Expected Results
 
