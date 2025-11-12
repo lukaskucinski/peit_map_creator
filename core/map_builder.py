@@ -92,6 +92,19 @@ def create_web_map(
         tiles=None
     )
 
+    # Add MarkerCluster plugin explicitly to ensure it's available for JavaScript
+    # This prevents "instanceof L.MarkerClusterGroup" errors
+    marker_cluster_css = Element("""
+        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"/>
+    """)
+    m.get_root().html.add_child(marker_cluster_css)
+
+    marker_cluster_js = Element("""
+        <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    """)
+    m.get_root().html.add_child(marker_cluster_js)
+
     # Add tile layers with custom names
     # Only first layer has control=True to prevent conflicts with custom basemap control
     # All layers added to map so JavaScript can find them, but extras removed in JavaScript init
@@ -425,58 +438,78 @@ def create_web_map(
         // Find and tag point layers with custom identifiers
         // This runs after Folium has added all layers to the Leaflet map
         function identifyCluster(name) {{
-            var clusters = [];
-            // Find map object
-            var mapObj = null;
-            for (var key in window) {{
-                if (window[key] && window[key] instanceof L.Map) {{
-                    mapObj = window[key];
-                    break;
+            try {{
+                var clusters = [];
+                // Find map object
+                var mapObj = null;
+                for (var key in window) {{
+                    if (window[key] && typeof L !== 'undefined' && typeof L.Map !== 'undefined' && window[key] instanceof L.Map) {{
+                        mapObj = window[key];
+                        break;
+                    }}
                 }}
-            }}
 
-            if (!mapObj) return;
+                if (!mapObj) return;
 
-            // Collect unidentified clusters
-            mapObj.eachLayer(function(layer) {{
-                if (layer instanceof L.MarkerClusterGroup && !layer._appeitLayerName) {{
-                    clusters.push(layer);
+                // Collect unidentified clusters (with defensive check)
+                if (typeof L.MarkerClusterGroup === 'undefined') {{
+                    console.warn('MarkerClusterGroup not loaded, skipping cluster identification');
+                    return;
                 }}
-            }});
 
-            // Tag the first unidentified cluster
-            if (clusters.length > 0) {{
-                clusters[0]._appeitLayerName = name;
-                console.log('Added identifier to MarkerCluster:', name);
+                mapObj.eachLayer(function(layer) {{
+                    if (layer instanceof L.MarkerClusterGroup && !layer._appeitLayerName) {{
+                        clusters.push(layer);
+                    }}
+                }});
+
+                // Tag the first unidentified cluster
+                if (clusters.length > 0) {{
+                    clusters[0]._appeitLayerName = name;
+                    console.log('Added identifier to MarkerCluster:', name);
+                }}
+            }} catch (error) {{
+                console.error('Error in identifyCluster:', error);
             }}
         }}
 
         function identifyFeatureGroup(name) {{
-            var groups = [];
-            // Find map object
-            var mapObj = null;
-            for (var key in window) {{
-                if (window[key] && window[key] instanceof L.Map) {{
-                    mapObj = window[key];
-                    break;
+            try {{
+                var groups = [];
+                // Find map object
+                var mapObj = null;
+                for (var key in window) {{
+                    if (window[key] && typeof L !== 'undefined' && typeof L.Map !== 'undefined' && window[key] instanceof L.Map) {{
+                        mapObj = window[key];
+                        break;
+                    }}
                 }}
-            }}
 
-            if (!mapObj) return;
+                if (!mapObj) return;
 
-            // Collect unidentified feature groups (excluding clusters)
-            mapObj.eachLayer(function(layer) {{
-                if (layer instanceof L.FeatureGroup &&
-                    !(layer instanceof L.MarkerClusterGroup) &&
-                    !layer._appeitLayerName) {{
-                    groups.push(layer);
+                // Defensive check for FeatureGroup
+                if (typeof L.FeatureGroup === 'undefined') {{
+                    console.warn('FeatureGroup not loaded, skipping feature group identification');
+                    return;
                 }}
-            }});
 
-            // Tag the first unidentified feature group
-            if (groups.length > 0) {{
-                groups[0]._appeitLayerName = name;
-                console.log('Added identifier to FeatureGroup:', name);
+                // Collect unidentified feature groups (excluding clusters)
+                mapObj.eachLayer(function(layer) {{
+                    var isFeatureGroup = layer instanceof L.FeatureGroup;
+                    var isMarkerCluster = (typeof L.MarkerClusterGroup !== 'undefined') && (layer instanceof L.MarkerClusterGroup);
+
+                    if (isFeatureGroup && !isMarkerCluster && !layer._appeitLayerName) {{
+                        groups.push(layer);
+                    }}
+                }});
+
+                // Tag the first unidentified feature group
+                if (groups.length > 0) {{
+                    groups[0]._appeitLayerName = name;
+                    console.log('Added identifier to FeatureGroup:', name);
+                }}
+            }} catch (error) {{
+                console.error('Error in identifyFeatureGroup:', error);
             }}
         }}
 
@@ -485,13 +518,13 @@ def create_web_map(
 {assignments_js}
         }}
 
-        // Run after DOM is loaded with slight delay to ensure layers are rendered
+        // Run after DOM is loaded with delay to ensure plugins are loaded
         if (document.readyState === 'loading') {{
             document.addEventListener('DOMContentLoaded', function() {{
-                setTimeout(addIdentifiers, 100);
+                setTimeout(addIdentifiers, 300);
             }});
         }} else {{
-            setTimeout(addIdentifiers, 100);
+            setTimeout(addIdentifiers, 300);
         }}
     }})();
     </script>
@@ -515,40 +548,47 @@ def create_web_map(
 
     // Function to find and store map object
     function initializeLayerControl() {{
-        // Find the Leaflet map object
-        const mapElement = document.querySelector('.folium-map');
-        if (!mapElement) {{
-            console.error('Map element not found');
-            return;
-        }}
-
-        // Store map reference globally
-        window.mapObject = null;
-
-        // Find map in Folium's generated variables
-        for (let key in window) {{
-            if (window[key] && window[key] instanceof L.Map) {{
-                window.mapObject = window[key];
-                break;
+        try {{
+            // Find the Leaflet map object
+            const mapElement = document.querySelector('.folium-map');
+            if (!mapElement) {{
+                console.error('Map element not found');
+                return;
             }}
-        }}
 
-        if (!window.mapObject) {{
-            console.error('Map object not found');
-            return;
-        }}
+            // Verify Leaflet is loaded
+            if (typeof L === 'undefined') {{
+                console.error('Leaflet library not loaded');
+                return;
+            }}
 
-        // Get all non-base layers from the map
-        window.inputPolygonLayer = null;
-        const geojsonLayers = [];     // For lines/polygons (use className)
-        const pointLayerObjects = []; // For clusters/featuregroups (use order)
+            // Store map reference globally
+            window.mapObject = null;
 
-        window.mapObject.eachLayer(function(layer) {{
-            // Skip tile layers
-            if (layer instanceof L.TileLayer) return;
+            // Find map in Folium's generated variables (with defensive check)
+            for (let key in window) {{
+                if (window[key] && typeof L.Map !== 'undefined' && window[key] instanceof L.Map) {{
+                    window.mapObject = window[key];
+                    break;
+                }}
+            }}
 
-            // Identify input polygon by className 'appeit-input-polygon'
-            if (layer instanceof L.GeoJSON) {{
+            if (!window.mapObject) {{
+                console.error('Map object not found');
+                return;
+            }}
+
+            // Get all non-base layers from the map
+            window.inputPolygonLayer = null;
+            const geojsonLayers = [];     // For lines/polygons (use className)
+            const pointLayerObjects = []; // For clusters/featuregroups (use order)
+
+            window.mapObject.eachLayer(function(layer) {{
+                // Skip tile layers (with defensive check)
+                if (typeof L.TileLayer !== 'undefined' && layer instanceof L.TileLayer) return;
+
+                // Identify input polygon by className 'appeit-input-polygon'
+                if (typeof L.GeoJSON !== 'undefined' && layer instanceof L.GeoJSON) {{
                 const layerElements = Object.values(layer._layers || {{}});
 
                 // Check if this is the input polygon
@@ -569,8 +609,11 @@ def create_web_map(
                 console.log('Found GeoJson layer (will match by className)');
             }}
 
-            // Collect point layers (MarkerCluster, FeatureGroup) with custom identifier
-            if (layer instanceof L.MarkerClusterGroup || layer instanceof L.FeatureGroup) {{
+            // Collect point layers (MarkerCluster, FeatureGroup) with custom identifier (with defensive checks)
+            var isMarkerCluster = (typeof L.MarkerClusterGroup !== 'undefined') && (layer instanceof L.MarkerClusterGroup);
+            var isFeatureGroup = (typeof L.FeatureGroup !== 'undefined') && (layer instanceof L.FeatureGroup);
+
+            if (isMarkerCluster || isFeatureGroup) {{
                 // Only collect layers that have our custom _appeitLayerName property
                 // This filters out phantom layers and Folium internal layers
                 if (layer._appeitLayerName) {{
@@ -620,16 +663,19 @@ def create_web_map(
         }});
 
         console.log('Layer control initialized with', Object.keys(mapLayers).length, 'layers');
+        }} catch (error) {{
+            console.error('Error in initializeLayerControl:', error);
+        }}
     }}
 
-    // Initialize when DOM is ready with delay to wait for identifier script
-    // Identifier script runs at 100ms, so we wait 200ms to ensure it completes
+    // Initialize when DOM is ready with longer delay to ensure plugins are loaded
+    // Identifier script runs at 300ms, so we wait 500ms to ensure it completes
     if (document.readyState === 'loading') {{
         document.addEventListener('DOMContentLoaded', function() {{
-            setTimeout(initializeLayerControl, 200);
+            setTimeout(initializeLayerControl, 500);
         }});
     }} else {{
-        setTimeout(initializeLayerControl, 200);
+        setTimeout(initializeLayerControl, 500);
     }}
     </script>
     """
