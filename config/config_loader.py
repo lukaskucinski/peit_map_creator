@@ -63,3 +63,45 @@ def load_config() -> Dict:
     TEMP_DIR.mkdir(exist_ok=True)
 
     return config
+
+
+def load_geometry_settings(config: Dict = None) -> Dict:
+    """
+    Load geometry processing settings from configuration.
+
+    Args:
+        config: Configuration dictionary (optional, will load if not provided)
+
+    Returns:
+        Dictionary with geometry settings
+
+    Defaults:
+        - buffer_distance_feet: 500
+        - buffer_point_geometries: True
+        - buffer_line_geometries: True
+        - auto_repair_invalid: True
+        - fallback_crs: 'EPSG:5070'
+
+    Note:
+        Returns defaults if 'geometry_settings' section is missing,
+        ensuring backward compatibility with older config files.
+    """
+    if config is None:
+        config = load_config()
+
+    # Default geometry settings
+    defaults = {
+        'buffer_distance_feet': 500,
+        'buffer_point_geometries': True,
+        'buffer_line_geometries': True,
+        'auto_repair_invalid': True,
+        'fallback_crs': 'EPSG:5070'
+    }
+
+    # Get geometry_settings from config, or use defaults
+    geometry_settings = config.get('geometry_settings', {})
+
+    # Merge with defaults (config values override defaults)
+    result = {**defaults, **geometry_settings}
+
+    return result

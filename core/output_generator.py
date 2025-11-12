@@ -28,7 +28,8 @@ def generate_output(
     layer_results: Dict[str, gpd.GeoDataFrame],
     metadata: Dict[str, Dict],
     config: Dict,
-    output_name: Optional[str] = None
+    output_name: Optional[str] = None,
+    input_geometry_metadata: Optional[Dict] = None
 ) -> Tuple[Path, Optional[str], Optional[str]]:
     """
     Generate output directory with HTML map, GeoJSON data files, XLSX and PDF reports.
@@ -128,6 +129,10 @@ def generate_output(
         'total_features': sum(m['feature_count'] for m in metadata.values()),
         'layers_with_data': sum(1 for m in metadata.values() if m['feature_count'] > 0)
     }
+
+    # Add input geometry metadata if provided (from new pipeline)
+    if input_geometry_metadata:
+        summary['input_geometry'] = input_geometry_metadata
 
     with open(metadata_file, 'w', encoding='utf-8') as f:
         json.dump(summary, f, indent=2)
