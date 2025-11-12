@@ -654,7 +654,7 @@ def create_web_map(
     from folium import Element
 
     libraries_html = """
-    <script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
+    <script src="https://unpkg.com/@mapbox/shp-write@0.4.3/shpwrite.js"></script>
     <script src="https://unpkg.com/tokml@0.4.0/tokml.js"></script>
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
