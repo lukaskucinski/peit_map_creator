@@ -18,13 +18,20 @@ import warnings
 from utils.logger import setup_logging, get_logger
 
 # Import configuration
-from config.config_loader import load_config
+from config.config_loader import load_config, load_geometry_settings
 
 # Import core modules
-from core.input_reader import read_input_polygon
 from core.layer_processor import process_all_layers
 from core.map_builder import create_web_map
 from core.output_generator import generate_output
+
+# Try to import new geometry processing pipeline, fallback to legacy input_reader
+try:
+    from geometry_input.pipeline import process_input_geometry
+    USE_NEW_PIPELINE = True
+except ImportError:
+    from core.input_reader import read_input_polygon
+    USE_NEW_PIPELINE = False
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
@@ -77,8 +84,21 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         logger.info(f"Configuration loaded: {len(config['layers'])} layers defined")
         logger.info("")
 
-        # Step 1: Read input polygon
-        polygon_gdf = read_input_polygon(input_file)
+        # Step 1: Read input polygon (use new pipeline if available)
+        input_geometry_metadata = {}
+
+        if USE_NEW_PIPELINE:
+            logger.info("Using enhanced geometry processing pipeline")
+            geometry_settings = load_geometry_settings(config)
+            polygon_gdf, input_geometry_metadata = process_input_geometry(
+                input_file,
+                buffer_distance_feet=geometry_settings['buffer_distance_feet']
+            )
+        else:
+            logger.info("Using legacy input reader")
+            from core.input_reader import read_input_polygon
+            polygon_gdf = read_input_polygon(input_file)
+
         input_filename = Path(input_file).stem
 
         # Step 2: Process all layers
@@ -108,7 +128,8 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
             output_name = f"appeit_map_{timestamp}"
 
         output_path, xlsx_file, pdf_file = generate_output(
-            map_obj, polygon_gdf, layer_results, metadata, config, output_name
+            map_obj, polygon_gdf, layer_results, metadata, config, output_name,
+            input_geometry_metadata=input_geometry_metadata
         )
 
         logger.info("")
@@ -133,7 +154,8 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
 if __name__ == "__main__":
     # Example: Process the Vermont Project Area (PA) test file
-    INPUT_FILE = r"C:\Users\lukas\Downloads\pa045_mpb.gpkg"
+    # POLYGON INPUT_FILE = r"C:\Users\lukas\Downloads\pa045_mpb.gpkg"
+    INPUT_FILE = r"C:\Users\lukas\Downloads\test_lin_input.gpkg"
 
     # Run the workflow
     output_dir = main(INPUT_FILE)

@@ -14,7 +14,7 @@ The tool uses a **modular architecture** with separate packages for configuratio
 
 ```
 appeit_map_creator/
-├── appeit_map_creator.py          # Main entry point (~134 lines)
+├── appeit_map_creator.py          # Main entry point (~150 lines)
 ├── appeit_map_creator_legacy.py   # Original monolithic version (backup)
 │
 ├── config/
@@ -22,9 +22,16 @@ appeit_map_creator/
 │   ├── config_loader.py           # Configuration loading & validation
 │   └── layers_config.json         # Layer definitions and settings
 │
+├── geometry_input/                # Enhanced geometry processing package
+│   ├── __init__.py
+│   ├── load_input.py              # Load files, detect geometry types
+│   ├── dissolve.py                # Unify & repair geometries
+│   ├── buffering.py               # CRS projection & buffering
+│   └── pipeline.py                # Orchestrate geometry workflow
+│
 ├── core/
 │   ├── __init__.py
-│   ├── input_reader.py            # Read and reproject input polygons
+│   ├── input_reader.py            # Legacy: Read and reproject input polygons
 │   ├── arcgis_query.py            # Query ArcGIS FeatureServers
 │   ├── layer_processor.py         # Batch process all layers
 │   ├── map_builder.py             # Generate Folium/Leaflet maps
@@ -59,10 +66,16 @@ appeit_map_creator/
 - `appeit_map_creator.py`: Orchestrates workflow, sets up logging, handles errors
 
 **Configuration:**
-- `config/config_loader.py`: Loads and validates `layers_config.json`
+- `config/config_loader.py`: Loads and validates `layers_config.json`, loads geometry settings
+
+**Geometry Input (Enhanced):**
+- `geometry_input/load_input.py`: Load files, detect geometry types (point/line/polygon)
+- `geometry_input/dissolve.py`: Dissolve multi-part geometries, repair invalid geometries
+- `geometry_input/buffering.py`: Buffer point/line geometries in projected CRS
+- `geometry_input/pipeline.py`: Main entry point - orchestrates complete geometry workflow
 
 **Core Modules:**
-- `core/input_reader.py`: Reads various geospatial formats, reprojects to WGS84
+- `core/input_reader.py`: Legacy input reader (still available for backward compatibility)
 - `core/arcgis_query.py`: Queries FeatureServers with spatial intersection
 - `core/layer_processor.py`: Processes multiple layers in batch
 - `core/map_builder.py`: Creates interactive maps with Jinja2 templates
@@ -141,6 +154,62 @@ This happens in `core/arcgis_query.py` which calls the converter functions.
 - **Polygons**: GeoJSON filled areas with borders
 
 Clustering threshold configurable in `config/layers_config.json` under `settings.cluster_threshold`.
+
+### Enhanced Geometry Processing Pipeline
+The tool supports **points, lines, and polygons** as input geometries with automatic buffering for non-polygon types.
+
+**Workflow:**
+1. **Load**: Read geospatial file, detect CRS and geometry type
+2. **Dissolve**: Merge multi-part geometries into single unified geometry
+3. **Buffer** (points/lines only): Convert to projected CRS → buffer in meters → convert back to EPSG:4326
+4. **Validate**: Repair invalid geometries, ensure output is valid polygon
+5. **Output**: Single-row GeoDataFrame in EPSG:4326
+
+**Geometry Type Support:**
+- **Polygon/MultiPolygon**: Dissolved → single polygon (no buffer applied)
+- **LineString/MultiLineString**: Dissolved → buffered in projected CRS → polygon
+- **Point/MultiPoint**: Dissolved → buffered in projected CRS → polygon
+
+**Buffer Implementation:**
+- **Unit Conversion**: Feet → meters (0.3048 conversion factor)
+- **CRS Selection**: Automatic UTM zone selection based on centroid longitude/latitude
+- **Fallback CRS**: Albers Equal Area (EPSG:5070) for CONUS, Web Mercator (EPSG:3857) globally
+- **Default Buffer**: 500 feet (configurable in `geometry_settings.buffer_distance_feet`)
+- **Final Output**: Always EPSG:4326 regardless of intermediate projections
+
+**Configuration:**
+```json
+{
+  "geometry_settings": {
+    "buffer_distance_feet": 500,
+    "buffer_point_geometries": true,
+    "buffer_line_geometries": true,
+    "auto_repair_invalid": true,
+    "fallback_crs": "EPSG:5070"
+  }
+}
+```
+
+**Backward Compatibility:**
+- Legacy `core/input_reader.py` still available if `geometry_input/` not found
+- Main entry point auto-detects which pipeline to use
+- Old polygon-only workflow continues working unchanged
+
+**Metadata Tracking:**
+Enhanced metadata captures geometry transformations in `metadata.json`:
+```json
+{
+  "input_geometry": {
+    "original_file": "point.gpkg",
+    "original_crs": "EPSG:2272",
+    "geometry_type": "point",
+    "buffer_applied": true,
+    "buffer_distance_feet": 500,
+    "buffer_distance_meters": 152.4,
+    "final_crs": "EPSG:4326"
+  }
+}
+```
 
 ### Jinja2 Templates for UI
 HTML/CSS/JavaScript for UI components are stored as Jinja2 templates, not embedded in Python strings. This:
@@ -290,6 +359,8 @@ The script will:
 6. No code changes needed - configuration drives everything
 
 ### Testing
+
+#### Test with Polygon Input (Backward Compatibility)
 Test with Vermont project area polygon: `C:\Users\lukas\Downloads\pa045_mpb.gpkg`
 
 Expected results vary by location:
@@ -297,6 +368,62 @@ Expected results vary by location:
 - NPDES Sites (clustered if >50 features)
 - Navigable Waterways (lines, if in area)
 - Historic Places (points, if in area)
+
+#### Test with Point Input (NEW)
+Create a test point file or use existing point data:
+```python
+import geopandas as gpd
+from shapely.geometry import Point
+
+# Create test point (Vermont coordinates)
+point = Point(-72.5778, 44.2601)  # Montpelier, VT
+gdf = gpd.GeoDataFrame([{'geometry': point}], crs='EPSG:4326')
+gdf.to_file('test_point.gpkg', driver='GPKG')
+```
+
+Expected behavior:
+1. Point detected automatically
+2. 500-foot buffer applied
+3. Circular search area created
+4. Intersection query performed
+5. Metadata shows `buffer_applied: true`
+
+#### Test with Line Input (NEW)
+Create a test line file or use existing road/stream data:
+```python
+from shapely.geometry import LineString
+
+# Create test line
+line = LineString([(-72.5778, 44.2601), (-72.5678, 44.2701)])
+gdf = gpd.GeoDataFrame([{'geometry': line}], crs='EPSG:4326')
+gdf.to_file('test_line.gpkg', driver='GPKG')
+```
+
+Expected behavior:
+1. Line detected automatically
+2. 500-foot buffer applied on both sides
+3. Elongated search area created
+4. Intersection query performed
+5. Metadata shows `buffer_applied: true`
+
+#### Verify Enhanced Metadata
+Check `outputs/appeit_map_TIMESTAMP/metadata.json` for new fields:
+```json
+{
+  "input_geometry": {
+    "original_file": "test_point.gpkg",
+    "original_crs": "EPSG:4326",
+    "geometry_type": "point",
+    "buffer_applied": true,
+    "buffer_distance_feet": 500,
+    "buffer_distance_meters": 152.4,
+    "buffer_area": {
+      "area_sq_miles_approx": 0.02
+    },
+    "final_crs": "EPSG:4326"
+  }
+}
+```
 
 ### Debugging Failed Queries
 1. Check console output for layer-specific error messages
@@ -528,12 +655,14 @@ config/ → utils/ → core/ → appeit_map_creator.py
 
 1. **Server Feature Limits**: Most FeatureServers return max 1000-2000 features. Tool displays warning but doesn't paginate.
 2. **Internet Required**: No offline mode - requires connection to FeatureServers.
-3. **Single Polygon Input**: Multi-feature files are dissolved into single union polygon.
+3. **Single Unified Geometry**: Multi-feature files are dissolved into single unified geometry (by design).
 4. **No Attribute Filtering**: Downloads all attributes from FeatureServer.
 5. **Client-Side Downloads**: Browser-based conversion for SHP/KMZ may have limitations with very large datasets.
+6. **Buffer Distance Limits**: Very large buffers (>10,000 feet for points, >5,000 feet for lines) may cause long query times or incomplete results.
 
 ## Input Format Support
 
+### File Formats
 Automatically handles:
 - `.shp` (Shapefile with .shx, .dbf, .prj)
 - `.kml` / `.kmz` (Google Earth)
@@ -541,7 +670,21 @@ Automatically handles:
 - `.geojson` (GeoJSON)
 - `.gdb` (FileGeodatabase)
 
-All formats auto-reproject to EPSG:4326 (WGS84) for web mapping compatibility.
+### Geometry Types (NEW)
+Enhanced support for multiple geometry types:
+- **Points** - Single point or MultiPoint features
+- **Lines** - LineString or MultiLineString features
+- **Polygons** - Polygon or MultiPolygon features
+
+**Automatic Processing:**
+- Points and lines are automatically buffered to create search polygons
+- Default buffer: 500 feet (configurable)
+- Polygons are used as-is (no buffer applied)
+- All outputs standardized to EPSG:4326 (WGS84)
+
+**Multi-Feature Handling:**
+- Multiple features automatically dissolved into single unified geometry
+- Ensures consistent single-polygon output for intersection queries
 
 ## Dependencies
 

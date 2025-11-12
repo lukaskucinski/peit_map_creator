@@ -49,6 +49,13 @@
       "area_name_field": "RESNAME"
     }
   ],
+  "geometry_settings": {
+    "buffer_distance_feet": 500,
+    "buffer_point_geometries": true,
+    "buffer_line_geometries": true,
+    "auto_repair_invalid": true,
+    "fallback_crs": "EPSG:5070"
+  },
   "settings": {
     "max_features_per_layer": 1000,
     "enable_clustering": true,

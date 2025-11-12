@@ -258,9 +258,9 @@ def create_web_map(
                     }
 
                 # Create GeoJSON layer with custom click-based popups (matching point feature format)
+                # NOTE: Do NOT add 'name' parameter - environmental layers should not appear in default LayerControl
                 geojson_layer = folium.GeoJson(
                     gdf,
-                    name=layer_name,
                     style_function=style_function,
                     highlight_function=highlight_function
                 )
