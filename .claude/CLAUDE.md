@@ -148,12 +148,14 @@ The tool converts three ESRI geometry types to GeoJSON using `utils/geometry_con
 This happens in `core/arcgis_query.py` which calls the converter functions.
 
 ### Smart Rendering Strategy
-- **Points with <50 features**: Individual Folium markers with Font Awesome icons
-- **Points with ≥50 features**: MarkerCluster for performance
+- **All Point Layers**: MarkerCluster for reliable custom layer control (scales to 60+ layers)
+  - Layers with <50 features use `disableClusteringAtZoom: 15` to show individual markers when zoomed in
+  - Layers with ≥50 features use full clustering for performance
+  - All point markers use Font Awesome icons with custom colors
 - **Lines**: GeoJSON polylines with hover effects
 - **Polygons**: GeoJSON filled areas with borders
 
-Clustering threshold configurable in `config/layers_config.json` under `settings.cluster_threshold`.
+Clustering threshold configurable in `config/layers_config.json` under `settings.cluster_threshold` (default: 50).
 
 ### Enhanced Geometry Processing Pipeline
 The tool supports **points, lines, and polygons** as input geometries with automatic buffering for non-polygon types.
@@ -266,27 +268,83 @@ The tool uses a **custom layer control panel** instead of Folium's default Layer
 4. **Custom JavaScript control**: Layers are stored in `mapLayers` object and controlled via custom checkboxes in the right panel
 5. **State synchronization**: Custom events (`layerVisibilityChanged`) sync layer visibility between right panel and left legend
 
+**Point Layer Architecture - MarkerCluster Only:**
+All point layers use MarkerCluster (not FeatureGroup) to eliminate Folium wrapper layer issues:
+
+- **Universal Clustering**: ALL point layers use `plugins.MarkerCluster()` regardless of feature count
+- **Smart Clustering Behavior**: Layers with <50 features use `disableClusteringAtZoom: 15` to show individual markers when zoomed in
+- **Scalability**: This approach reliably handles dozens of layers across multiple groups
+- **No Wrapper Issues**: MarkerCluster doesn't get wrapped by Folium like FeatureGroup does, ensuring reliable layer identification
+
 **JavaScript layer detection (Hybrid Strategy):**
 Layers are identified using a hybrid approach to ensure reliability:
 
 1. **Input Polygon**: Identified by CSS className `'appeit-input-polygon'` in the GeoJSON style
 2. **GeoJSON Layers (lines/polygons)**: Identified by CSS className `'appeit-layer-{sanitized-name}'`
    - Example: "Navigable Waterways" → `'appeit-layer-navigable-waterways'`
-3. **Point Layers (MarkerCluster/FeatureGroup)**: Identified by custom `_appeitLayerName` property
+3. **Point Layers (MarkerCluster)**: Identified by custom `_appeitLayerName` property
    - Injected via centralized script after map rendering
    - Uses "first unidentified" strategy to tag layers in creation order
-   - Filters out phantom/internal Folium layers
+   - Filters out input polygon wrapper (detects `appeit-input-polygon` className in sub-layers)
 
 **Why hybrid approach?**
 - Folium's `name` parameter is NOT JavaScript-accessible (only used by LayerControl internally)
 - Order-based matching is unreliable due to unpredictable `eachLayer()` iteration order
-- CSS className works for GeoJSON but not for MarkerCluster/FeatureGroup
+- CSS className works for GeoJSON but not for MarkerCluster
 - Custom property injection ensures deterministic identification for point layers
+- Input polygon filtering prevents misidentification of wrapper layers
 
 **Implementation details:**
 - Point layer identifiers injected at 100ms delay to ensure Folium has rendered layers
 - Layer control initialization runs at 200ms delay to wait for identifiers
 - All layers stored in global `mapLayers` object for visibility toggling
+- Defensive `typeof` checks before all `instanceof` operations to prevent TypeError
+
+### Navigation State Management
+The tool implements robust page refresh detection to maintain layer visibility state consistency:
+
+**Challenge:**
+When users navigate away from the map (e.g., to Google Maps) and return via browser back button, checkbox states can desynchronize from actual layer visibility due to browser form state caching (bfcache).
+
+**Solution - Multi-Method Navigation Detection:**
+Three complementary detection methods ensure page refresh on all navigation scenarios:
+
+1. **pageshow Event** (`event.persisted`): Detects bfcache restoration (standard approach)
+2. **Performance Navigation API** (`performance.navigation.type === 2`): Detects back/forward button (works with `file://` protocol)
+3. **Navigation Timing API Level 2** (`navEntries[0].type === 'back_forward'`): Modern browser standard
+
+**Why multiple methods?**
+- Different browsers and protocols (http://, https://, file://) handle navigation events differently
+- Local `file://` protocol doesn't reliably trigger `event.persisted`
+- Performance API provides fallback for edge cases
+- Multiple detection layers ensure 100% coverage
+
+**Implementation:**
+```javascript
+// Method 1: bfcache restoration
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
+// Method 2: Legacy Navigation API (file:// compatible)
+window.addEventListener('load', function() {
+    if (performance.navigation && performance.navigation.type === 2) {
+        window.location.reload();
+    }
+
+    // Method 3: Modern Navigation Timing API
+    if (performance.getEntriesByType) {
+        var navEntries = performance.getEntriesByType('navigation');
+        if (navEntries.length > 0 && navEntries[0].type === 'back_forward') {
+            window.location.reload();
+        }
+    }
+});
+```
+
+**Result:** Page automatically refreshes on browser back/forward navigation, ensuring layer visibility and checkbox states are always synchronized.
 
 ## Configuration System
 
@@ -539,6 +597,7 @@ The generated HTML map includes several interactive features:
 - **Location**: Left side of map
 - **Contents**:
   - About section with project information
+  - PDF and XLSX report download links (open in new tab with `target="_blank"`)
   - Dynamic legend showing active layers with appropriate symbols:
     - Points: Font Awesome icons with colors
     - Lines: SVG line samples with layer colors
@@ -547,6 +606,7 @@ The generated HTML map includes several interactive features:
 - **Toggle button**: 20px wide arrow icon (◄/►) to expand/collapse panel
 - **Synchronization**: Legend automatically updates to show only visible layers (controlled by right panel)
 - **Auto-adjusts**: Left-side Leaflet controls shift 350px when panel is expanded
+- **Navigation Handling**: Report links open in new tabs to prevent navigation away from map
 
 #### Right Panel (Layer Control)
 - **Location**: Right side of map
