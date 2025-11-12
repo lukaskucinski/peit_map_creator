@@ -3,7 +3,7 @@
 <!-- @ts-nocheck - This is a Jinja2 template file, not pure JavaScript -->
 
 <!-- CDN Libraries for Download Functionality -->
-<script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
+<script src="https://unpkg.com/@mapbox/shp-write@0.4.3/shpwrite.js"></script>
 <script src="https://unpkg.com/tokml@0.4.0/tokml.js"></script>
 <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -293,33 +293,74 @@
 
     // Download all layers as a single ZIP file
     async function downloadAll(format) {
-        const zip = new JSZip();
+        try {
+            const zip = new JSZip();
+            let successCount = 0;
+            let failCount = 0;
 
-        for (const layerName of Object.keys(layerData)) {
-            const geojson = await loadGeoJSON(layerName);
-            const fileName = layerName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+            for (const layerName of Object.keys(layerData)) {
+                try {
+                    const geojson = await loadGeoJSON(layerName);
+                    const fileName = layerName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
-            switch(format) {
-                case 'geojson':
-                    zip.file(fileName + '.geojson', JSON.stringify(geojson, null, 2));
-                    break;
-                case 'shp':
-                    // Add shapefile as nested zip
-                    const shpData = shpwrite.zip(geojson);
-                    const shpBlob = await fetch('data:application/zip;base64,' + shpData).then(r => r.blob());
-                    zip.file(fileName + '_shapefile.zip', shpBlob);
-                    break;
-                case 'kmz':
-                    const kml = tokml(geojson);
-                    const kmzBlob = await createKMZBlob(kml);
-                    zip.file(fileName + '.kmz', kmzBlob);
-                    break;
+                    switch(format) {
+                        case 'geojson':
+                            zip.file(fileName + '.geojson', JSON.stringify(geojson, null, 2));
+                            successCount++;
+                            break;
+                        case 'shp':
+                            // Add shapefile as nested zip
+                            try {
+                                // Use outputType option to get Blob directly from @mapbox/shp-write
+                                const options = {
+                                    outputType: 'blob',
+                                    compression: 'DEFLATE'
+                                };
+
+                                const shpBlob = await shpwrite.zip(geojson, options);
+
+                                // Defensive check: verify we got a Blob
+                                if (!(shpBlob instanceof Blob)) {
+                                    const typeName = shpBlob?.constructor?.name || typeof shpBlob;
+                                    console.error('Expected Blob but got:', typeName, 'for layer:', layerName);
+                                    throw new Error(`Unexpected return type from shpwrite.zip(): ${typeName}`);
+                                }
+
+                                zip.file(fileName + '_shapefile.zip', shpBlob);
+                                successCount++;
+                            } catch (error) {
+                                console.error(`Failed to generate shapefile for ${layerName}:`, error);
+                                failCount++;
+                            }
+                            break;
+                        case 'kmz':
+                            const kml = tokml(geojson);
+                            const kmzBlob = await createKMZBlob(kml);
+                            zip.file(fileName + '.kmz', kmzBlob);
+                            successCount++;
+                            break;
+                    }
+                } catch (error) {
+                    console.error(`Failed to process layer ${layerName}:`, error);
+                    failCount++;
+                }
             }
-        }
 
-        // Generate and download ZIP
-        const content = await zip.generateAsync({type: 'blob'});
-        saveAs(content, 'all_layers_' + format + '.zip');
+            if (successCount === 0) {
+                throw new Error('No layers could be processed successfully');
+            }
+
+            // Generate and download ZIP
+            const content = await zip.generateAsync({type: 'blob'});
+            saveAs(content, 'all_layers_' + format + '.zip');
+
+            if (failCount > 0) {
+                alert(`Download complete. ${failCount} layer(s) had errors and were skipped.`);
+            }
+        } catch (error) {
+            console.error('Download all failed:', error);
+            alert('Failed to generate download. Please try downloading layers individually.');
+        }
     }
 
     // Format-specific download functions
@@ -328,17 +369,28 @@
         saveAs(blob, fileName + '.geojson');
     }
 
-    function downloadShapefile(geojson, fileName) {
-        // shp-write returns a base64 encoded zip file containing .shp, .shx, .dbf, .prj
-        const shpData = shpwrite.zip(geojson);
-        const byteCharacters = atob(shpData);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+    async function downloadShapefile(geojson, fileName) {
+        try {
+            // Use outputType option to get Blob directly from @mapbox/shp-write
+            const options = {
+                outputType: 'blob',
+                compression: 'DEFLATE'
+            };
+
+            const blob = await shpwrite.zip(geojson, options);
+
+            // Defensive check: verify we got a Blob
+            if (!(blob instanceof Blob)) {
+                const typeName = blob?.constructor?.name || typeof blob;
+                console.error('Expected Blob but got:', typeName, blob);
+                throw new Error(`Unexpected return type from shpwrite.zip(): ${typeName}`);
+            }
+
+            saveAs(blob, fileName + '_shapefile.zip');
+        } catch (error) {
+            console.error('Shapefile download failed:', error);
+            alert('Failed to generate shapefile. Please try GeoJSON or KMZ format instead.');
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], {type: 'application/zip'});
-        saveAs(blob, fileName + '_shapefile.zip');
     }
 
     async function downloadKMZ(geojson, fileName) {
