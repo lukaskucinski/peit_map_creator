@@ -153,17 +153,30 @@ def create_web_map(
 
         logger.info(f"  - Adding {layer_name} ({len(gdf)} features)...")
 
-        # Check if clustering should be used
+        # Always use MarkerCluster for point layers (ensures reliable toggle behavior)
+        # This eliminates Folium wrapper issues and scales to dozens of layers
         use_clustering = (
             config['settings']['enable_clustering'] and
-            layer_config['geometry_type'] == 'point' and
-            len(gdf) >= config['settings']['cluster_threshold']
+            layer_config['geometry_type'] == 'point'
         )
 
         if use_clustering:
-            logger.info("    (Using marker clustering)")
+            # Configure clustering behavior based on feature count
+            cluster_options = {}
+
+            # For layers with few features, disable clustering at higher zoom levels
+            # so users see individual markers when zoomed in
+            if len(gdf) < config['settings']['cluster_threshold']:
+                cluster_options['disableClusteringAtZoom'] = 15  # Show individual markers at zoom 15+
+                cluster_options['spiderfyOnMaxZoom'] = False
+                cluster_options['showCoverageOnHover'] = False
+                cluster_options['zoomToBoundsOnClick'] = True
+                logger.info(f"    (Using marker clustering - will show individuals at zoom 15+)")
+            else:
+                logger.info(f"    (Using marker clustering - {len(gdf)} features)")
+
             # NOTE: Do NOT add 'name' parameter - prevents interference with custom layer control
-            marker_cluster = plugins.MarkerCluster()
+            marker_cluster = plugins.MarkerCluster(**cluster_options)
 
             for _, row in gdf.iterrows():
                 # Find name column (case-insensitive search for first column containing 'name')
@@ -202,54 +215,12 @@ def create_web_map(
             point_layer_info.append({'name': layer_name, 'type': 'cluster'})
 
             layer_var_names[layer_name] = 'cluster'
-            logger.info(f"    ✓ Added {len(gdf)} clustered markers to map")
+            logger.info(f"    ✓ Added {len(gdf)} markers to map")
 
         else:
-            # Add as GeoJSON layer
-            if layer_config['geometry_type'] == 'point':
-                # Use markers for points
-                # NOTE: Do NOT add 'name' parameter - prevents interference with custom layer control
-                feature_group = folium.FeatureGroup()
-
-                for _, row in gdf.iterrows():
-                    # Find name column (case-insensitive search for first column containing 'name')
-                    name_col = None
-                    name_value = None
-                    for col in gdf.columns:
-                        if col != 'geometry' and 'name' in col.lower():
-                            name_col = col
-                            name_value = row[col]
-                            break
-
-                    # Create popup with all attributes
-                    popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
-                    if name_value:
-                        popup_html += f"<div style='font-size: 14px; font-weight: bold; margin: 5px 0;'>{name_value}</div>"
-                    popup_html += "<hr style='margin: 5px 0;'>"
-
-                    for col in gdf.columns:
-                        if col != 'geometry':
-                            popup_html += f"<b>{col}:</b> {format_popup_value(col, row[col])}<br>"
-
-                    folium.Marker(
-                        location=[row.geometry.y, row.geometry.x],
-                        popup=folium.Popup(popup_html, max_width=400),
-                        icon=folium.Icon(
-                            color=layer_config['icon_color'],
-                            icon=layer_config['icon'],
-                            prefix='fa'
-                        )
-                    ).add_to(feature_group)
-
-                feature_group.add_to(m)
-
-                # Track this layer for centralized identifier injection later
-                point_layer_info.append({'name': layer_name, 'type': 'featuregroup'})
-
-                layer_var_names[layer_name] = 'featuregroup'
-                logger.info(f"    ✓ Added {len(gdf)} point markers to map")
-
-            else:
+            # Add as GeoJSON layer for lines/polygons
+            # NOTE: Points always use MarkerCluster above, so this is only for lines/polygons
+            if layer_config['geometry_type'] != 'point':
                 # Use GeoJSON for lines/polygons
                 # Add className for JavaScript layer identification
                 sanitized_name = layer_name.replace(' ', '-').replace("'", '').lower()
