@@ -162,8 +162,8 @@ def create_web_map(
 
         if use_clustering:
             logger.info("    (Using marker clustering)")
-            # Add name for JavaScript layer identification (doesn't show in LayerControl)
-            marker_cluster = plugins.MarkerCluster(name=layer_name)
+            # NOTE: Do NOT add 'name' parameter - prevents interference with custom layer control
+            marker_cluster = plugins.MarkerCluster()
 
             for _, row in gdf.iterrows():
                 # Find name column (case-insensitive search for first column containing 'name')
@@ -208,8 +208,8 @@ def create_web_map(
             # Add as GeoJSON layer
             if layer_config['geometry_type'] == 'point':
                 # Use markers for points
-                # Add name for JavaScript layer identification (doesn't show in LayerControl)
-                feature_group = folium.FeatureGroup(name=layer_name)
+                # NOTE: Do NOT add 'name' parameter - prevents interference with custom layer control
+                feature_group = folium.FeatureGroup()
 
                 for _, row in gdf.iterrows():
                     # Find name column (case-insensitive search for first column containing 'name')
