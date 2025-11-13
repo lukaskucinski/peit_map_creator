@@ -385,13 +385,14 @@ Configuration file: `config/layers_config.json`
 - `description`: Human-readable description (required)
 - `geometry_type`: Feature geometry type (required: "point", "line", or "polygon")
 - `group`: Category for layer organization (required)
-- `area_name_field`: Attribute field containing primary name (optional but recommended)
+- `area_name_field`: Attribute field containing primary name (optional but recommended, used for popup headers and reports)
 
 **Notes**:
 - `icon` and `icon_color` are only used for point layers
 - `fill_color` and `fill_opacity` are only used for polygon layers
 - If `fill_color` is not specified for polygons, the `color` value will be used for both border and fill
 - Fill opacity of 0.0 = fully transparent, 1.0 = fully opaque
+- `area_name_field` is used for popup headers in the map; if not specified, falls back to first field containing 'name'
 
 **Layer Groups:**
 Layers are organized into groups for the custom layer control panel:
@@ -680,12 +681,16 @@ The generated HTML map includes several interactive features:
 ### Feature Interactions
 - **Popups**: Click features to view all attributes
   - Layer name displayed in italics at top
-  - Name field (if present) shown in bold below layer name
+  - Name field shown in bold below layer name (uses `area_name_field` from config, falls back to first field containing 'name')
   - URLs are automatically converted to clickable links
   - Long URLs are truncated for display
 - **Clustering**: Point layers with ≥50 features automatically cluster
 - **Hover Effects**: Lines and polygons highlight on mouseover
 - **Tooltips**: Non-clustered features show tooltips on hover
+- **Layer Z-Index**: Input polygon uses custom pane with z-index 350 (lower than environmental layers at 400)
+  - Environmental layers render on top for click priority
+  - Users can click environmental polygons directly without toggling off input polygon
+  - Input polygon remains visible but doesn't block clicks to overlapping features
 
 ### Download Menu Enhancements
 - Click header or whitespace to close menu (in addition to clicking outside)

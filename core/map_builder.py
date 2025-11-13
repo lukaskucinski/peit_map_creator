@@ -113,9 +113,10 @@ def create_web_map(
     folium.TileLayer('CartoDB dark_matter', name='Dark Theme', control=False).add_to(m)
     folium.TileLayer('Esri WorldImagery', name='Satellite Imagery', control=False).add_to(m)
 
-    # Add input polygon
+    # Add input polygon with lower z-index to allow clicking through to environmental layers
     logger.info("  - Adding input polygon...")
     layer_name = input_filename if input_filename else 'Input Area'
+
     folium.GeoJson(
         polygon_gdf,
         name=layer_name,
@@ -124,7 +125,8 @@ def create_web_map(
             'color': '#FF8C00',
             'weight': 3,
             'fillOpacity': 0.2,
-            'className': 'appeit-input-polygon'  # Unique identifier for JavaScript detection
+            'className': 'appeit-input-polygon',  # Unique identifier for JavaScript detection
+            'interactive': False  # Make non-interactive so clicks pass through to layers below
         },
         tooltip=layer_name
     ).add_to(m)
@@ -179,14 +181,19 @@ def create_web_map(
             marker_cluster = plugins.MarkerCluster(**cluster_options)
 
             for _, row in gdf.iterrows():
-                # Find name column (case-insensitive search for first column containing 'name')
-                name_col = None
+                # Get name value from configured area_name_field, fallback to searching for 'name'
                 name_value = None
-                for col in gdf.columns:
-                    if col != 'geometry' and 'name' in col.lower():
-                        name_col = col
-                        name_value = row[col]
-                        break
+                area_name_field = layer_config.get('area_name_field')
+
+                if area_name_field and area_name_field in gdf.columns:
+                    # Use configured area_name_field
+                    name_value = row[area_name_field]
+                else:
+                    # Fallback: search for first column containing 'name' (case-insensitive)
+                    for col in gdf.columns:
+                        if col != 'geometry' and 'name' in col.lower():
+                            name_value = row[col]
+                            break
 
                 # Create popup with all attributes
                 popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
@@ -262,12 +269,19 @@ def create_web_map(
                 for feature in geojson_layer.data['features']:
                     props = feature['properties']
 
-                    # Find name field (case-insensitive)
+                    # Get name value from configured area_name_field, fallback to searching for 'name'
                     name_value = None
-                    for key in props.keys():
-                        if 'name' in key.lower():
-                            name_value = props[key]
-                            break
+                    area_name_field = layer_config.get('area_name_field')
+
+                    if area_name_field and area_name_field in props:
+                        # Use configured area_name_field
+                        name_value = props[area_name_field]
+                    else:
+                        # Fallback: search for first field containing 'name' (case-insensitive)
+                        for key in props.keys():
+                            if 'name' in key.lower():
+                                name_value = props[key]
+                                break
 
                     # Build popup HTML (same format as point features)
                     popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
