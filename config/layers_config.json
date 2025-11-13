@@ -71,7 +71,19 @@
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
       "area_name_field": "Unit_Nm"
-    }    
+    },
+    {
+      "name": "USACE Land",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/USACE_Land_Permitting_Layer/FeatureServer",
+      "layer_id": 0,
+      "color": "#FCC5CE",
+      "fill_color": "#FCC5CE",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the USACE lands which was obtained from the USGS PAD 3.0 data. The USACE land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    }
   ],
   "geometry_settings": {
     "buffer_distance_feet": 500,
