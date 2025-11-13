@@ -233,28 +233,29 @@ def create_web_map(
                 sanitized_name = layer_name.replace(' ', '-').replace("'", '').lower()
                 layer_class = f'appeit-layer-{sanitized_name}'
 
-                def style_function(feature):
+                # Use default parameters to capture values (fixes closure bug with multiple polygon layers)
+                def style_function(feature, config=layer_config, cls=layer_class):
                     style = {
-                        'color': layer_config['color'],
+                        'color': config['color'],
                         'weight': 3,
                         'opacity': 0.8,
-                        'className': layer_class  # Unique identifier for JavaScript
+                        'className': cls  # Unique identifier for JavaScript
                     }
                     # Add fill properties for polygon layers if configured
-                    if layer_config['geometry_type'] == 'polygon':
-                        style['fillColor'] = layer_config.get('fill_color', layer_config['color'])
-                        style['fillOpacity'] = layer_config.get('fill_opacity', 0.6)
+                    if config['geometry_type'] == 'polygon':
+                        style['fillColor'] = config.get('fill_color', config['color'])
+                        style['fillOpacity'] = config.get('fill_opacity', 0.6)
                     return style
 
-                def highlight_function(feature):
+                def highlight_function(feature, config=layer_config):
                     highlight = {
-                        'color': layer_config['color'],
+                        'color': config['color'],
                         'weight': 5,
                         'opacity': 1.0
                     }
                     # Increase fill opacity on hover for polygon layers
-                    if layer_config['geometry_type'] == 'polygon':
-                        highlight['fillOpacity'] = min(layer_config.get('fill_opacity', 0.6) + 0.2, 1.0)
+                    if config['geometry_type'] == 'polygon':
+                        highlight['fillOpacity'] = min(config.get('fill_opacity', 0.6) + 0.2, 1.0)
                     return highlight
 
                 # Create GeoJSON layer with custom click-based popups (matching point feature format)

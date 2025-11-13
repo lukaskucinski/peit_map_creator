@@ -59,7 +59,19 @@
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
       "area_name_field": "Unit_Nm"
-    }
+    },
+    {
+      "name": "USBR Land",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/USBR_Land_for_Permitting/FeatureServer",
+      "layer_id": 0,
+      "color": "#A87000",
+      "fill_color": "#A87000",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the USBR lands which was obtained from the USGS PAD 3.0 data. The USBR land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    }    
   ],
   "geometry_settings": {
     "buffer_distance_feet": 500,
