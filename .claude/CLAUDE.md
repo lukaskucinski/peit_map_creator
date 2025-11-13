@@ -236,6 +236,16 @@ The tool generates professional PDF reports using fpdf2 (pure Python PDF library
 - **Text Truncation**: Long area names truncated with ellipsis for uniform row heights
 - **Landscape Orientation**: Letter size in landscape mode for wider tables
 - **Optimized Margins**: Reduced vertical margins to fit 3-4 more rows per page
+- **Unicode Font Support**: Uses DejaVu Sans TrueType fonts to support full Unicode character range including en-dashes (–), em-dashes (—), smart quotes (""), and international characters
+
+**Unicode Character Support:**
+The PDF generator uses DejaVu Sans fonts (bundled in `fonts/` directory) to support:
+- En-dash (–, U+2013) and em-dash (—, U+2014)
+- Smart quotes ("", U+201C/201D) and apostrophes (', U+2019)
+- Accented characters (é, ñ, ü, etc.)
+- Full Unicode range for 200+ languages
+
+This ensures official names from ArcGIS FeatureServers (like Federal land names) are preserved exactly as they appear in source data.
 
 **Resource Area Mapping:**
 The PDF uses a category-to-resource-area mapping system:
@@ -797,8 +807,15 @@ Enhanced support for multiple geometry types:
 - `matplotlib>=3.8.0` - Plotting support
 - `branca>=0.7.0` - HTML/JavaScript templating for Folium
 - `jinja2>=3.1.0` - Template rendering for UI components
-- `fpdf2>=2.8.0` - PDF report generation
+- `fpdf2>=2.8.0` - PDF report generation with Unicode support
 - `openpyxl>=3.1.0` - Excel report generation
+
+### Fonts (Bundled)
+- **DejaVu Sans family** (Regular, Bold, Oblique, Bold-Oblique)
+- Location: `fonts/` directory (~1.5 MB total)
+- License: Free license (redistributable)
+- Used for: PDF reports with full Unicode character support
+- Supports: En-dashes, em-dashes, smart quotes, accented characters, 200+ languages
 
 ### Client-Side JavaScript Libraries (CDN)
 The HTML map includes these external libraries:

@@ -40,15 +40,43 @@ class ReportPDF(FPDF):
         self.set_author("APPEIT Map Creator")
         self.set_subject("Environmental Layer Intersection Analysis")
 
+        # Load Unicode fonts for special character support
+        self._load_unicode_fonts()
+
         # Store total pages for footer (will be set before output)
         self.total_pages_excluding_cover = None
+
+    def _load_unicode_fonts(self):
+        """Load DejaVu Sans Unicode fonts for all styles to support special characters."""
+        from pathlib import Path
+
+        # Get project root directory
+        project_root = Path(__file__).parent.parent
+        fonts_dir = project_root / 'fonts'
+
+        # Define font paths for all styles
+        font_files = {
+            '': 'DejaVuSans.ttf',              # Regular
+            'B': 'DejaVuSans-Bold.ttf',         # Bold
+            'I': 'DejaVuSans-Oblique.ttf',      # Italic
+            'BI': 'DejaVuSans-BoldOblique.ttf'  # Bold Italic
+        }
+
+        # Load each font style
+        for style, filename in font_files.items():
+            font_path = fonts_dir / filename
+            if font_path.exists():
+                self.add_font(family='DejaVuSans', style=style, fname=str(font_path))
+                logger.debug(f"Loaded font: DejaVuSans {style or 'Regular'} from {filename}")
+            else:
+                logger.warning(f"Font file not found: {font_path} - PDF may fail with Unicode characters")
 
     def footer(self):
         """Add gray page numbers to footer (skip cover page)."""
         # Skip footer on cover page (page 1)
         if self.page_no() > 1:
             self.set_y(-15)
-            self.set_font("helvetica", size=8)
+            self.set_font("DejaVuSans", size=8)
             self.set_text_color(128, 128, 128)  # Gray
             # Format: "Page 2 of 24" (excluding cover page from both counts)
             page_num = self.page_no() - 1
@@ -130,7 +158,7 @@ def create_cover_page(
     pdf.add_page()
 
     # Title (18pt, bold, centered)
-    pdf.set_font("helvetica", style="B", size=18)
+    pdf.set_font("DejaVuSans", style="B", size=18)
     pdf.ln(50)  # Space from top
     pdf.cell(
         0, 10,
@@ -150,7 +178,7 @@ def create_cover_page(
     ]
 
     for label, value in metadata_fields:
-        pdf.set_font("helvetica", size=10)
+        pdf.set_font("DejaVuSans", size=10)
         # Combine label and value, center the entire line
         combined_text = f"{label} {value}"
         pdf.cell(0, 6, combined_text, align="C", new_x="LMARGIN", new_y="NEXT")
@@ -171,7 +199,7 @@ def render_table_header(
         row_height: Height of header row
     """
     # Header styling
-    pdf.set_font("helvetica", style="B", size=10)
+    pdf.set_font("DejaVuSans", style="B", size=10)
     pdf.set_fill_color(0, 0, 0)  # Black background
     pdf.set_text_color(255, 255, 255)  # White text
 
@@ -226,7 +254,7 @@ def render_table_row(
     y_start = pdf.get_y()
 
     # Font for regular cells
-    pdf.set_font("helvetica", style="B", size=10)
+    pdf.set_font("DejaVuSans", style="B", size=10)
 
     # Helper function to truncate text if it exceeds column width
     def truncate_text(text, width):
@@ -311,7 +339,7 @@ def create_body_table(
     page_bottom_margin = 15  # Space to leave at bottom for footer (reduced for more rows)
 
     # Set body font
-    pdf.set_font("helvetica", style="B", size=10)
+    pdf.set_font("DejaVuSans", style="B", size=10)
 
     # Render initial header
     render_table_header(pdf, col_widths, row_height)
@@ -351,13 +379,13 @@ def create_bmp_end_page(
     pdf.add_page()
 
     # Section title (14pt, bold, centered)
-    pdf.set_font("helvetica", style="B", size=14)
+    pdf.set_font("DejaVuSans", style="B", size=14)
     pdf.ln(10)
     pdf.cell(0, 10, "Best Management Practices (BMP) Resource Links", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(5)
 
     # Master BMP URL (centered, clickable)
-    pdf.set_font("helvetica", style="U", size=10)
+    pdf.set_font("DejaVuSans", style="U", size=10)
     pdf.set_text_color(0, 0, 255)  # Blue
 
     # Center the link
