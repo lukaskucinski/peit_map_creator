@@ -83,6 +83,42 @@
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
       "area_name_field": "Unit_Nm"
+    },
+    {
+      "name": "BIA AIAN National LAR",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer",
+      "layer_id": 0,
+      "color": "#F5CA7A",
+      "fill_color": "#F5CA7A",
+      "fill_opacity": 0.5,
+      "description": "BIA American Indian and Alaska Native (AIAN) National Land Area Representation. Data was downloaded from the BIA.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "LARNAME"
+    },
+    {
+      "name": "BIA AIAN LAR Supplemental",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer",
+      "layer_id": 1,
+      "color": "#D4A574",
+      "fill_color": "#D4A574",
+      "fill_opacity": 0.5,
+      "description": "BIA AIAN Land Area Representation - Supplemental areas. Data was downloaded from the BIA.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "LARNAME"
+    },
+    {
+      "name": "BIA AIAN Tribal Statistical Areas",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer",
+      "layer_id": 2,
+      "color": "#C49563",
+      "fill_color": "#C49563",
+      "fill_opacity": 0.5,
+      "description": "BIA AIAN Tribal Statistical Areas. Data was downloaded from the BIA.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "LARNAME"
     }
   ],
   "geometry_settings": {
