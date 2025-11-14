@@ -112,7 +112,7 @@
       "description": "BIA AIAN Land Area Representation - Supplemental areas. Data was downloaded from the BIA.",
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
-      "area_name_field": "LARNAME"
+      "area_name_field": "LANDAREA"
     },
     {
       "name": "BIA AIAN Tribal Statistical Areas",
