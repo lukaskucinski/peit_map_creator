@@ -137,6 +137,28 @@ def create_web_map(
     # Track point layers for centralized identifier injection
     point_layer_info = []
 
+    # Create pattern objects for layers with fill_pattern configuration
+    # Patterns must be created before the layer loop and added to map
+    pattern_objects = {}
+    for layer_config in config['layers']:
+        if 'fill_pattern' in layer_config and layer_config['geometry_type'] == 'polygon':
+            pattern_cfg = layer_config['fill_pattern']
+            layer_name = layer_config['name']
+
+            if pattern_cfg.get('type') == 'stripe':
+                pattern = plugins.StripePattern(
+                    angle=pattern_cfg.get('angle', -45),
+                    weight=pattern_cfg.get('weight', 3),
+                    space_weight=pattern_cfg.get('space_weight', 3),
+                    color=layer_config['color'],
+                    space_color=pattern_cfg.get('space_color', '#ffffff'),
+                    opacity=pattern_cfg.get('opacity', 0.75),
+                    space_opacity=pattern_cfg.get('space_opacity', 0.0)
+                )
+                pattern.add_to(m)
+                pattern_objects[layer_name] = pattern
+                logger.debug(f"Created stripe pattern for {layer_name}: angle={pattern_cfg.get('angle', -45)}°")
+
     # Add each layer with appropriate styling
     # Note: Layers are added to map but will be controlled via custom layer control panel
     for layer_config in config['layers']:
@@ -234,17 +256,24 @@ def create_web_map(
                 layer_class = f'appeit-layer-{sanitized_name}'
 
                 # Use default parameters to capture values (fixes closure bug with multiple polygon layers)
-                def style_function(feature, config=layer_config, cls=layer_class):
+                def style_function(feature, config=layer_config, cls=layer_class, patterns=pattern_objects, lname=layer_name):
                     style = {
                         'color': config['color'],
                         'weight': 3,
                         'opacity': 0.8,
                         'className': cls  # Unique identifier for JavaScript
                     }
-                    # Add fill properties for polygon layers if configured
+                    # Add fill properties for polygon layers
                     if config['geometry_type'] == 'polygon':
-                        style['fillColor'] = config.get('fill_color', config['color'])
-                        style['fillOpacity'] = config.get('fill_opacity', 0.6)
+                        # Check if pattern is configured and available
+                        if 'fill_pattern' in config and lname in patterns:
+                            # Use pattern fill
+                            style['fillPattern'] = patterns[lname]
+                            style['fillOpacity'] = 1.0  # Must be 1.0 for patterns to render
+                        else:
+                            # Use solid fill
+                            style['fillColor'] = config.get('fill_color', config['color'])
+                            style['fillOpacity'] = config.get('fill_opacity', 0.6)
                     return style
 
                 def highlight_function(feature, config=layer_config):
@@ -381,18 +410,45 @@ def create_web_map(
             </div>
             """
         elif geometry_type == 'polygon':
-            # Polygon layer: show filled rectangle
+            # Polygon layer: show filled rectangle (solid or hatched)
             border_color = layer_config['color']
-            fill_color = layer_config.get('fill_color', border_color)
-            fill_opacity = layer_config.get('fill_opacity', 0.6)
-            legend_items_html += f"""
-            <div class="legend-item" data-layer-name="{layer_name}">
-                <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                    <rect width="20" height="15" style="fill:{fill_color}; stroke:{border_color}; stroke-width:1; opacity:{fill_opacity};" />
-                </svg>
-                <span>{layer_name} ({feature_count})</span>
-            </div>
-            """
+
+            # Check if layer uses hatched pattern
+            if 'fill_pattern' in layer_config and layer_config['fill_pattern'].get('type') == 'stripe':
+                # Generate hatched pattern legend
+                pattern_cfg = layer_config['fill_pattern']
+                pattern_angle = pattern_cfg.get('angle', -45)
+                pattern_color = border_color
+                pattern_opacity = pattern_cfg.get('opacity', 0.75)
+
+                # Create unique pattern ID for this layer
+                pattern_id = f"legend-hatch-{layer_name.replace(' ', '-').lower()}"
+
+                legend_items_html += f"""
+                <div class="legend-item" data-layer-name="{layer_name}">
+                    <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                        <defs>
+                            <pattern id="{pattern_id}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate({pattern_angle})">
+                                <line x1="0" y1="0" x2="0" y2="4" stroke="{pattern_color}" stroke-width="1.5" opacity="{pattern_opacity}"/>
+                            </pattern>
+                        </defs>
+                        <rect width="20" height="15" style="fill:url(#{pattern_id}); stroke:{border_color}; stroke-width:1;" />
+                    </svg>
+                    <span>{layer_name} ({feature_count})</span>
+                </div>
+                """
+            else:
+                # Solid fill
+                fill_color = layer_config.get('fill_color', border_color)
+                fill_opacity = layer_config.get('fill_opacity', 0.6)
+                legend_items_html += f"""
+                <div class="legend-item" data-layer-name="{layer_name}">
+                    <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                        <rect width="20" height="15" style="fill:{fill_color}; stroke:{border_color}; stroke-width:1; opacity:{fill_opacity};" />
+                    </svg>
+                    <span>{layer_name} ({feature_count})</span>
+                </div>
+                """
 
     # Render side panel template
     side_panel_template = env.get_template('side_panel.html')

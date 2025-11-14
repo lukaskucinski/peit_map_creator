@@ -399,10 +399,56 @@ Configuration file: `config/layers_config.json`
 
 **Notes**:
 - `icon` and `icon_color` are only used for point layers
-- `fill_color` and `fill_opacity` are only used for polygon layers
+- `fill_color` and `fill_opacity` are only used for polygon layers (when not using patterns)
 - If `fill_color` is not specified for polygons, the `color` value will be used for both border and fill
 - Fill opacity of 0.0 = fully transparent, 1.0 = fully opaque
 - `area_name_field` is used for popup headers in the map; if not specified, falls back to first field containing 'name'
+
+### Pattern Fill Support for Polygons
+
+Polygon layers can use **hatched/striped pattern fills** instead of solid colors to match ArcGIS Pro symbology. This is useful for distinguishing overlapping polygon layers or matching official cartographic standards.
+
+**Pattern Configuration:**
+Add optional `fill_pattern` object to polygon layer configuration:
+
+```json
+{
+  "name": "BIA AIAN LAR Supplemental",
+  "color": "#CDAA66",
+  "fill_pattern": {
+    "type": "stripe",
+    "angle": -45,
+    "weight": 3,
+    "space_weight": 3,
+    "opacity": 0.75,
+    "space_opacity": 0.0
+  },
+  "geometry_type": "polygon"
+}
+```
+
+**Pattern Parameters:**
+- `type`: Pattern type (`"stripe"` currently supported)
+- `angle`: Stripe rotation angle in degrees (default: -45)
+  - `-45`: Diagonal bottom-left to top-right (standard hatching)
+  - `0`: Horizontal stripes
+  - `90`: Vertical stripes
+- `weight`: Stripe line width in pixels (default: 3)
+- `space_weight`: Spacing between stripes in pixels (default: 3)
+- `opacity`: Stripe opacity 0.0-1.0 (default: 0.75)
+- `space_opacity`: Background opacity 0.0-1.0 (default: 0.0 for transparent)
+- `space_color`: Background color hex (default: "#ffffff", optional)
+
+**Implementation Details:**
+- Uses Folium's built-in `StripePattern` plugin (no external dependencies)
+- Patterns are rendered as SVG for sharp, scalable display
+- Legend automatically shows hatched symbols for patterned layers
+- Solid fill layers and patterned layers can coexist in same map
+- When `fill_pattern` is present, `fill_color` and `fill_opacity` are ignored
+
+**Backward Compatibility:**
+- Polygon layers without `fill_pattern` continue using solid fills
+- Existing configurations remain unchanged
 
 **Layer Groups:**
 Layers are organized into groups for the custom layer control panel:
