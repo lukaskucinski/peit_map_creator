@@ -399,10 +399,56 @@ Configuration file: `config/layers_config.json`
 
 **Notes**:
 - `icon` and `icon_color` are only used for point layers
-- `fill_color` and `fill_opacity` are only used for polygon layers
+- `fill_color` and `fill_opacity` are only used for polygon layers (when not using patterns)
 - If `fill_color` is not specified for polygons, the `color` value will be used for both border and fill
 - Fill opacity of 0.0 = fully transparent, 1.0 = fully opaque
 - `area_name_field` is used for popup headers in the map; if not specified, falls back to first field containing 'name'
+
+### Pattern Fill Support for Polygons
+
+Polygon layers can use **hatched/striped pattern fills** instead of solid colors to match ArcGIS Pro symbology. This is useful for distinguishing overlapping polygon layers or matching official cartographic standards.
+
+**Pattern Configuration:**
+Add optional `fill_pattern` object to polygon layer configuration:
+
+```json
+{
+  "name": "BIA AIAN LAR Supplemental",
+  "color": "#CDAA66",
+  "fill_pattern": {
+    "type": "stripe",
+    "angle": -45,
+    "weight": 3,
+    "space_weight": 3,
+    "opacity": 0.75,
+    "space_opacity": 0.0
+  },
+  "geometry_type": "polygon"
+}
+```
+
+**Pattern Parameters:**
+- `type`: Pattern type (`"stripe"` currently supported)
+- `angle`: Stripe rotation angle in degrees (default: -45)
+  - `-45`: Diagonal bottom-left to top-right (standard hatching)
+  - `0`: Horizontal stripes
+  - `90`: Vertical stripes
+- `weight`: Stripe line width in pixels (default: 3)
+- `space_weight`: Spacing between stripes in pixels (default: 3)
+- `opacity`: Stripe opacity 0.0-1.0 (default: 0.75)
+- `space_opacity`: Background opacity 0.0-1.0 (default: 0.0 for transparent)
+- `space_color`: Background color hex (default: "#ffffff", optional)
+
+**Implementation Details:**
+- Uses Folium's built-in `StripePattern` plugin (no external dependencies)
+- Patterns are rendered as SVG for sharp, scalable display
+- Legend automatically shows hatched symbols for patterned layers
+- Solid fill layers and patterned layers can coexist in same map
+- When `fill_pattern` is present, `fill_color` and `fill_opacity` are ignored
+
+**Backward Compatibility:**
+- Polygon layers without `fill_pattern` continue using solid fills
+- Existing configurations remain unchanged
 
 **Layer Groups:**
 Layers are organized into groups for the custom layer control panel:
@@ -448,6 +494,53 @@ The script will:
 4. Choose an appropriate group name (e.g., "EPA Programs", "Water Resources", "Infrastructure")
 5. Add to `config/layers_config.json` layers array with `group` field
 6. No code changes needed - configuration drives everything
+
+### Working with Multi-Layer FeatureServers
+
+Some ArcGIS FeatureServers contain **multiple sublayers** at different layer IDs (0, 1, 2, etc.). Each sublayer may have:
+- Different geographic extents
+- Different feature types
+- Different attribute schemas
+
+**Example:** BIA AIAN LAR Layers FeatureServer
+- **Layer 0**: National LAR (CONUS-wide extent)
+- **Layer 1**: LAR Supplemental (Western/Central US only)
+- **Layer 2**: Tribal Statistical Areas (Oklahoma/Texas region only)
+
+**How to handle:**
+1. **Identify sublayers**: Visit the FeatureServer base URL in browser to see all available layers
+2. **Create separate entries**: Add one configuration entry per sublayer to `layers_config.json`
+3. **Same URL, different layer_id**: All entries use the same base URL but different `layer_id` values
+4. **Different names and colors**: Give each sublayer a distinct name and color for UI clarity
+
+**Example configuration:**
+```json
+{
+  "name": "BIA AIAN National LAR",
+  "url": "https://services3.arcgis.com/.../BIA_AIAN_LAR_Layers/FeatureServer",
+  "layer_id": 0,
+  "color": "#F5CA7A",
+  ...
+},
+{
+  "name": "BIA AIAN LAR Supplemental",
+  "url": "https://services3.arcgis.com/.../BIA_AIAN_LAR_Layers/FeatureServer",
+  "layer_id": 1,
+  "color": "#D4A574",
+  ...
+}
+```
+
+**Query behavior:**
+- Each sublayer is queried independently using `{url}/{layer_id}/query` endpoint
+- Sublayers outside the input polygon's geographic extent will return "No features found"
+- Only sublayers with intersecting features appear in the final map
+- This is the correct and recommended ArcGIS REST API pattern
+
+**Important notes:**
+- Don't append `/0`, `/1`, `/2` to the URL in configuration - use `layer_id` field instead
+- Geographic extent differences are normal - not all sublayers cover the same areas
+- The tool automatically handles layers with no results
 
 ### Testing
 
