@@ -181,12 +181,7 @@
             "fill_color": "#FFFFDE",
             "fill_opacity": 0.6
           }
-        ],
-        "default_category": {
-          "label": "Other",
-          "fill_color": "#CCCCCC",
-          "fill_opacity": 0.4
-        }
+        ]
       }
     }
   ],

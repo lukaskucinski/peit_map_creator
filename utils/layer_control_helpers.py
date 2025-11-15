@@ -91,24 +91,63 @@ def generate_layer_control_data(groups, layer_results, config):
             # Add symbology category symbols if unique value symbology is used
             if 'symbology' in layer and layer['symbology'].get('type') == 'unique_values':
                 symbology = layer['symbology']
+                field = symbology['field']
+                layer_name = layer['name']
                 category_symbols = []
 
-                # Get unique category symbols from symbology configuration
-                for category in symbology.get('categories', []):
-                    category_symbols.append({
-                        'fill_color': category.get('fill_color', layer.get('color', '#3388ff')),
-                        'fill_opacity': category.get('fill_opacity', 0.6),
-                        'border_color': category.get('border_color', layer.get('color', '#333333'))
-                    })
+                # Get GeoDataFrame for this layer to count features per category
+                gdf = layer_results.get(layer_name)
 
-                # Add default category if present
-                if 'default_category' in symbology:
-                    default = symbology['default_category']
-                    category_symbols.append({
-                        'fill_color': default.get('fill_color', '#CCCCCC'),
-                        'fill_opacity': default.get('fill_opacity', 0.4),
-                        'border_color': default.get('border_color', layer.get('color', '#333333'))
-                    })
+                if gdf is not None and not gdf.empty:
+                    # Count features per category
+                    for category in symbology.get('categories', []):
+                        label = category['label']
+                        values = category['values']
+
+                        # Count features matching this category (case-insensitive)
+                        count = 0
+                        for _, row in gdf.iterrows():
+                            attr_value = row.get(field)
+                            if attr_value is not None:
+                                if any(str(attr_value).upper() == str(v).upper() for v in values):
+                                    count += 1
+
+                        category_symbols.append({
+                            'label': label,
+                            'fill_color': category.get('fill_color', layer.get('color', '#3388ff')),
+                            'fill_opacity': category.get('fill_opacity', 0.6),
+                            'border_color': category.get('border_color', layer.get('color', '#333333')),
+                            'count': count
+                        })
+
+                    # Add default category if present
+                    if 'default_category' in symbology:
+                        default = symbology['default_category']
+                        label = default['label']
+
+                        # Count unmapped features
+                        count = 0
+                        for _, row in gdf.iterrows():
+                            attr_value = row.get(field)
+                            matched = False
+
+                            if attr_value is not None:
+                                for category in symbology.get('categories', []):
+                                    if any(str(attr_value).upper() == str(v).upper() for v in category['values']):
+                                        matched = True
+                                        break
+
+                            if not matched:
+                                count += 1
+
+                        if count > 0:  # Only add if there are unmapped features
+                            category_symbols.append({
+                                'label': label,
+                                'fill_color': default.get('fill_color', '#CCCCCC'),
+                                'fill_opacity': default.get('fill_opacity', 0.4),
+                                'border_color': default.get('border_color', layer.get('color', '#333333')),
+                                'count': count
+                            })
 
                 layer_info['category_symbols'] = category_symbols
 

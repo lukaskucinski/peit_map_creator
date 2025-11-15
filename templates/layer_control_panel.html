@@ -247,12 +247,26 @@
         border: 2px solid;
     }
 
-    /* Category symbols for unique value symbology */
-    .category-symbols {
-        display: inline-flex;
+    /* Parent/child layer items for unique value symbology */
+    .layer-item-parent {
+        font-weight: 500;
+    }
+
+    .layer-item-child {
+        padding: 6px 8px 6px 32px;
+        font-size: 12px;
+        display: flex;
         align-items: center;
-        margin-right: 6px;
-        vertical-align: middle;
+        border-bottom: 1px solid #eee;
+        background: #fafafa;
+    }
+
+    .layer-item-child:last-child {
+        border-bottom: 1px solid #ddd;
+    }
+
+    .layer-item-child svg {
+        flex-shrink: 0;
     }
 
     /* No results message */
@@ -336,6 +350,34 @@
 
                 <div class="group-layers">
                     {% for layer in group.layers %}
+                    {% if layer.category_symbols %}
+                    <!-- Layer with unique value symbology - show parent + categories -->
+                    <div class="layer-item layer-item-parent"
+                         data-layer-name="{{ layer.name }}"
+                         data-description="{{ layer.description }}"
+                         data-group="{{ layer.group }}">
+                        <span class="drag-handle">⋮⋮</span>
+                        <input type="checkbox"
+                               id="layer-{{ layer.name|replace(' ', '-')|lower }}"
+                               checked
+                               onchange="toggleLayer('{{ layer.name }}', this.checked)">
+
+                        <label onclick="document.getElementById('layer-{{ layer.name|replace(' ', '-')|lower }}').click();">
+                            {{ layer.name }} <span class="layer-count">({{ layer.feature_count }} total)</span>
+                        </label>
+                    </div>
+                    <!-- Category entries (vertical layout) -->
+                    {% for symbol in layer.category_symbols %}
+                    <div class="layer-item-child" data-layer-name="{{ layer.name }}">
+                        <svg width="14" height="14" style="margin-right: 6px; vertical-align: middle;">
+                            <rect width="14" height="14"
+                                  style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
+                        </svg>
+                        <span>{{ symbol.label }} <span class="layer-count">({{ symbol.count }})</span></span>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <!-- Standard layer item (no unique value symbology) -->
                     <div class="layer-item"
                          data-layer-name="{{ layer.name }}"
                          data-description="{{ layer.description }}"
@@ -346,17 +388,7 @@
                                checked
                                onchange="toggleLayer('{{ layer.name }}', this.checked)">
 
-                        {% if layer.category_symbols %}
-                        <!-- Multiple category symbols for unique value symbology -->
-                        <div class="category-symbols">
-                            {% for symbol in layer.category_symbols %}
-                            <svg width="12" height="12" style="margin-right: 2px; vertical-align: middle;">
-                                <rect width="12" height="12"
-                                      style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
-                            </svg>
-                            {% endfor %}
-                        </div>
-                        {% elif layer.geometry_type == 'point' %}
+                        {% if layer.geometry_type == 'point' %}
                         <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.color }}"></i>
                         {% elif layer.geometry_type == 'line' %}
                         <span class="line-symbol" style="background-color: {{ layer.color }}"></span>
@@ -368,6 +400,7 @@
                             {{ layer.name }} <span class="layer-count">({{ layer.feature_count }})</span>
                         </label>
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
             </div>
