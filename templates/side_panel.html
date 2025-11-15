@@ -151,39 +151,15 @@
     }
 
     /* Unique value symbology legend styles */
-    .legend-parent {
-        cursor: pointer;
+    .legend-header {
         font-weight: bold;
+        padding: 8px 0 4px 0;
+        border-bottom: none;
     }
 
-    .legend-parent:hover {
-        background: #f0f0f0;
-    }
-
-    .legend-expand-icon {
-        display: inline-block;
-        width: 16px;
-        transition: transform 0.2s;
-        margin-right: 4px;
-        font-size: 12px;
-    }
-
-    .legend-parent.collapsed .legend-expand-icon {
-        transform: rotate(-90deg);
-    }
-
-    .legend-children {
-        transition: max-height 0.3s ease-in-out;
-        overflow: hidden;
-    }
-
-    .legend-parent.collapsed + .legend-children {
-        max-height: 0 !important;
-    }
-
-    .legend-child {
-        padding-left: 10px;
-        font-size: 12px;
+    .legend-category {
+        padding: 6px 0 6px 16px;
+        font-size: 13px;
     }
 
     /* Custom scrollbar */
@@ -303,13 +279,5 @@
         setTimeout(function() {
             updateLegendVisibility();
         }, 500);
-    });
-
-    // Toggle legend category expansion for unique value symbology
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.legend-parent')) {
-            var parent = e.target.closest('.legend-parent');
-            parent.classList.toggle('collapsed');
-        }
     });
 </script>

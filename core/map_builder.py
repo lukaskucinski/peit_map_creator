@@ -491,16 +491,14 @@ def create_web_map(
             if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
                 symbology = layer_config['symbology']
 
-                # Parent layer entry (expandable)
+                # Layer header (non-collapsible)
                 legend_items_html += f"""
-                <div class="legend-item legend-parent" data-layer-name="{layer_name}">
-                    <span class="legend-expand-icon">▼</span>
+                <div class="legend-item legend-header" data-layer-name="{layer_name}">
                     <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
                 </div>
-                <div class="legend-children" data-parent="{layer_name}">
                 """
 
-                # Sub-entries for each category
+                # Category entries (flat list, no nesting)
                 for category in symbology['categories']:
                     label = category['label']
                     fill_color = category.get('fill_color', border_color)
@@ -510,8 +508,8 @@ def create_web_map(
 
                     if count > 0:  # Only show categories with features
                         legend_items_html += f"""
-                        <div class="legend-item legend-child" data-layer-name="{layer_name}">
-                            <svg width="20" height="15" style="margin-left: 20px; margin-right: 8px; vertical-align: middle;">
+                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                            <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
                                 <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
                             </svg>
                             <span>{label} ({count})</span>
@@ -530,15 +528,13 @@ def create_web_map(
                         cat_border = default.get('border_color', border_color)
 
                         legend_items_html += f"""
-                        <div class="legend-item legend-child" data-layer-name="{layer_name}">
-                            <svg width="20" height="15" style="margin-left: 20px; margin-right: 8px; vertical-align: middle;">
+                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                            <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
                                 <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
                             </svg>
                             <span>{label} ({count})</span>
                         </div>
                         """
-
-                legend_items_html += "</div>"  # Close legend-children
 
             # Check if layer uses hatched pattern
             elif 'fill_pattern' in layer_config and layer_config['fill_pattern'].get('type') == 'stripe':

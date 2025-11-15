@@ -87,6 +87,31 @@ def generate_layer_control_data(groups, layer_results, config):
                 'icon_color': layer.get('icon_color', 'blue'),
                 'color': layer.get('color', '#3388ff')
             }
+
+            # Add symbology category symbols if unique value symbology is used
+            if 'symbology' in layer and layer['symbology'].get('type') == 'unique_values':
+                symbology = layer['symbology']
+                category_symbols = []
+
+                # Get unique category symbols from symbology configuration
+                for category in symbology.get('categories', []):
+                    category_symbols.append({
+                        'fill_color': category.get('fill_color', layer.get('color', '#3388ff')),
+                        'fill_opacity': category.get('fill_opacity', 0.6),
+                        'border_color': category.get('border_color', layer.get('color', '#333333'))
+                    })
+
+                # Add default category if present
+                if 'default_category' in symbology:
+                    default = symbology['default_category']
+                    category_symbols.append({
+                        'fill_color': default.get('fill_color', '#CCCCCC'),
+                        'fill_opacity': default.get('fill_opacity', 0.4),
+                        'border_color': default.get('border_color', layer.get('color', '#333333'))
+                    })
+
+                layer_info['category_symbols'] = category_symbols
+
             group_info['layers'].append(layer_info)
             control_data['total_features'] += layer['feature_count']
 

@@ -163,7 +163,7 @@
       "color": "#333333",
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
-      "area_name_field": "NAME",
+      "area_name_field": "FORESTNAME",
       "description": "US Forest Service surface ownership parcels with unique value symbology based on ownership classification",
       "symbology": {
         "type": "unique_values",

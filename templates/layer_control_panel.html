@@ -247,6 +247,14 @@
         border: 2px solid;
     }
 
+    /* Category symbols for unique value symbology */
+    .category-symbols {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
     /* No results message */
     .no-results {
         text-align: center;
@@ -338,7 +346,17 @@
                                checked
                                onchange="toggleLayer('{{ layer.name }}', this.checked)">
 
-                        {% if layer.geometry_type == 'point' %}
+                        {% if layer.category_symbols %}
+                        <!-- Multiple category symbols for unique value symbology -->
+                        <div class="category-symbols">
+                            {% for symbol in layer.category_symbols %}
+                            <svg width="12" height="12" style="margin-right: 2px; vertical-align: middle;">
+                                <rect width="12" height="12"
+                                      style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
+                            </svg>
+                            {% endfor %}
+                        </div>
+                        {% elif layer.geometry_type == 'point' %}
                         <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.color }}"></i>
                         {% elif layer.geometry_type == 'line' %}
                         <span class="line-symbol" style="background-color: {{ layer.color }}"></span>
