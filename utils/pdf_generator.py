@@ -496,9 +496,34 @@ def prepare_table_rows(
             if area_name is None or (isinstance(area_name, str) and not area_name.strip()):
                 area_name = 'N/A'
 
+            # Check if layer uses unique value symbology
+            layer_display_name = layer_name
+            if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
+                symbology = layer_config['symbology']
+                field = symbology['field']
+                attr_value = row.get(field)
+
+                # Find category label (case-insensitive)
+                category_label = None
+                if attr_value is not None:
+                    for sym_category in symbology['categories']:
+                        if any(str(attr_value).upper() == str(v).upper() for v in sym_category['values']):
+                            category_label = sym_category['label']
+                            break
+
+                # If not matched, check default category
+                if not category_label and 'default_category' in symbology:
+                    category_label = symbology['default_category']['label']
+
+                # Append category label to layer name
+                if category_label:
+                    layer_display_name = f"{layer_name} ({category_label})"
+                else:
+                    layer_display_name = f"{layer_name} (Unclassified)"
+
             rows.append({
                 'category': category,
-                'layer_name': layer_name,
+                'layer_name': layer_display_name,
                 'area_name': str(area_name)
             })
 

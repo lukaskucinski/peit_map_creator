@@ -265,13 +265,46 @@ def create_web_map(
                     }
                     # Add fill properties for polygon layers
                     if config['geometry_type'] == 'polygon':
-                        # Check if pattern is configured and available
-                        if 'fill_pattern' in config and lname in patterns:
+                        # Check for unique value symbology
+                        if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
+                            symbology = config['symbology']
+                            field = symbology['field']
+
+                            # Get the attribute value from this feature
+                            attr_value = feature['properties'].get(field)
+
+                            # Find matching category (case-insensitive)
+                            matched_category = None
+                            if attr_value is not None:
+                                for category in symbology['categories']:
+                                    # Case-insensitive matching
+                                    if any(str(attr_value).upper() == str(v).upper() for v in category['values']):
+                                        matched_category = category
+                                        break
+
+                            # Apply category styling or default
+                            if matched_category:
+                                style['fillColor'] = matched_category.get('fill_color', config['color'])
+                                style['fillOpacity'] = matched_category.get('fill_opacity', 0.6)
+                                style['color'] = matched_category.get('border_color', config['color'])
+                            elif 'default_category' in symbology:
+                                default = symbology['default_category']
+                                style['fillColor'] = default.get('fill_color', '#CCCCCC')
+                                style['fillOpacity'] = default.get('fill_opacity', 0.4)
+                                style['color'] = default.get('border_color', config['color'])
+                            else:
+                                # No default specified, use layer-level settings
+                                style['fillColor'] = config.get('fill_color', config['color'])
+                                style['fillOpacity'] = config.get('fill_opacity', 0.6)
+
+                        # Pattern fills (existing logic)
+                        elif 'fill_pattern' in config and lname in patterns:
                             # Use pattern fill
                             style['fillPattern'] = patterns[lname]
                             style['fillOpacity'] = 1.0  # Must be 1.0 for patterns to render
+
+                        # Standard solid fill (existing logic)
                         else:
-                            # Use solid fill
                             style['fillColor'] = config.get('fill_color', config['color'])
                             style['fillOpacity'] = config.get('fill_opacity', 0.6)
                     return style
@@ -374,6 +407,47 @@ def create_web_map(
     )
     m.get_root().html.add_child(Element(download_html))
 
+    # Count features per category for unique value symbology layers
+    category_counts = {}
+    for layer_config in config['layers']:
+        layer_name = layer_config['name']
+
+        # Skip layers without features or without unique value symbology
+        if layer_name not in layer_results or len(layer_results[layer_name]) == 0:
+            continue
+        if 'symbology' not in layer_config or layer_config['symbology'].get('type') != 'unique_values':
+            continue
+
+        symbology = layer_config['symbology']
+        field = symbology['field']
+        gdf = layer_results[layer_name]
+        category_counts[layer_name] = {}
+
+        # Initialize counts for each category
+        for category in symbology['categories']:
+            category_counts[layer_name][category['label']] = 0
+
+        # Initialize count for default category if present
+        if 'default_category' in symbology:
+            category_counts[layer_name][symbology['default_category']['label']] = 0
+
+        # Count features by category (case-insensitive matching)
+        for _, row in gdf.iterrows():
+            attr_value = row.get(field)
+            matched = False
+
+            if attr_value is not None:
+                for category in symbology['categories']:
+                    # Case-insensitive matching
+                    if any(str(attr_value).upper() == str(v).upper() for v in category['values']):
+                        category_counts[layer_name][category['label']] += 1
+                        matched = True
+                        break
+
+            # Count unmapped values in default category
+            if not matched and 'default_category' in symbology:
+                category_counts[layer_name][symbology['default_category']['label']] += 1
+
     # Generate legend HTML for side panel
     logger.info("  - Adding side panel with legend...")
     legend_items_html = ""
@@ -410,11 +484,64 @@ def create_web_map(
             </div>
             """
         elif geometry_type == 'polygon':
-            # Polygon layer: show filled rectangle (solid or hatched)
+            # Polygon layer: show filled rectangle (solid, hatched, or unique value symbology)
             border_color = layer_config['color']
 
+            # Check for unique value symbology
+            if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
+                symbology = layer_config['symbology']
+
+                # Parent layer entry (expandable)
+                legend_items_html += f"""
+                <div class="legend-item legend-parent" data-layer-name="{layer_name}">
+                    <span class="legend-expand-icon">▼</span>
+                    <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
+                </div>
+                <div class="legend-children" data-parent="{layer_name}">
+                """
+
+                # Sub-entries for each category
+                for category in symbology['categories']:
+                    label = category['label']
+                    fill_color = category.get('fill_color', border_color)
+                    fill_opacity = category.get('fill_opacity', 0.6)
+                    cat_border = category.get('border_color', border_color)
+                    count = category_counts.get(layer_name, {}).get(label, 0)
+
+                    if count > 0:  # Only show categories with features
+                        legend_items_html += f"""
+                        <div class="legend-item legend-child" data-layer-name="{layer_name}">
+                            <svg width="20" height="15" style="margin-left: 20px; margin-right: 8px; vertical-align: middle;">
+                                <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
+                            </svg>
+                            <span>{label} ({count})</span>
+                        </div>
+                        """
+
+                # Default category if present
+                if 'default_category' in symbology:
+                    default = symbology['default_category']
+                    label = default['label']
+                    count = category_counts.get(layer_name, {}).get(label, 0)
+
+                    if count > 0:
+                        fill_color = default.get('fill_color', '#CCCCCC')
+                        fill_opacity = default.get('fill_opacity', 0.4)
+                        cat_border = default.get('border_color', border_color)
+
+                        legend_items_html += f"""
+                        <div class="legend-item legend-child" data-layer-name="{layer_name}">
+                            <svg width="20" height="15" style="margin-left: 20px; margin-right: 8px; vertical-align: middle;">
+                                <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
+                            </svg>
+                            <span>{label} ({count})</span>
+                        </div>
+                        """
+
+                legend_items_html += "</div>"  # Close legend-children
+
             # Check if layer uses hatched pattern
-            if 'fill_pattern' in layer_config and layer_config['fill_pattern'].get('type') == 'stripe':
+            elif 'fill_pattern' in layer_config and layer_config['fill_pattern'].get('type') == 'stripe':
                 # Generate hatched pattern legend
                 pattern_cfg = layer_config['fill_pattern']
                 pattern_angle = pattern_cfg.get('angle', -45)

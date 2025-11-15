@@ -450,6 +450,102 @@ Add optional `fill_pattern` object to polygon layer configuration:
 - Polygon layers without `fill_pattern` continue using solid fills
 - Existing configurations remain unchanged
 
+### Unique Value Symbology
+
+Polygon layers (and other geometry types) can use **attribute-based styling** to categorize features by field values and assign different colors to each category. This matches ArcGIS Pro's "Unique Values" symbology.
+
+**Use Case:**
+Display different colors for polygon features based on an attribute field, such as ownership classification, land use type, or administrative status.
+
+**Configuration:**
+Add `symbology` object to layer configuration:
+
+```json
+{
+  "name": "USFS Surface Ownership Parcels",
+  "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_BasicOwnership_01/MapServer",
+  "layer_id": 0,
+  "color": "#333333",
+  "geometry_type": "polygon",
+  "area_name_field": "NAME",
+  "symbology": {
+    "type": "unique_values",
+    "field": "OWNERCLASSIFICATION",
+    "categories": [
+      {
+        "label": "US Forest Service Land",
+        "values": ["USDA FOREST SERVICE"],
+        "fill_color": "#CCEBC4",
+        "fill_opacity": 0.6
+      },
+      {
+        "label": "Non-FS Land",
+        "values": ["NON-FS", "UNPARTITIONED RIPARIAN INTEREST"],
+        "fill_color": "#FFFFDE",
+        "fill_opacity": 0.6
+      }
+    ],
+    "default_category": {
+      "label": "Other",
+      "fill_color": "#CCCCCC",
+      "fill_opacity": 0.4
+    }
+  }
+}
+```
+
+**Configuration Fields:**
+- `symbology.type`: Must be `"unique_values"` for attribute-based styling
+- `symbology.field`: Attribute field name to use for categorization
+- `symbology.categories`: Array of category definitions
+  - `label`: Display name for this category (used in legend and reports)
+  - `values`: Array of attribute values that belong to this category
+  - `fill_color`: Fill color for features in this category (hex format)
+  - `fill_opacity`: Fill opacity 0.0-1.0 (optional, defaults to 0.6)
+  - `border_color`: Border color (optional, defaults to layer-level `color`)
+- `symbology.default_category`: Styling for unmapped values (optional)
+  - Same fields as regular categories
+  - Applied to features whose attribute value doesn't match any category
+
+**Behavior:**
+- **Case-insensitive matching**: Attribute values are matched case-insensitively for robustness
+- **Multi-value categories**: A single category can match multiple attribute values (e.g., `["NON-FS", "UNPARTITIONED RIPARIAN INTEREST"]`)
+- **Default category**: Features with `null` or unmapped values use default category styling
+- **No default category**: If no default is specified, unmapped features use layer-level `fill_color` and `fill_opacity`
+
+**Legend Display:**
+Unique value symbology layers show an **expandable parent entry** in the legend with sub-entries for each category:
+
+```
+▼ USFS Surface Ownership Parcels (150 total)
+    ◻️ US Forest Service Land (120)
+    ◻️ Non-FS Land (25)
+    ◻️ Other (5)
+```
+
+- Parent entry shows total feature count
+- Sub-entries show category labels with individual counts
+- Click parent to expand/collapse categories
+- Only categories with features are displayed
+
+**Report Integration:**
+PDF and Excel reports include category labels in the layer name column:
+- Example: `"USFS Surface Ownership Parcels (US Forest Service Land)"`
+- Makes it easy to identify which category each feature belongs to
+
+**Priority with Other Styling:**
+When multiple styling configurations exist:
+1. **Unique value symbology** (highest priority)
+2. **Pattern fills**
+3. **Solid fills** (lowest priority)
+
+If a layer has both `symbology` and `fill_pattern`, unique value symbology takes precedence.
+
+**Backward Compatibility:**
+- Layers without `symbology` field continue using solid fill or pattern fill styling
+- All existing layer configurations remain unchanged
+- Unique value symbology is opt-in per layer
+
 **Layer Groups:**
 Layers are organized into groups for the custom layer control panel:
 - **EPA Programs**: RCRA Sites, NPDES Sites

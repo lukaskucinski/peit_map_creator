@@ -131,6 +131,63 @@
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
       "area_name_field": "LARNAME"
+    },
+    {
+      "name": "Alaska Native, and Native Hawaiian Areas",
+      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/AIANNHA/MapServer",
+      "layer_id": 47,
+      "color": "#00C5FF",
+      "fill_color": "#00C5FF",
+      "fill_opacity": 0.5,
+      "description": "Federal American Indian Reservations, Off-Reservation Trust Lands (ORTL), State American Indian Reservations, Hawaiian Home Lands (HHL), Alaska Native Village Statistical Areas (ANVSA), Oklahoma Tribal Statistical Areas (OTSA), State Designated Tribal Statistical Areas (SDTSA), Tribal Designated Statistical Areas (TDSA), American Indian Joint-Use Areas (AIJUA), Joint-Use Oklahoma Tribal Statistical Areas; January 1, 2025 vintage.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "NAME"
+    },
+    {
+      "name": "DoD Lands for Permitting",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/DoD_Lands_for_Permitting/FeatureServer",
+      "layer_id": 0,
+      "color": "#E8BEFF",
+      "fill_color": "#E8BEFF",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the DoD lands which was obtained from the USGS PAD 3.0 data. The DoD land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    },
+    {
+      "name": "USFS Surface Ownership Parcels",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_BasicOwnership_01/MapServer",
+      "layer_id": 0,
+      "color": "#333333",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "NAME",
+      "description": "US Forest Service surface ownership parcels with unique value symbology based on ownership classification",
+      "symbology": {
+        "type": "unique_values",
+        "field": "OWNERCLASSIFICATION",
+        "categories": [
+          {
+            "label": "US Forest Service Land",
+            "values": ["USDA FOREST SERVICE"],
+            "fill_color": "#CCEBC4",
+            "fill_opacity": 0.6
+          },
+          {
+            "label": "Non-FS Land",
+            "values": ["NON-FS", "UNPARTITIONED RIPARIAN INTEREST"],
+            "fill_color": "#FFFFDE",
+            "fill_opacity": 0.6
+          }
+        ],
+        "default_category": {
+          "label": "Other",
+          "fill_color": "#CCCCCC",
+          "fill_opacity": 0.4
+        }
+      }
     }
   ],
   "geometry_settings": {
