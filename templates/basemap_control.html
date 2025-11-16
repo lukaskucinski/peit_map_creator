@@ -190,35 +190,57 @@
 <script>
     // @ts-nocheck
     (function() {
-        // Wait for map to be fully loaded (500ms to ensure Folium has initialized)
+        // Retry configuration for finding Leaflet map
+        var basemapInitAttempts = 0;
+        var MAX_ATTEMPTS = 5;
+        var INITIAL_DELAY = 1500;  // Increased from 500ms to 1500ms for complex maps
+        var RETRY_INTERVAL = 500;   // Retry every 500ms if map not found
+
+        // Start first attempt after initial delay
         setTimeout(function() {
-            initializeBasemapControl();
-        }, 500);
+            tryInitializeBasemapControl();
+        }, INITIAL_DELAY);
 
-        function initializeBasemapControl() {
-            // Find the Leaflet map object using proven pattern from download_control
-            console.log('Searching for Leaflet map object...');
+        function tryInitializeBasemapControl() {
+            basemapInitAttempts++;
+            console.log('Basemap control initialization attempt', basemapInitAttempts + '/' + MAX_ATTEMPTS);
 
-            var map = null;
+            // Try to find the Leaflet map object
+            var map = findLeafletMap();
+
+            if (map) {
+                // Success - initialize basemap control
+                console.log('Map found on attempt', basemapInitAttempts);
+                initializeBasemapControl(map);
+            } else if (basemapInitAttempts < MAX_ATTEMPTS) {
+                // Map not ready yet - retry after interval
+                console.log('Basemap control: Map not ready, retrying in ' + RETRY_INTERVAL + 'ms...');
+                setTimeout(tryInitializeBasemapControl, RETRY_INTERVAL);
+            } else {
+                // Failed all attempts - log error
+                console.error('Basemap control: Could not find Leaflet map after ' + MAX_ATTEMPTS + ' attempts');
+                // Log all window properties starting with 'map' for debugging
+                console.log('Window properties starting with "map":',
+                    Object.keys(window).filter(function(k) { return k.toLowerCase().includes('map'); }));
+            }
+        }
+
+        function findLeafletMap() {
             // Search for map variable in window (Folium pattern: map_xxxxx)
             for (var key in window) {
                 if (key.startsWith('map_') &&
                     window[key] &&
                     typeof window[key] === 'object' &&
                     typeof window[key].on === 'function') {
-                    map = window[key];
                     console.log('Found Leaflet map object:', key);
-                    break;
+                    return window[key];
                 }
             }
+            return null;
+        }
 
-            if (!map) {
-                console.error('Basemap control: Could not find Leaflet map');
-                // Log all window properties starting with 'map' for debugging
-                console.log('Window properties starting with "map":',
-                    Object.keys(window).filter(function(k) { return k.toLowerCase().includes('map'); }));
-                return;
-            }
+        function initializeBasemapControl(map) {
+            console.log('Initializing basemap control...');
 
             // Store map reference globally for access by onclick handlers
             window.basemapControlMap = map;
