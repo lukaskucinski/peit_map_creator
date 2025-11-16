@@ -356,6 +356,14 @@ window.addEventListener('load', function() {
 
 **Result:** Page automatically refreshes on browser back/forward navigation, ensuring layer visibility and checkbox states are always synchronized.
 
+### JavaScript Initialization Retry Logic
+
+The basemap control uses retry-based initialization to handle variable map rendering times:
+
+- **Initial delay**: 1500ms, then up to 5 retries at 500ms intervals (total window: 1500-3500ms)
+- **Purpose**: Prevents race condition where control tries to access `window.map_xxxxx` before Folium finishes rendering
+- **Benefit**: Simple maps initialize quickly; complex maps with 60+ features get multiple attempts
+
 ## Configuration System
 
 Configuration file: `config/layers_config.json`
