@@ -20,12 +20,19 @@ from utils.html_generators import generate_layer_download_sections, generate_lay
 from utils.popup_formatters import format_popup_value
 from utils.layer_control_helpers import organize_layers_by_group, generate_layer_control_data, generate_layer_geojson_data
 from utils.basemap_helpers import get_basemap_config
+from utils.js_bundler import get_leaflet_pattern_js
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 # Template directory path
 TEMPLATES_DIR = Path(__file__).parent.parent / 'templates'
+
+
+# Override Folium's default StripePattern CDN to use our bundled fixed version
+# This eliminates the L.Mixin.Events deprecation warning by injecting
+# a patched version that uses L.Evented.prototype || L.Mixin.Events
+plugins.StripePattern.default_js = []  # Disable external CDN loading
 
 
 def create_web_map(
@@ -104,6 +111,17 @@ def create_web_map(
         <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     """)
     m.get_root().html.add_child(marker_cluster_js)
+
+    # Inject fixed Leaflet.pattern library to avoid L.Mixin.Events deprecation warning
+    # This must be loaded AFTER Leaflet core but BEFORE StripePattern is used
+    leaflet_pattern_js = get_leaflet_pattern_js()
+    leaflet_pattern_script = Element(f"""
+        <script>
+        // Fixed Leaflet.pattern library (eliminates L.Mixin.Events deprecation warning)
+        {leaflet_pattern_js}
+        </script>
+    """)
+    m.get_root().html.add_child(leaflet_pattern_script)
 
     # Add tile layers with custom names
     # Only first layer has control=True to prevent conflicts with custom basemap control

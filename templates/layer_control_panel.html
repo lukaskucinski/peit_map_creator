@@ -393,7 +393,23 @@
                         {% elif layer.geometry_type == 'line' %}
                         <span class="line-symbol" style="background-color: {{ layer.color }}"></span>
                         {% elif layer.geometry_type == 'polygon' %}
-                        <span class="polygon-symbol" style="border-color: {{ layer.color }}; background-color: {{ layer.color }}33;"></span>
+                            {% if layer.fill_pattern and layer.fill_pattern.type == 'stripe' %}
+                            <!-- SVG hatched pattern symbol -->
+                            {% set pattern_id = 'control-hatch-' ~ layer.name|replace(' ', '-')|lower %}
+                            <svg width="16" height="16" style="margin-right: 8px; vertical-align: middle; flex-shrink: 0;">
+                                <defs>
+                                    <pattern id="{{ pattern_id }}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate({{ layer.fill_pattern.angle|default(-45) }})">
+                                        <line x1="0" y1="0" x2="0" y2="4" stroke="{{ layer.color }}" stroke-width="1.5" opacity="{{ layer.fill_pattern.opacity|default(0.75) }}"/>
+                                    </pattern>
+                                </defs>
+                                <rect width="16" height="16" style="fill:url(#{{ pattern_id }}); stroke:{{ layer.color }}; stroke-width:1;" />
+                            </svg>
+                            {% else %}
+                            <!-- Solid fill polygon symbol -->
+                            <svg width="14" height="14" style="margin-right: 8px; vertical-align: middle; flex-shrink: 0;">
+                                <rect width="14" height="14" style="fill:{{ layer.fill_color }}; stroke:{{ layer.color }}; stroke-width:1; opacity:{{ layer.fill_opacity }};" />
+                            </svg>
+                            {% endif %}
                         {% endif %}
 
                         <label onclick="document.getElementById('layer-{{ layer.name|replace(' ', '-')|lower }}').click();">
