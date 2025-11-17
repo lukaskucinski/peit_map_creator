@@ -45,13 +45,18 @@ appeit_map_creator/
 │   ├── popup_formatters.py        # Popup value formatting
 │   ├── layer_control_helpers.py   # Layer grouping and control data generation
 │   ├── pdf_generator.py           # PDF report generation using fpdf2
-│   └── xlsx_generator.py          # Excel report generation
+│   ├── xlsx_generator.py          # Excel report generation
+│   └── js_bundler.py              # JavaScript bundling for inline embedding
 │
 ├── templates/
 │   ├── __init__.py
 │   ├── download_control.html      # Download button UI (Jinja2)
 │   ├── side_panel.html            # Left side panel with legend (Jinja2)
 │   └── layer_control_panel.html   # Right side panel with grouped layer controls (Jinja2)
+│
+├── static/                         # Bundled static assets
+│   └── js/
+│       └── leaflet.pattern.fixed.js  # Fixed Leaflet.pattern library (no CDN dependency)
 │
 ├── logs/                           # Log files (timestamped)
 ├── images/                         # Images to be used in project
@@ -89,11 +94,15 @@ appeit_map_creator/
 - `utils/layer_control_helpers.py`: Organize layers by group, generate control data, create GeoJSON mappings
 - `utils/pdf_generator.py`: Generate formatted PDF reports with fpdf2
 - `utils/xlsx_generator.py`: Generate Excel reports with feature data
+- `utils/js_bundler.py`: Load bundled JavaScript files for inline embedding
 
 **Templates:**
 - `templates/download_control.html`: Download UI with embedded JavaScript
 - `templates/side_panel.html`: Left collapsible panel with legend (syncs with layer visibility)
 - `templates/layer_control_panel.html`: Right collapsible panel with grouped layer controls and search
+
+**Static Assets:**
+- `static/js/leaflet.pattern.fixed.js`: Fixed Leaflet.pattern library that eliminates L.Mixin.Events deprecation warning
 
 ## Key Design Decisions
 
@@ -448,9 +457,13 @@ Add optional `fill_pattern` object to polygon layer configuration:
 - `space_color`: Background color hex (default: "#ffffff", optional)
 
 **Implementation Details:**
-- Uses Folium's built-in `StripePattern` plugin (no external dependencies)
+- Uses Folium's `StripePattern` plugin with bundled fixed JavaScript
+- Bundled `static/js/leaflet.pattern.fixed.js` eliminates L.Mixin.Events deprecation warning
+- Fix uses `L.Evented.prototype || L.Mixin.Events` for backward compatibility with Leaflet 2.0
+- JavaScript is injected inline into generated HTML (works with `file://` protocol, no external CDN dependency)
 - Patterns are rendered as SVG for sharp, scalable display
 - Legend automatically shows hatched symbols for patterned layers
+- Layer control panel shows hatched symbols matching legend display
 - Solid fill layers and patterned layers can coexist in same map
 - When `fill_pattern` is present, `fill_color` and `fill_opacity` are ignored
 

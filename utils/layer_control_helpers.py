@@ -85,8 +85,14 @@ def generate_layer_control_data(groups, layer_results, config):
                 'geometry_type': layer['geometry_type'],
                 'icon': layer.get('icon', 'circle'),
                 'icon_color': layer.get('icon_color', 'blue'),
-                'color': layer.get('color', '#3388ff')
+                'color': layer.get('color', '#3388ff'),
+                'fill_color': layer.get('fill_color', layer.get('color', '#3388ff')),
+                'fill_opacity': layer.get('fill_opacity', 0.6)
             }
+
+            # Add fill_pattern if present (for hatched polygon symbols)
+            if 'fill_pattern' in layer:
+                layer_info['fill_pattern'] = layer['fill_pattern']
 
             # Add symbology category symbols if unique value symbology is used
             if 'symbology' in layer and layer['symbology'].get('type') == 'unique_values':
