@@ -1,0 +1,208 @@
+{
+  "layers": [
+    {
+      "name": "RCRA Sites",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Resource_Conservation_and_Recovery_Act__RCRA/FeatureServer",
+      "layer_id": 0,
+      "color": "#FF5733",
+      "icon": "recycle",
+      "icon_color": "red",
+      "description": "Resource Conservation and Recovery Act (RCRA) regulated facilities",
+      "geometry_type": "point",
+      "group": "EPA Programs",
+      "area_name_field": "PRIMARY_NAME"
+    },
+    {
+      "name": "NPDES Sites",
+      "url": "https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/FRS_INTERESTS_NPDES/FeatureServer",
+      "layer_id": 0,
+      "color": "#3498DB",
+      "icon": "tint",
+      "icon_color": "blue",
+      "description": "National Pollutant Discharge Elimination System (NPDES) Sites",
+      "geometry_type": "point",
+      "group": "EPA Programs",
+      "area_name_field": "PRIMARY_NAME"
+    },
+    {
+      "name": "Navigable Waterways",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Commercially_Navigable_Waterways/FeatureServer",
+      "layer_id": 0,
+      "color": "#1ABC9C",
+      "icon": "ship",
+      "icon_color": "green",
+      "description": "USACE Navigable Waterway Network",
+      "geometry_type": "line",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "RIVERNAME"
+    },
+    {
+      "name": "Historic Places",
+      "url": "https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/nrhp_points_v1/FeatureServer",
+      "layer_id": 0,
+      "color": "#9B59B6",
+      "icon": "landmark",
+      "icon_color": "purple",
+      "description": "National Register of Historic Places - Points",
+      "geometry_type": "point",
+      "group": "Historic Places",
+      "area_name_field": "RESNAME"
+    },
+    {
+      "name": "NPS Land",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/NPS_Land_Permitting_Layer/FeatureServer",
+      "layer_id": 0,
+      "color": "#A3FF73",
+      "fill_color": "#A3FF73",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the National Park Service lands which was obtained from the USGS PAD 3.0 Data. This NPS land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    },
+    {
+      "name": "USBR Land",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/USBR_Land_for_Permitting/FeatureServer",
+      "layer_id": 0,
+      "color": "#A87000",
+      "fill_color": "#A87000",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the USBR lands which was obtained from the USGS PAD 3.0 data. The USBR land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    },
+    {
+      "name": "USACE Land",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/USACE_Land_Permitting_Layer/FeatureServer",
+      "layer_id": 0,
+      "color": "#FCC5CE",
+      "fill_color": "#FCC5CE",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the USACE lands which was obtained from the USGS PAD 3.0 data. The USACE land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    },
+    {
+      "name": "BIA AIAN National LAR",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer",
+      "layer_id": 0,
+      "color": "#F5CA7A",
+      "fill_color": "#F5CA7A",
+      "fill_opacity": 0.5,
+      "description": "BIA American Indian and Alaska Native (AIAN) National Land Area Representation. Data was downloaded from the BIA.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "LARNAME"
+    },
+    {
+      "name": "BIA AIAN LAR Supplemental",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer",
+      "layer_id": 1,
+      "color": "#CDAA66",
+      "fill_pattern": {
+        "type": "stripe",
+        "angle": -45,
+        "weight": 3,
+        "space_weight": 3,
+        "opacity": 0.75,
+        "space_opacity": 0.0
+      },
+      "description": "BIA AIAN Land Area Representation - Supplemental areas. Data was downloaded from the BIA.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "LANDAREA"
+    },
+    {
+      "name": "BIA AIAN Tribal Statistical Areas",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/ArcGIS/rest/services/BIA_AIAN_LAR_Layers/FeatureServer",
+      "layer_id": 2,
+      "color": "#FFAA00",
+      "fill_pattern": {
+        "type": "stripe",
+        "angle": -45,
+        "weight": 3,
+        "space_weight": 3,
+        "opacity": 0.75,
+        "space_opacity": 0.0
+      },
+      "description": "BIA AIAN Tribal Statistical Areas. Data was downloaded from the BIA.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "LARNAME"
+    },
+    {
+      "name": "Alaska Native, and Native Hawaiian Areas",
+      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/AIANNHA/MapServer",
+      "layer_id": 47,
+      "color": "#00C5FF",
+      "fill_color": "#00C5FF",
+      "fill_opacity": 0.5,
+      "description": "Federal American Indian Reservations, Off-Reservation Trust Lands (ORTL), State American Indian Reservations, Hawaiian Home Lands (HHL), Alaska Native Village Statistical Areas (ANVSA), Oklahoma Tribal Statistical Areas (OTSA), State Designated Tribal Statistical Areas (SDTSA), Tribal Designated Statistical Areas (TDSA), American Indian Joint-Use Areas (AIJUA), Joint-Use Oklahoma Tribal Statistical Areas; January 1, 2025 vintage.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "NAME"
+    },
+    {
+      "name": "DoD Lands for Permitting",
+      "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/DoD_Lands_for_Permitting/FeatureServer",
+      "layer_id": 0,
+      "color": "#E8BEFF",
+      "fill_color": "#E8BEFF",
+      "fill_opacity": 0.5,
+      "description": "This layer represents the DoD lands which was obtained from the USGS PAD 3.0 data. The DoD land feature class is meant to be used for permitting.",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "Unit_Nm"
+    },
+    {
+      "name": "USFS Surface Ownership Parcels",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_BasicOwnership_01/MapServer",
+      "layer_id": 0,
+      "color": "#333333",
+      "geometry_type": "polygon",
+      "group": "Federal/Tribal Land",
+      "area_name_field": "FORESTNAME",
+      "description": "US Forest Service surface ownership parcels with unique value symbology based on ownership classification",
+      "symbology": {
+        "type": "unique_values",
+        "field": "OWNERCLASSIFICATION",
+        "categories": [
+          {
+            "label": "US Forest Service Land",
+            "values": ["USDA FOREST SERVICE"],
+            "fill_color": "#CCEBC4",
+            "fill_opacity": 0.6
+          },
+          {
+            "label": "Non-FS Land",
+            "values": ["NON-FS", "UNPARTITIONED RIPARIAN INTEREST"],
+            "fill_color": "#FFFFDE",
+            "fill_opacity": 0.6
+          }
+        ]
+      }
+    }
+  ],
+  "geometry_settings": {
+    "buffer_distance_feet": 500,
+    "buffer_point_geometries": true,
+    "buffer_line_geometries": true,
+    "auto_repair_invalid": true,
+    "fallback_crs": "EPSG:5070"
+  },
+  "settings": {
+    "max_features_per_layer": 1000,
+    "enable_clustering": true,
+    "cluster_threshold": 50,
+    "default_zoom": 10,
+    "tile_layer": "OpenStreetMap",
+    "geocoder": {
+      "enabled": true,
+      "collapsed": true,
+      "position": "topright",
+      "search_zoom": 15
+    }
+  }
+}
