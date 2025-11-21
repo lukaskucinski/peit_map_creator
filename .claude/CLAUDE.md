@@ -473,14 +473,47 @@ Add optional `fill_pattern` object to polygon layer configuration:
 
 ### Unique Value Symbology
 
-Polygon layers (and other geometry types) can use **attribute-based styling** to categorize features by field values and assign different colors to each category. This matches ArcGIS Pro's "Unique Values" symbology.
+Line and polygon layers can use **attribute-based styling** to categorize features by field values and assign different colors to each category. This matches ArcGIS Pro's "Unique Values" symbology.
 
 **Use Case:**
-Display different colors for polygon features based on an attribute field, such as ownership classification, land use type, or administrative status.
+Display different colors for features based on an attribute field, such as:
+- **Lines**: Waterway type, road classification, trail designation
+- **Polygons**: Ownership classification, land use type, administrative status
 
-**Configuration:**
-Add `symbology` object to layer configuration:
+**Configuration Examples:**
 
+**Line Layer with Symbology:**
+```json
+{
+  "name": "USACE Navigable Waterway Network",
+  "url": "https://geospatial.sec.usace.army.mil/server/rest/services/CPW/CorpsWaterways/FeatureServer",
+  "layer_id": 0,
+  "color": "#333333",
+  "geometry_type": "line",
+  "symbology": {
+    "type": "unique_values",
+    "field": "WTWY_TYPE",
+    "categories": [
+      {
+        "label": "Harbor, Bay",
+        "values": ["1"],
+        "color": "#4BD64D"
+      },
+      {
+        "label": "River",
+        "values": ["2"],
+        "color": "#0070FF"
+      }
+    ],
+    "default_category": {
+      "label": "Other Waterway",
+      "color": "#999999"
+    }
+  }
+}
+```
+
+**Polygon Layer with Symbology:**
 ```json
 {
   "name": "USFS Surface Ownership Parcels",
@@ -521,9 +554,14 @@ Add `symbology` object to layer configuration:
 - `symbology.categories`: Array of category definitions
   - `label`: Display name for this category (used in legend and reports)
   - `values`: Array of attribute values that belong to this category
-  - `fill_color`: Fill color for features in this category (hex format)
-  - `fill_opacity`: Fill opacity 0.0-1.0 (optional, defaults to 0.6)
-  - `border_color`: Border color (optional, defaults to layer-level `color`)
+  - **For line layers:**
+    - `color`: Line color for this category (hex format, required)
+    - `weight`: Line width in pixels (optional, defaults to 3)
+    - `opacity`: Line opacity 0.0-1.0 (optional, defaults to 0.8)
+  - **For polygon layers:**
+    - `fill_color`: Fill color for features in this category (hex format, required)
+    - `fill_opacity`: Fill opacity 0.0-1.0 (optional, defaults to 0.6)
+    - `border_color`: Border color (optional, defaults to layer-level `color`)
 - `symbology.default_category`: Styling for unmapped values (optional)
   - Same fields as regular categories
   - Applied to features whose attribute value doesn't match any category
@@ -535,19 +573,28 @@ Add `symbology` object to layer configuration:
 - **No default category**: If no default is specified, unmapped features use layer-level `fill_color` and `fill_opacity`
 
 **Legend Display:**
-Unique value symbology layers show an **expandable parent entry** in the legend with sub-entries for each category:
+Unique value symbology layers show a **header entry** with total count followed by category entries:
 
+**Line Layer Example:**
 ```
-▼ USFS Surface Ownership Parcels (150 total)
+USACE Navigable Waterway Network (324 total)
+    ━━━ Harbor, Bay (45)
+    ━━━ River (267)
+    ━━━ Other Waterway (12)
+```
+
+**Polygon Layer Example:**
+```
+USFS Surface Ownership Parcels (150 total)
     ◻️ US Forest Service Land (120)
     ◻️ Non-FS Land (25)
     ◻️ Other (5)
 ```
 
-- Parent entry shows total feature count
-- Sub-entries show category labels with individual counts
-- Click parent to expand/collapse categories
+- Header entry shows layer name and total feature count
+- Sub-entries show category labels with individual counts (colored line or filled rectangle)
 - Only categories with features are displayed
+- Line categories show colored line samples, polygon categories show filled rectangles
 
 **Report Integration:**
 PDF and Excel reports include category labels in the layer name column:
