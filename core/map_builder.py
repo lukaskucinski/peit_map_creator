@@ -287,10 +287,16 @@ def create_web_map(
                         # Check for unique value symbology
                         if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
                             symbology = config['symbology']
-                            field = symbology['field']
 
-                            # Get the attribute value from this feature
-                            attr_value = feature['properties'].get(field)
+                            # Get the attribute value from this feature (support concatenated fields)
+                            if 'concat_fields' in symbology:
+                                concat_fields = symbology['concat_fields']
+                                separator = symbology.get('concat_separator', ',')
+                                field_values = [feature['properties'].get(f, '') for f in concat_fields]
+                                attr_value = separator.join(str(v) for v in field_values if v)
+                            else:
+                                field = symbology['field']
+                                attr_value = feature['properties'].get(field)
 
                             # Find matching category (case-insensitive)
                             matched_category = None
@@ -318,10 +324,16 @@ def create_web_map(
                         # Check for unique value symbology
                         if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
                             symbology = config['symbology']
-                            field = symbology['field']
 
-                            # Get the attribute value from this feature
-                            attr_value = feature['properties'].get(field)
+                            # Get the attribute value from this feature (support concatenated fields)
+                            if 'concat_fields' in symbology:
+                                concat_fields = symbology['concat_fields']
+                                separator = symbology.get('concat_separator', ',')
+                                field_values = [feature['properties'].get(f, '') for f in concat_fields]
+                                attr_value = separator.join(str(v) for v in field_values if v)
+                            else:
+                                field = symbology['field']
+                                attr_value = feature['properties'].get(field)
 
                             # Find matching category (case-insensitive)
                             matched_category = None
@@ -469,7 +481,6 @@ def create_web_map(
             continue
 
         symbology = layer_config['symbology']
-        field = symbology['field']
         gdf = layer_results[layer_name]
         category_counts[layer_name] = {}
 
@@ -483,7 +494,14 @@ def create_web_map(
 
         # Count features by category (case-insensitive matching)
         for _, row in gdf.iterrows():
-            attr_value = row.get(field)
+            # Get the attribute value (support concatenated fields)
+            if 'concat_fields' in symbology:
+                concat_fields = symbology['concat_fields']
+                separator = symbology.get('concat_separator', ',')
+                field_values = [row.get(f, '') for f in concat_fields]
+                attr_value = separator.join(str(v) for v in field_values if v)
+            else:
+                attr_value = row.get(symbology['field'])
             matched = False
 
             if attr_value is not None:
