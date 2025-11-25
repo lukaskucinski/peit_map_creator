@@ -281,8 +281,40 @@ def create_web_map(
                         'opacity': 0.8,
                         'className': cls  # Unique identifier for JavaScript
                     }
+
+                    # Handle line symbology
+                    if config['geometry_type'] == 'line':
+                        # Check for unique value symbology
+                        if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
+                            symbology = config['symbology']
+                            field = symbology['field']
+
+                            # Get the attribute value from this feature
+                            attr_value = feature['properties'].get(field)
+
+                            # Find matching category (case-insensitive)
+                            matched_category = None
+                            if attr_value is not None:
+                                for category in symbology['categories']:
+                                    # Case-insensitive matching
+                                    if any(str(attr_value).upper() == str(v).upper() for v in category['values']):
+                                        matched_category = category
+                                        break
+
+                            # Apply category styling or default
+                            if matched_category:
+                                style['color'] = matched_category.get('color', config['color'])
+                                style['weight'] = matched_category.get('weight', 3)
+                                style['opacity'] = matched_category.get('opacity', 0.8)
+                            elif 'default_category' in symbology:
+                                default = symbology['default_category']
+                                style['color'] = default.get('color', config['color'])
+                                style['weight'] = default.get('weight', 3)
+                                style['opacity'] = default.get('opacity', 0.8)
+                            # else: use layer-level color already set above
+
                     # Add fill properties for polygon layers
-                    if config['geometry_type'] == 'polygon':
+                    elif config['geometry_type'] == 'polygon':
                         # Check for unique value symbology
                         if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
                             symbology = config['symbology']
@@ -491,16 +523,63 @@ def create_web_map(
             </div>
             """
         elif geometry_type == 'line':
-            # Line layer: show line sample
+            # Line layer: show line sample (with unique value symbology support)
             color = layer_config['color']
-            legend_items_html += f"""
-            <div class="legend-item" data-layer-name="{layer_name}">
-                <svg width="30" height="15" style="margin-right: 8px; vertical-align: middle;">
-                    <line x1="0" y1="7" x2="30" y2="7" style="stroke:{color}; stroke-width:3;" />
-                </svg>
-                <span>{layer_name} ({feature_count})</span>
-            </div>
-            """
+
+            # Check for unique value symbology
+            if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
+                symbology = layer_config['symbology']
+
+                # Layer header (non-collapsible)
+                legend_items_html += f"""
+                <div class="legend-item legend-header" data-layer-name="{layer_name}">
+                    <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
+                </div>
+                """
+
+                # Category entries (flat list, no nesting)
+                for category in symbology['categories']:
+                    label = category['label']
+                    line_color = category.get('color', color)
+                    count = category_counts.get(layer_name, {}).get(label, 0)
+
+                    if count > 0:  # Only show categories with features
+                        legend_items_html += f"""
+                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                            <svg width="30" height="15" style="margin-right: 8px; vertical-align: middle;">
+                                <line x1="0" y1="7" x2="30" y2="7" style="stroke:{line_color}; stroke-width:3;" />
+                            </svg>
+                            <span>{label} ({count})</span>
+                        </div>
+                        """
+
+                # Default category if present
+                if 'default_category' in symbology:
+                    default = symbology['default_category']
+                    label = default['label']
+                    count = category_counts.get(layer_name, {}).get(label, 0)
+
+                    if count > 0:
+                        line_color = default.get('color', color)
+
+                        legend_items_html += f"""
+                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                            <svg width="30" height="15" style="margin-right: 8px; vertical-align: middle;">
+                                <line x1="0" y1="7" x2="30" y2="7" style="stroke:{line_color}; stroke-width:3;" />
+                            </svg>
+                            <span>{label} ({count})</span>
+                        </div>
+                        """
+            else:
+                # Simple line symbology (no categories)
+                legend_items_html += f"""
+                <div class="legend-item" data-layer-name="{layer_name}">
+                    <svg width="30" height="15" style="margin-right: 8px; vertical-align: middle;">
+                        <line x1="0" y1="7" x2="30" y2="7" style="stroke:{color}; stroke-width:3;" />
+                    </svg>
+                    <span>{layer_name} ({feature_count})</span>
+                </div>
+                """
         elif geometry_type == 'polygon':
             # Polygon layer: show filled rectangle (solid, hatched, or unique value symbology)
             border_color = layer_config['color']
