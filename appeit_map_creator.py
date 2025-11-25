@@ -13,6 +13,7 @@ License: MIT
 from pathlib import Path
 from typing import Optional
 import warnings
+import time
 
 # Import logging first
 from utils.logger import setup_logging, get_logger
@@ -68,6 +69,9 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         >>> output_path = main('project_area.gpkg')
         >>> print(f"Map saved to: {output_path / 'index.html'}")
     """
+    # Start overall execution timer
+    workflow_start_time = time.time()
+
     # Setup logging - returns log file path
     log_file = setup_logging()
     logger = get_logger(__name__)
@@ -123,6 +127,16 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
             pdf_relative_path=pdf_filename
         )
 
+        # Calculate total execution time (before generate_output so it's included in metadata.json)
+        total_execution_time = time.time() - workflow_start_time
+
+        # Add execution time to layer metadata (will be saved to metadata.json)
+        # Note: This goes into the 'layers' section of metadata, but we'll add a top-level one too
+        metadata['_execution_time'] = {
+            'total_seconds': total_execution_time,
+            'formatted': f"{total_execution_time:.2f} seconds"
+        }
+
         # Step 4: Generate output (uses same timestamp)
         if output_name is None:
             output_name = f"appeit_map_{timestamp}"
@@ -134,6 +148,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
         logger.info("")
         logger.info("✓ WORKFLOW COMPLETE")
+        logger.info(f"✓ Total execution time: {total_execution_time:.2f} seconds")
         logger.info(f"✓ Output directory: {output_path}")
         logger.info(f"✓ Log file: {log_file}")
         logger.info("")
@@ -141,11 +156,15 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         return output_path
 
     except Exception as e:
+        # Calculate elapsed time for error reporting
+        elapsed_time = time.time() - workflow_start_time
+
         logger.error("")
         logger.error("=" * 80)
         logger.error("✗ WORKFLOW FAILED")
         logger.error("=" * 80)
         logger.error(f"Error: {str(e)}", exc_info=True)
+        logger.error(f"Workflow failed after {elapsed_time:.2f} seconds")
         logger.error("")
         logger.error(f"See log file for details: {log_file}")
         logger.error("=" * 80)
