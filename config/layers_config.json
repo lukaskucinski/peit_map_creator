@@ -589,7 +589,7 @@
       "description": "",
       "icon": "recycle",
       "icon_color": "pink",
-      "area_name_field": "INTEREST_TYPE_DESC",
+      "area_name_field": "PRIMARY_NAME",
       "color": "#FFC0CB"
     },
     {

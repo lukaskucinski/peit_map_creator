@@ -611,15 +611,77 @@ def create_web_map(
 
         # Create legend item based on geometry type
         if geometry_type == 'point':
-            # Point layer: show icon
-            icon = layer_config['icon']
-            icon_color = layer_config['icon_color']
-            legend_items_html += f"""
-            <div class="legend-item" data-layer-name="{layer_name}">
-                <i class="fa fa-{icon}" style="color: {icon_color}; margin-right: 8px;"></i>
-                <span>{layer_name} ({feature_count})</span>
-            </div>
-            """
+            # Point layer: check for symbology first
+            if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
+                # Point layer with unique value symbology
+                symbology = layer_config['symbology']
+
+                # Add header entry with total count
+                legend_items_html += f"""
+                <div class="legend-item legend-header" data-layer-name="{layer_name}">
+                    <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
+                </div>
+                """
+
+                # Get feature counts per category
+                category_counts_point = {}
+                field_name = symbology['field']
+
+                for _, row in gdf.iterrows():
+                    field_value = str(row.get(field_name, '')).strip().lower()
+                    category_counts_point[field_value] = category_counts_point.get(field_value, 0) + 1
+
+                # Display each category with its icon and color
+                for category in symbology.get('categories', []):
+                    label = category['label']
+                    values = [str(v).strip().lower() for v in category.get('values', [])]
+
+                    # Count features in this category
+                    count = sum(category_counts_point.get(val, 0) for val in values)
+
+                    if count > 0:  # Only show categories with features
+                        icon = category.get('icon', layer_config.get('icon', 'circle'))
+                        icon_color = category.get('icon_color', layer_config.get('icon_color', 'blue'))
+
+                        legend_items_html += f"""
+                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                            <i class="fa fa-{icon}" style="color: {icon_color}; margin-right: 8px;"></i>
+                            <span>{label} ({count})</span>
+                        </div>
+                        """
+
+                # Handle default category if present
+                if 'default_category' in symbology:
+                    default_category = symbology['default_category']
+                    default_label = default_category['label']
+
+                    # Count features not in any explicit category
+                    matched_values = set()
+                    for category in symbology.get('categories', []):
+                        matched_values.update([str(v).strip().lower() for v in category.get('values', [])])
+
+                    default_count = sum(count for value, count in category_counts_point.items() if value not in matched_values)
+
+                    if default_count > 0:
+                        default_icon = default_category.get('icon', layer_config.get('icon', 'circle'))
+                        default_icon_color = default_category.get('icon_color', layer_config.get('icon_color', 'blue'))
+
+                        legend_items_html += f"""
+                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                            <i class="fa fa-{default_icon}" style="color: {default_icon_color}; margin-right: 8px;"></i>
+                            <span>{default_label} ({default_count})</span>
+                        </div>
+                        """
+            else:
+                # Point layer without symbology: use default icon/color
+                icon = layer_config['icon']
+                icon_color = layer_config['icon_color']
+                legend_items_html += f"""
+                <div class="legend-item" data-layer-name="{layer_name}">
+                    <i class="fa fa-{icon}" style="color: {icon_color}; margin-right: 8px;"></i>
+                    <span>{layer_name} ({feature_count})</span>
+                </div>
+                """
         elif geometry_type == 'line':
             # Line layer: show line sample (with unique value symbology support)
             color = layer_config['color']

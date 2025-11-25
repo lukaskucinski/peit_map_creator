@@ -375,6 +375,10 @@
                             <line x1="0" y1="7" x2="20" y2="7"
                                   style="stroke:{{ symbol.color }}; stroke-width:{{ symbol.weight|default(3) }}; opacity:{{ symbol.opacity|default(0.8) }};" />
                         </svg>
+                        {% elif symbol.geometry_type == 'point' %}
+                        <!-- Point symbology: Font Awesome icon with color -->
+                        <i class="fa fa-{{ symbol.icon }}"
+                           style="color: {{ symbol.icon_color }}; margin-right: 8px; font-size: 14px; vertical-align: middle;"></i>
                         {% elif symbol.geometry_type == 'polygon' %}
                             {% if symbol.fill_pattern %}
                             <!-- Polygon with pattern fill -->

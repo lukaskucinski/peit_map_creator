@@ -1,0 +1,414 @@
+merged
+  result 100644 753349cd4ae51dece8c87789f60355386546cef3 appeit_map_creator.py
+  our    100644 70f80d497f88d8a25eef5d9dd455be2f1055bd79 appeit_map_creator.py
+@@ -13,6 +13,7 @@
+ from pathlib import Path
+ from typing import Optional
+ import warnings
++import time
+ 
+ # Import logging first
+ from utils.logger import setup_logging, get_logger
+@@ -68,6 +69,9 @@
+         >>> output_path = main('project_area.gpkg')
+         >>> print(f"Map saved to: {output_path / 'index.html'}")
+     """
++    # Start overall execution timer
++    workflow_start_time = time.time()
++
+     # Setup logging - returns log file path
+     log_file = setup_logging()
+     logger = get_logger(__name__)
+@@ -123,6 +127,16 @@
+             pdf_relative_path=pdf_filename
+         )
+ 
++        # Calculate total execution time (before generate_output so it's included in metadata.json)
++        total_execution_time = time.time() - workflow_start_time
++
++        # Add execution time to layer metadata (will be saved to metadata.json)
++        # Note: This goes into the 'layers' section of metadata, but we'll add a top-level one too
++        metadata['_execution_time'] = {
++            'total_seconds': total_execution_time,
++            'formatted': f"{total_execution_time:.2f} seconds"
++        }
++
+         # Step 4: Generate output (uses same timestamp)
+         if output_name is None:
+             output_name = f"appeit_map_{timestamp}"
+@@ -134,6 +148,7 @@
+ 
+         logger.info("")
+         logger.info("✓ WORKFLOW COMPLETE")
++        logger.info(f"✓ Total execution time: {total_execution_time:.2f} seconds")
+         logger.info(f"✓ Output directory: {output_path}")
+         logger.info(f"✓ Log file: {log_file}")
+         logger.info("")
+@@ -141,11 +156,15 @@
+         return output_path
+ 
+     except Exception as e:
++        # Calculate elapsed time for error reporting
++        elapsed_time = time.time() - workflow_start_time
++
+         logger.error("")
+         logger.error("=" * 80)
+         logger.error("✗ WORKFLOW FAILED")
+         logger.error("=" * 80)
+         logger.error(f"Error: {str(e)}", exc_info=True)
++        logger.error(f"Workflow failed after {elapsed_time:.2f} seconds")
+         logger.error("")
+         logger.error(f"See log file for details: {log_file}")
+         logger.error("=" * 80)
+changed in both
+  base   100644 24d6692f345aa80c28195d5c23931ec8cec18fc1 config/layers_config.json
+  our    100644 f8ebb17dc60e4891e597bc681f707292373eb38a config/layers_config.json
+  their  100644 7c0210b0bd2d6f67709c71e49f6a34121b99ace2 config/layers_config.json
+@@ -1057,7 +1057,7 @@
+       "layer_id": 0,
+       "geometry_type": "point",
+       "group": "Infrastructure",
+-      "description": "",
++      "description": "Power generation facilities tracked by the Energy Information Administration, categorized by primary energy source",
+       "icon": "bolt",
+       "icon_color": "white",
+       "area_name_field": "Plant_Name",
+@@ -1068,99 +1068,75 @@
+         "categories": [
+           {
+             "label": "Solar",
+-            "values": [
+-              "solar"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["solar"],
++            "icon": "sun",
++            "icon_color": "orange"
+           },
+           {
+             "label": "Natural Gas",
+-            "values": [
+-              "natural gas"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["natural gas"],
++            "icon": "fire",
++            "icon_color": "red"
+           },
+           {
+             "label": "Hydroelectric",
+-            "values": [
+-              "hydroelectric"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["hydroelectric"],
++            "icon": "water",
++            "icon_color": "blue"
+           },
+           {
+             "label": "Wind",
+-            "values": [
+-              "wind"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["wind"],
++            "icon": "wind",
++            "icon_color": "lightblue"
+           },
+           {
+             "label": "Petroleum",
+-            "values": [
+-              "petroleum"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["petroleum"],
++            "icon": "oil-can",
++            "icon_color": "black"
+           },
+           {
+             "label": "Biomass",
+-            "values": [
+-              "biomass"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["biomass"],
++            "icon": "leaf",
++            "icon_color": "green"
+           },
+           {
+             "label": "Coal",
+-            "values": [
+-              "coal"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["coal"],
++            "icon": "mountain",
++            "icon_color": "gray"
+           },
+           {
+             "label": "Batteries",
+-            "values": [
+-              "batteries"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["batteries"],
++            "icon": "battery-full",
++            "icon_color": "purple"
+           },
+           {
+             "label": "Geothermal",
+-            "values": [
+-              "geothermal"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["geothermal"],
++            "icon": "temperature-high",
++            "icon_color": "darkred"
+           },
+           {
+             "label": "Nuclear",
+-            "values": [
+-              "nuclear"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["nuclear"],
++            "icon": "atom",
++            "icon_color": "cadetblue"
+           },
+           {
+             "label": "Pumped Storage",
+-            "values": [
+-              "pumped storage"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["pumped storage"],
++            "icon": "database",
++            "icon_color": "darkblue"
+           },
+           {
+             "label": "Other",
+-            "values": [
+-              "other"
+-            ],
+-            "fill_color": null,
+-            "fill_opacity": null
++            "values": ["other"],
++            "icon": "bolt",
++            "icon_color": "lightgray"
+           }
+         ]
+       }
+@@ -2449,7 +2425,12 @@
+             "fill_color": "#000000",
+             "fill_opacity": 0.5
+           }
+-        ]
++        ],
++        "default_category": {
++          "label": "Other Flood Zones",
++          "fill_color": "#CCCCCC",
++          "fill_opacity": 0.4
++        }
+       }
+     },
+     {
+@@ -4439,6 +4420,8 @@
+       "symbology": {
+         "type": "unique_values",
+         "field": "ANRDept",
++        "concat_fields": ["ANRDept", "SOVLegalInterest"],
++        "concat_separator": ",",
+         "categories": [
+           {
+             "label": "Forests, Parks & Recreation,Fee",
+changed in both
+  base   100644 034e582d9a52ace509cc3ea266aa5c0aeb9bb1c1 core/map_builder.py
+  our    100644 92608d80b55618cb23bfd986536133813fb318c5 core/map_builder.py
+  their  100644 40374155926c7471a675d66abc946ae9c42003bb core/map_builder.py
+@@ -333,10 +333,16 @@
+                         # Check for unique value symbology
+                         if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
+                             symbology = config['symbology']
+-                            field = symbology['field']
+ 
+-                            # Get the attribute value from this feature
+-                            attr_value = feature['properties'].get(field)
++                            # Get the attribute value from this feature (support concatenated fields)
++                            if 'concat_fields' in symbology:
++                                concat_fields = symbology['concat_fields']
++                                separator = symbology.get('concat_separator', ',')
++                                field_values = [feature['properties'].get(f, '') for f in concat_fields]
++                                attr_value = separator.join(str(v) for v in field_values if v)
++                            else:
++                                field = symbology['field']
++                                attr_value = feature['properties'].get(field)
+ 
+                             # Find matching category (case-insensitive)
+                             matched_category = None
+@@ -364,10 +370,16 @@
+                         # Check for unique value symbology
+                         if 'symbology' in config and config['symbology'].get('type') == 'unique_values':
+                             symbology = config['symbology']
+-                            field = symbology['field']
+ 
+-                            # Get the attribute value from this feature
+-                            attr_value = feature['properties'].get(field)
++                            # Get the attribute value from this feature (support concatenated fields)
++                            if 'concat_fields' in symbology:
++                                concat_fields = symbology['concat_fields']
++                                separator = symbology.get('concat_separator', ',')
++                                field_values = [feature['properties'].get(f, '') for f in concat_fields]
++                                attr_value = separator.join(str(v) for v in field_values if v)
++                            else:
++                                field = symbology['field']
++                                attr_value = feature['properties'].get(field)
+ 
+                             # Find matching category (case-insensitive)
+                             matched_category = None
+@@ -477,7 +489,7 @@
+ 
+                 # Now add popup field to the GeoJson layer
+                 geojson_layer.add_child(
+-                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px;")
++                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px; max-height: 600px; overflow-y: auto;")
+                 )
+ 
+                 geojson_layer.add_to(m)
+@@ -515,19 +527,6 @@
+     basemap_html = basemap_template.render(basemaps=basemaps)
+     m.get_root().html.add_child(Element(basemap_html))
+ 
+-    # Add popup scrollbar fix for seamless integration
+-    # Applies max-height and overflow to Leaflet's content container instead of Folium's wrapper
+-    # This ensures scrollbars only appear when content overflows and integrate within the popup border
+-    popup_css_fix = Element("""
+-        <style>
+-            .leaflet-popup-content {
+-                max-height: 600px;
+-                overflow-y: auto;
+-            }
+-        </style>
+-    """)
+-    m.get_root().html.add_child(popup_css_fix)
+-
+     # Render download control template
+     logger.info("  - Adding download control...")
+     download_template = env.get_template('download_control.html')
+@@ -549,7 +548,6 @@
+             continue
+ 
+         symbology = layer_config['symbology']
+-        field = symbology['field']
+         gdf = layer_results[layer_name]
+         category_counts[layer_name] = {}
+ 
+@@ -563,7 +561,14 @@
+ 
+         # Count features by category (case-insensitive matching)
+         for _, row in gdf.iterrows():
+-            attr_value = row.get(field)
++            # Get the attribute value (support concatenated fields)
++            if 'concat_fields' in symbology:
++                concat_fields = symbology['concat_fields']
++                separator = symbology.get('concat_separator', ',')
++                field_values = [row.get(f, '') for f in concat_fields]
++                attr_value = separator.join(str(v) for v in field_values if v)
++            else:
++                attr_value = row.get(symbology['field'])
+             matched = False
+ 
+             if attr_value is not None:
+merged
+  result 100644 c19f756106158c80d7453ef487d9c20af198b4a1 core/output_generator.py
+  our    100644 d487bc59306b0915d01c91e71485c53dbaf0bb6c core/output_generator.py
+@@ -119,6 +119,9 @@
+     logger.info("  - Saving metadata...")
+     metadata_file = output_path / 'metadata.json'
+ 
++    # Extract execution time from metadata if present (added by main workflow)
++    execution_time_data = metadata.pop('_execution_time', None)
++
+     summary = {
+         'generated_at': datetime.now().isoformat(),
+         'input_polygon': {
+@@ -126,10 +129,14 @@
+             'crs': str(polygon_gdf.crs)
+         },
+         'layers': metadata,
+-        'total_features': sum(m['feature_count'] for m in metadata.values()),
+-        'layers_with_data': sum(1 for m in metadata.values() if m['feature_count'] > 0)
++        'total_features': sum(m['feature_count'] for m in metadata.values() if isinstance(m, dict)),
++        'layers_with_data': sum(1 for m in metadata.values() if isinstance(m, dict) and m.get('feature_count', 0) > 0)
+     }
+ 
++    # Add execution time if provided
++    if execution_time_data:
++        summary['execution_time'] = execution_time_data
++
+     # Add input geometry metadata if provided (from new pipeline)
+     if input_geometry_metadata:
+         summary['input_geometry'] = input_geometry_metadata
+changed in both
+  base   100644 55fa72753dba30e21e0df92279ceeba42fcce3e7 utils/layer_control_helpers.py
+  our    100644 ecf93e9d4b5ef8749c56841b0586639b04eaf61e utils/layer_control_helpers.py
+  their  100644 8ae6260aa32082b25736b4b2a6527f95e4bd5f5e utils/layer_control_helpers.py
+@@ -97,7 +97,6 @@
+             # Add symbology category symbols if unique value symbology is used
+             if 'symbology' in layer and layer['symbology'].get('type') == 'unique_values':
+                 symbology = layer['symbology']
+-                field = symbology['field']
+                 layer_name = layer['name']
+                 geometry_type = layer.get('geometry_type', 'polygon')  # Detect geometry type
+                 category_symbols = []
+@@ -114,11 +113,23 @@
+                         # Count features matching this category (case-insensitive)
+                         count = 0
+                         for _, row in gdf.iterrows():
+-                            attr_value = row.get(field)
++                            # Get the attribute value (support concatenated fields)
++                            if 'concat_fields' in symbology:
++                                concat_fields = symbology['concat_fields']
++                                separator = symbology.get('concat_separator', ',')
++                                field_values = [row.get(f, '') for f in concat_fields]
++                                attr_value = separator.join(str(v) for v in field_values if v)
++                            else:
++                                attr_value = row.get(symbology['field'])
++
+                             if attr_value is not None:
+                                 if any(str(attr_value).upper() == str(v).upper() for v in values):
+                                     count += 1
+ 
++                        # Skip zero-count categories (matches default_category behavior)
++                        if count == 0:
++                            continue
++
+                         # Extract attributes based on geometry type
+                         if geometry_type == 'line':
+                             # Line layers use color, weight, opacity
+@@ -153,7 +164,14 @@
+                         # Count unmapped features
+                         count = 0
+                         for _, row in gdf.iterrows():
+-                            attr_value = row.get(field)
++                            # Get the attribute value (support concatenated fields)
++                            if 'concat_fields' in symbology:
++                                concat_fields = symbology['concat_fields']
++                                separator = symbology.get('concat_separator', ',')
++                                field_values = [row.get(f, '') for f in concat_fields]
++                                attr_value = separator.join(str(v) for v in field_values if v)
++                            else:
++                                attr_value = row.get(symbology['field'])
+                             matched = False
+ 
+                             if attr_value is not None:
