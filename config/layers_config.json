@@ -256,7 +256,7 @@
     "geometry_type": "point",
     "group": "Federal/Tribal Land",
     "description": "",
-    "icon": "circle",
+    "icon": "hard-hat",
     "icon_color": "darkred",
     "color": "#00E6A9"
   },
@@ -378,7 +378,7 @@
     "geometry_type": "point",
     "group": "Federal/Tribal Land",
     "description": "GSA Federal Real Property",
-    "icon": "circle",
+    "icon": "building",
     "icon_color": "darkpurple",
     "area_name_field": "Reporting_Bureau",
     "color": "#301934"
@@ -587,7 +587,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "recycle",
     "icon_color": "pink",
     "area_name_field": "INTEREST_TYPE_DESC",
     "color": "#FFC0CB"
@@ -599,7 +599,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "water",
     "icon_color": "lightred",
     "color": "#FFA07A"
   },
@@ -610,7 +610,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "droplet",
     "icon_color": "white",
     "color": "#FFFFFF"
   },
@@ -621,7 +621,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "flask",
     "icon_color": "purple",
     "color": "#800080"
   },
@@ -632,7 +632,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "flask",
     "icon_color": "darkred",
     "color": "#8B0000"
   },
@@ -643,7 +643,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "broom",
     "icon_color": "gray",
     "color": "#808080"
   },
@@ -654,7 +654,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "",
-    "icon": "circle",
+    "icon": "wind",
     "icon_color": "cadetblue",
     "color": "#5F9EA0"
   },
@@ -665,7 +665,7 @@
     "geometry_type": "point",
     "group": "EPA Programs",
     "description": "ATTAINS Water Quality Assessment GIS Dataset extracted on 01/17/2025",
-    "icon": "circle",
+    "icon": "water",
     "icon_color": "black",
     "area_name_field": "assessmentunitname",
     "color": "#000000"
@@ -1005,7 +1005,7 @@
     "geometry_type": "point",
     "group": "Infrastructure",
     "description": "",
-    "icon": "circle",
+    "icon": "fire",
     "icon_color": "red",
     "color": "#FF0000"
   },
@@ -1016,7 +1016,7 @@
     "geometry_type": "point",
     "group": "Infrastructure",
     "description": "",
-    "icon": "circle",
+    "icon": "database",
     "icon_color": "pink",
     "area_name_field": "company",
     "color": "#333333",
@@ -1058,7 +1058,7 @@
     "geometry_type": "point",
     "group": "Infrastructure",
     "description": "",
-    "icon": "circle",
+    "icon": "bolt",
     "icon_color": "white",
     "area_name_field": "Plant_Name",
     "color": "#333333",
@@ -1271,7 +1271,7 @@
     "geometry_type": "point",
     "group": "Infrastructure",
     "description": "This data is intended for read-only use. The purpose of the data is to provide display, identification, and analysis tools for determining locations of designated communications sites located on National Forest System lands, for Forest Service managers and other interested parties. \nThe data was download from USFS on 2/14/2025.This layer is provided for permitting maps. ",
-    "icon": "circle",
+    "icon": "broadcast-tower",
     "icon_color": "pink",
     "area_name_field": "COMMUNICATIONS_SITE_NAME",
     "color": "#FFC0CB"
@@ -2204,7 +2204,7 @@
     "geometry_type": "point",
     "group": "Infrastructure",
     "description": "",
-    "icon": "circle",
+    "icon": "mountain",
     "icon_color": "white",
     "area_name_field": "MINE_NAME",
     "color": "#333333",
@@ -2248,7 +2248,7 @@
     "geometry_type": "point",
     "group": "Infrastructure",
     "description": "",
-    "icon": "circle",
+    "icon": "train",
     "icon_color": "orange",
     "color": "#FFA500"
   },
@@ -2541,7 +2541,7 @@
     "geometry_type": "point",
     "group": "Historic Places",
     "description": "",
-    "icon": "circle",
+    "icon": "landmark",
     "icon_color": "blue",
     "area_name_field": "RESNAME",
     "color": "#418A91"
