@@ -1057,7 +1057,7 @@
       "layer_id": 0,
       "geometry_type": "point",
       "group": "Infrastructure",
-      "description": "",
+      "description": "Power generation facilities tracked by the Energy Information Administration, categorized by primary energy source",
       "icon": "bolt",
       "icon_color": "white",
       "area_name_field": "Plant_Name",
@@ -1068,99 +1068,75 @@
         "categories": [
           {
             "label": "Solar",
-            "values": [
-              "solar"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["solar"],
+            "icon": "sun",
+            "icon_color": "orange"
           },
           {
             "label": "Natural Gas",
-            "values": [
-              "natural gas"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["natural gas"],
+            "icon": "fire",
+            "icon_color": "red"
           },
           {
             "label": "Hydroelectric",
-            "values": [
-              "hydroelectric"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["hydroelectric"],
+            "icon": "water",
+            "icon_color": "blue"
           },
           {
             "label": "Wind",
-            "values": [
-              "wind"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["wind"],
+            "icon": "wind",
+            "icon_color": "lightblue"
           },
           {
             "label": "Petroleum",
-            "values": [
-              "petroleum"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["petroleum"],
+            "icon": "oil-can",
+            "icon_color": "black"
           },
           {
             "label": "Biomass",
-            "values": [
-              "biomass"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["biomass"],
+            "icon": "leaf",
+            "icon_color": "green"
           },
           {
             "label": "Coal",
-            "values": [
-              "coal"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["coal"],
+            "icon": "mountain",
+            "icon_color": "gray"
           },
           {
             "label": "Batteries",
-            "values": [
-              "batteries"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["batteries"],
+            "icon": "battery-full",
+            "icon_color": "purple"
           },
           {
             "label": "Geothermal",
-            "values": [
-              "geothermal"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["geothermal"],
+            "icon": "temperature-high",
+            "icon_color": "darkred"
           },
           {
             "label": "Nuclear",
-            "values": [
-              "nuclear"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["nuclear"],
+            "icon": "atom",
+            "icon_color": "cadetblue"
           },
           {
             "label": "Pumped Storage",
-            "values": [
-              "pumped storage"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["pumped storage"],
+            "icon": "database",
+            "icon_color": "darkblue"
           },
           {
             "label": "Other",
-            "values": [
-              "other"
-            ],
-            "fill_color": null,
-            "fill_opacity": null
+            "values": ["other"],
+            "icon": "bolt",
+            "icon_color": "lightgray"
           }
         ]
       }
@@ -2426,7 +2402,12 @@
             "fill_color": "#000000",
             "fill_opacity": 0.5
           }
-        ]
+        ],
+        "default_category": {
+          "label": "Other Flood Zones",
+          "fill_color": "#CCCCCC",
+          "fill_opacity": 0.4
+        }
       }
     },
     {
@@ -4416,6 +4397,8 @@
       "symbology": {
         "type": "unique_values",
         "field": "ANRDept",
+        "concat_fields": ["ANRDept", "SOVLegalInterest"],
+        "concat_separator": ",",
         "categories": [
           {
             "label": "Forests, Parks & Recreation,Fee",
