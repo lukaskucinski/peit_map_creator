@@ -141,6 +141,15 @@ def generate_layer_control_data(groups, layer_results, config):
                                 'count': count,
                                 'geometry_type': 'line'  # Pass to template
                             })
+                        elif geometry_type == 'point':
+                            # Point layers use icon and icon_color
+                            category_symbols.append({
+                                'label': label,
+                                'icon': category.get('icon', layer.get('icon', 'circle')),
+                                'icon_color': category.get('icon_color', layer.get('icon_color', 'blue')),
+                                'count': count,
+                                'geometry_type': 'point'  # Pass to template
+                            })
                         else:  # polygon
                             # Polygon layers use fill_color, fill_opacity, border_color, and optionally fill_pattern
                             symbol_data = {
@@ -193,6 +202,14 @@ def generate_layer_control_data(groups, layer_results, config):
                                     'opacity': default.get('opacity', 0.8),
                                     'count': count,
                                     'geometry_type': 'line'
+                                })
+                            elif geometry_type == 'point':
+                                category_symbols.append({
+                                    'label': label,
+                                    'icon': default.get('icon', layer.get('icon', 'circle')),
+                                    'icon_color': default.get('icon_color', layer.get('icon_color', 'blue')),
+                                    'count': count,
+                                    'geometry_type': 'point'
                                 })
                             else:  # polygon
                                 symbol_data = {
