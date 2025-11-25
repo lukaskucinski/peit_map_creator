@@ -119,6 +119,9 @@ def generate_output(
     logger.info("  - Saving metadata...")
     metadata_file = output_path / 'metadata.json'
 
+    # Extract execution time from metadata if present (added by main workflow)
+    execution_time_data = metadata.pop('_execution_time', None)
+
     summary = {
         'generated_at': datetime.now().isoformat(),
         'input_polygon': {
@@ -126,9 +129,13 @@ def generate_output(
             'crs': str(polygon_gdf.crs)
         },
         'layers': metadata,
-        'total_features': sum(m['feature_count'] for m in metadata.values()),
-        'layers_with_data': sum(1 for m in metadata.values() if m['feature_count'] > 0)
+        'total_features': sum(m['feature_count'] for m in metadata.values() if isinstance(m, dict)),
+        'layers_with_data': sum(1 for m in metadata.values() if isinstance(m, dict) and m.get('feature_count', 0) > 0)
     }
+
+    # Add execution time if provided
+    if execution_time_data:
+        summary['execution_time'] = execution_time_data
 
     # Add input geometry metadata if provided (from new pipeline)
     if input_geometry_metadata:
