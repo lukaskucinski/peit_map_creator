@@ -248,7 +248,7 @@ def create_web_map(
                 # Add marker to cluster
                 folium.Marker(
                     location=[row.geometry.y, row.geometry.x],
-                    popup=folium.Popup(popup_html, max_width=400),
+                    popup=folium.Popup(popup_html, max_width=400, max_height=600),
                     icon=folium.Icon(
                         color=layer_config['icon_color'],
                         icon=layer_config['icon'],
@@ -422,7 +422,7 @@ def create_web_map(
 
                 # Now add popup field to the GeoJson layer
                 geojson_layer.add_child(
-                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px;")
+                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px; max-height: 600px; overflow-y: auto;")
                 )
 
                 geojson_layer.add_to(m)
