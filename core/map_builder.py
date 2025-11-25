@@ -410,7 +410,7 @@ def create_web_map(
 
                 # Now add popup field to the GeoJson layer
                 geojson_layer.add_child(
-                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px; max-height: 600px; overflow-y: auto;")
+                    folium.GeoJsonPopup(fields=['popup_html'], labels=False, style="max-width: 400px;")
                 )
 
                 geojson_layer.add_to(m)
@@ -447,6 +447,19 @@ def create_web_map(
     basemap_template = env.get_template('basemap_control.html')
     basemap_html = basemap_template.render(basemaps=basemaps)
     m.get_root().html.add_child(Element(basemap_html))
+
+    # Add popup scrollbar fix for seamless integration
+    # Applies max-height and overflow to Leaflet's content container instead of Folium's wrapper
+    # This ensures scrollbars only appear when content overflows and integrate within the popup border
+    popup_css_fix = Element("""
+        <style>
+            .leaflet-popup-content {
+                max-height: 600px;
+                overflow-y: auto;
+            }
+        </style>
+    """)
+    m.get_root().html.add_child(popup_css_fix)
 
     # Render download control template
     logger.info("  - Adding download control...")
