@@ -97,7 +97,6 @@ def generate_layer_control_data(groups, layer_results, config):
             # Add symbology category symbols if unique value symbology is used
             if 'symbology' in layer and layer['symbology'].get('type') == 'unique_values':
                 symbology = layer['symbology']
-                field = symbology['field']
                 layer_name = layer['name']
                 geometry_type = layer.get('geometry_type', 'polygon')  # Detect geometry type
                 category_symbols = []
@@ -114,10 +113,22 @@ def generate_layer_control_data(groups, layer_results, config):
                         # Count features matching this category (case-insensitive)
                         count = 0
                         for _, row in gdf.iterrows():
-                            attr_value = row.get(field)
+                            # Get the attribute value (support concatenated fields)
+                            if 'concat_fields' in symbology:
+                                concat_fields = symbology['concat_fields']
+                                separator = symbology.get('concat_separator', ',')
+                                field_values = [row.get(f, '') for f in concat_fields]
+                                attr_value = separator.join(str(v) for v in field_values if v)
+                            else:
+                                attr_value = row.get(symbology['field'])
+
                             if attr_value is not None:
                                 if any(str(attr_value).upper() == str(v).upper() for v in values):
                                     count += 1
+
+                        # Skip zero-count categories (matches default_category behavior)
+                        if count == 0:
+                            continue
 
                         # Extract attributes based on geometry type
                         if geometry_type == 'line':
@@ -149,7 +160,14 @@ def generate_layer_control_data(groups, layer_results, config):
                         # Count unmapped features
                         count = 0
                         for _, row in gdf.iterrows():
-                            attr_value = row.get(field)
+                            # Get the attribute value (support concatenated fields)
+                            if 'concat_fields' in symbology:
+                                concat_fields = symbology['concat_fields']
+                                separator = symbology.get('concat_separator', ',')
+                                field_values = [row.get(f, '') for f in concat_fields]
+                                attr_value = separator.join(str(v) for v in field_values if v)
+                            else:
+                                attr_value = row.get(symbology['field'])
                             matched = False
 
                             if attr_value is not None:
