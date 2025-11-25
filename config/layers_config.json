@@ -1295,10 +1295,33 @@
               "US",
               "USDA FOREST SERVICE"
             ],
-            "fill_color": "#CCCCCC",
-            "fill_opacity": 0.5
+            "fill_color": "#5B9BD5",
+            "fill_opacity": 0.6,
+            "border_color": "#333333",
+            "fill_pattern": {
+              "type": "stripe",
+              "angle": -45,
+              "weight": 2,
+              "space_weight": 4,
+              "opacity": 0.8,
+              "space_opacity": 0.0
+            }
           }
-        ]
+        ],
+        "default_category": {
+          "label": "Outstanding",
+          "fill_color": "#ED7D31",
+          "fill_opacity": 0.6,
+          "border_color": "#333333",
+          "fill_pattern": {
+            "type": "stripe",
+            "angle": -45,
+            "weight": 2,
+            "space_weight": 4,
+            "opacity": 0.8,
+            "space_opacity": 0.0
+          }
+        }
       }
     },
     {
