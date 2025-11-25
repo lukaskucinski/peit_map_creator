@@ -159,9 +159,11 @@ def create_web_map(
     # Patterns must be created before the layer loop and added to map
     pattern_objects = {}
     for layer_config in config['layers']:
+        layer_name = layer_config['name']
+
+        # Case 1: Layer-level pattern (existing functionality)
         if 'fill_pattern' in layer_config and layer_config['geometry_type'] == 'polygon':
             pattern_cfg = layer_config['fill_pattern']
-            layer_name = layer_config['name']
 
             if pattern_cfg.get('type') == 'stripe':
                 pattern = plugins.StripePattern(
@@ -176,6 +178,50 @@ def create_web_map(
                 pattern.add_to(m)
                 pattern_objects[layer_name] = pattern
                 logger.debug(f"Created stripe pattern for {layer_name}: angle={pattern_cfg.get('angle', -45)}°")
+
+        # Case 2: Category-level patterns (NEW)
+        if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
+            symbology = layer_config['symbology']
+
+            # Process regular categories
+            for category in symbology.get('categories', []):
+                if 'fill_pattern' in category:
+                    pattern_cfg = category['fill_pattern']
+                    pattern_key = f"{layer_name}::{category['label']}"
+
+                    if pattern_cfg.get('type') == 'stripe':
+                        pattern = plugins.StripePattern(
+                            angle=pattern_cfg.get('angle', -45),
+                            weight=pattern_cfg.get('weight', 3),
+                            space_weight=pattern_cfg.get('space_weight', 3),
+                            color=category.get('fill_color', layer_config.get('color', '#333333')),
+                            space_color=pattern_cfg.get('space_color', '#ffffff'),
+                            opacity=pattern_cfg.get('opacity', 0.75),
+                            space_opacity=pattern_cfg.get('space_opacity', 0.0)
+                        )
+                        pattern.add_to(m)
+                        pattern_objects[pattern_key] = pattern
+                        logger.debug(f"Created stripe pattern for {layer_name} category '{category['label']}': angle={pattern_cfg.get('angle', -45)}°")
+
+            # Process default category
+            if 'default_category' in symbology and 'fill_pattern' in symbology['default_category']:
+                default_cat = symbology['default_category']
+                pattern_cfg = default_cat['fill_pattern']
+                pattern_key = f"{layer_name}::{default_cat['label']}"
+
+                if pattern_cfg.get('type') == 'stripe':
+                    pattern = plugins.StripePattern(
+                        angle=pattern_cfg.get('angle', -45),
+                        weight=pattern_cfg.get('weight', 3),
+                        space_weight=pattern_cfg.get('space_weight', 3),
+                        color=default_cat.get('fill_color', layer_config.get('color', '#333333')),
+                        space_color=pattern_cfg.get('space_color', '#ffffff'),
+                        opacity=pattern_cfg.get('opacity', 0.75),
+                        space_opacity=pattern_cfg.get('space_opacity', 0.0)
+                    )
+                    pattern.add_to(m)
+                    pattern_objects[pattern_key] = pattern
+                    logger.debug(f"Created stripe pattern for {layer_name} default category '{default_cat['label']}': angle={pattern_cfg.get('angle', -45)}°")
 
     # Add each layer with appropriate styling
     # Note: Layers are added to map but will be controlled via custom layer control panel
@@ -334,20 +380,41 @@ def create_web_map(
 
                             # Apply category styling or default
                             if matched_category:
-                                style['fillColor'] = matched_category.get('fill_color', config['color'])
-                                style['fillOpacity'] = matched_category.get('fill_opacity', 0.6)
-                                style['color'] = matched_category.get('border_color', config['color'])
+                                # Check if category has a pattern fill
+                                pattern_key = f"{lname}::{matched_category['label']}"
+                                if pattern_key in patterns:
+                                    # Category has a pattern - use it
+                                    style['fillPattern'] = patterns[pattern_key]
+                                    style['fillOpacity'] = 1.0  # Must be 1.0 for patterns
+                                    style['color'] = matched_category.get('border_color', config['color'])
+                                    style['weight'] = 2
+                                else:
+                                    # No pattern - use solid fill
+                                    style['fillColor'] = matched_category.get('fill_color', config['color'])
+                                    style['fillOpacity'] = matched_category.get('fill_opacity', 0.6)
+                                    style['color'] = matched_category.get('border_color', config['color'])
+                                    style['weight'] = 2
                             elif 'default_category' in symbology:
                                 default = symbology['default_category']
-                                style['fillColor'] = default.get('fill_color', '#CCCCCC')
-                                style['fillOpacity'] = default.get('fill_opacity', 0.4)
-                                style['color'] = default.get('border_color', config['color'])
+                                pattern_key = f"{lname}::{default['label']}"
+                                if pattern_key in patterns:
+                                    # Default category has a pattern
+                                    style['fillPattern'] = patterns[pattern_key]
+                                    style['fillOpacity'] = 1.0  # Must be 1.0 for patterns
+                                    style['color'] = default.get('border_color', config['color'])
+                                    style['weight'] = 2
+                                else:
+                                    # No pattern - use solid fill
+                                    style['fillColor'] = default.get('fill_color', '#CCCCCC')
+                                    style['fillOpacity'] = default.get('fill_opacity', 0.4)
+                                    style['color'] = default.get('border_color', config['color'])
+                                    style['weight'] = 2
                             else:
                                 # No default specified, use layer-level settings
                                 style['fillColor'] = config.get('fill_color', config['color'])
                                 style['fillOpacity'] = config.get('fill_opacity', 0.6)
 
-                        # Pattern fills (existing logic)
+                        # Pattern fills (existing logic for layer-level patterns)
                         elif 'fill_pattern' in config and lname in patterns:
                             # Use pattern fill
                             style['fillPattern'] = patterns[lname]
@@ -617,14 +684,41 @@ def create_web_map(
                     count = category_counts.get(layer_name, {}).get(label, 0)
 
                     if count > 0:  # Only show categories with features
-                        legend_items_html += f"""
-                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
-                            <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                                <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
-                            </svg>
-                            <span>{label} ({count})</span>
-                        </div>
-                        """
+                        # Check if category has a pattern fill
+                        if 'fill_pattern' in category and category['fill_pattern'].get('type') == 'stripe':
+                            pattern_cfg = category['fill_pattern']
+                            pattern_angle = pattern_cfg.get('angle', -45)
+                            pattern_weight = pattern_cfg.get('weight', 3)
+                            pattern_space = pattern_cfg.get('space_weight', 3)
+                            pattern_opacity = pattern_cfg.get('opacity', 0.75)
+                            pattern_id = f"legend-hatch-{sanitized_name}-{label.replace(' ', '-').lower()}"
+
+                            legend_items_html += f"""
+                            <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                                <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                                    <defs>
+                                        <pattern id="{pattern_id}" patternUnits="userSpaceOnUse"
+                                                 width="{pattern_weight + pattern_space}" height="{pattern_weight + pattern_space}"
+                                                 patternTransform="rotate({pattern_angle} 0 0)">
+                                            <line x1="0" y1="0" x2="0" y2="{pattern_weight + pattern_space}"
+                                                  style="stroke:{fill_color}; stroke-width:{pattern_weight}; opacity:{pattern_opacity};" />
+                                        </pattern>
+                                    </defs>
+                                    <rect width="20" height="15" style="fill:url(#{pattern_id}); stroke:{cat_border}; stroke-width:1;" />
+                                </svg>
+                                <span>{label} ({count})</span>
+                            </div>
+                            """
+                        else:
+                            # Solid fill
+                            legend_items_html += f"""
+                            <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                                <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                                    <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
+                                </svg>
+                                <span>{label} ({count})</span>
+                            </div>
+                            """
 
                 # Default category if present
                 if 'default_category' in symbology:
@@ -637,14 +731,41 @@ def create_web_map(
                         fill_opacity = default.get('fill_opacity', 0.4)
                         cat_border = default.get('border_color', border_color)
 
-                        legend_items_html += f"""
-                        <div class="legend-item legend-category" data-layer-name="{layer_name}">
-                            <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                                <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
-                            </svg>
-                            <span>{label} ({count})</span>
-                        </div>
-                        """
+                        # Check if default category has a pattern fill
+                        if 'fill_pattern' in default and default['fill_pattern'].get('type') == 'stripe':
+                            pattern_cfg = default['fill_pattern']
+                            pattern_angle = pattern_cfg.get('angle', -45)
+                            pattern_weight = pattern_cfg.get('weight', 3)
+                            pattern_space = pattern_cfg.get('space_weight', 3)
+                            pattern_opacity = pattern_cfg.get('opacity', 0.75)
+                            pattern_id = f"legend-hatch-{sanitized_name}-{label.replace(' ', '-').lower()}"
+
+                            legend_items_html += f"""
+                            <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                                <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                                    <defs>
+                                        <pattern id="{pattern_id}" patternUnits="userSpaceOnUse"
+                                                 width="{pattern_weight + pattern_space}" height="{pattern_weight + pattern_space}"
+                                                 patternTransform="rotate({pattern_angle} 0 0)">
+                                            <line x1="0" y1="0" x2="0" y2="{pattern_weight + pattern_space}"
+                                                  style="stroke:{fill_color}; stroke-width:{pattern_weight}; opacity:{pattern_opacity};" />
+                                        </pattern>
+                                    </defs>
+                                    <rect width="20" height="15" style="fill:url(#{pattern_id}); stroke:{cat_border}; stroke-width:1;" />
+                                </svg>
+                                <span>{label} ({count})</span>
+                            </div>
+                            """
+                        else:
+                            # Solid fill
+                            legend_items_html += f"""
+                            <div class="legend-item legend-category" data-layer-name="{layer_name}">
+                                <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                                    <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
+                                </svg>
+                                <span>{label} ({count})</span>
+                            </div>
+                            """
 
             # Check if layer uses hatched pattern
             elif 'fill_pattern' in layer_config and layer_config['fill_pattern'].get('type') == 'stripe':

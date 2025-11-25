@@ -375,12 +375,30 @@
                             <line x1="0" y1="7" x2="20" y2="7"
                                   style="stroke:{{ symbol.color }}; stroke-width:{{ symbol.weight|default(3) }}; opacity:{{ symbol.opacity|default(0.8) }};" />
                         </svg>
-                        {% else %}
-                        <!-- Polygon symbology: filled rectangle -->
-                        <svg width="14" height="14" style="margin-right: 6px; vertical-align: middle;">
-                            <rect width="14" height="14"
-                                  style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
-                        </svg>
+                        {% elif symbol.geometry_type == 'polygon' %}
+                            {% if symbol.fill_pattern %}
+                            <!-- Polygon with pattern fill -->
+                            <svg width="14" height="14" style="margin-right: 6px; vertical-align: middle;">
+                                <defs>
+                                    <pattern id="lcp-pattern-{{ layer.name|replace(' ', '-')|lower }}-{{ symbol.label|replace(' ', '-')|lower }}"
+                                             patternUnits="userSpaceOnUse"
+                                             width="{{ (symbol.fill_pattern.weight|default(3) + symbol.fill_pattern.space_weight|default(3)) }}"
+                                             height="{{ (symbol.fill_pattern.weight|default(3) + symbol.fill_pattern.space_weight|default(3)) }}"
+                                             patternTransform="rotate({{ symbol.fill_pattern.angle|default(-45) }} 0 0)">
+                                        <line x1="0" y1="0" x2="0" y2="{{ (symbol.fill_pattern.weight|default(3) + symbol.fill_pattern.space_weight|default(3)) }}"
+                                              style="stroke:{{ symbol.fill_color }}; stroke-width:{{ symbol.fill_pattern.weight|default(3) }}; opacity:{{ symbol.fill_pattern.opacity|default(0.75) }};" />
+                                    </pattern>
+                                </defs>
+                                <rect width="14" height="14"
+                                      style="fill:url(#lcp-pattern-{{ layer.name|replace(' ', '-')|lower }}-{{ symbol.label|replace(' ', '-')|lower }}); stroke:{{ symbol.border_color }}; stroke-width:1;" />
+                            </svg>
+                            {% else %}
+                            <!-- Polygon with solid fill -->
+                            <svg width="14" height="14" style="margin-right: 6px; vertical-align: middle;">
+                                <rect width="14" height="14"
+                                      style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
+                            </svg>
+                            {% endif %}
                         {% endif %}
                         <span>{{ symbol.label }} <span class="layer-count">({{ symbol.count }})</span></span>
                     </div>

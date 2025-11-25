@@ -131,15 +131,19 @@ def generate_layer_control_data(groups, layer_results, config):
                                 'geometry_type': 'line'  # Pass to template
                             })
                         else:  # polygon
-                            # Polygon layers use fill_color, fill_opacity, border_color
-                            category_symbols.append({
+                            # Polygon layers use fill_color, fill_opacity, border_color, and optionally fill_pattern
+                            symbol_data = {
                                 'label': label,
                                 'fill_color': category.get('fill_color', layer.get('color', '#3388ff')),
                                 'fill_opacity': category.get('fill_opacity', 0.6),
                                 'border_color': category.get('border_color', layer.get('color', '#333333')),
                                 'count': count,
                                 'geometry_type': 'polygon'  # Pass to template
-                            })
+                            }
+                            # Add fill_pattern if present
+                            if 'fill_pattern' in category:
+                                symbol_data['fill_pattern'] = category['fill_pattern']
+                            category_symbols.append(symbol_data)
 
                     # Add default category if present
                     if 'default_category' in symbology:
@@ -173,14 +177,18 @@ def generate_layer_control_data(groups, layer_results, config):
                                     'geometry_type': 'line'
                                 })
                             else:  # polygon
-                                category_symbols.append({
+                                symbol_data = {
                                     'label': label,
                                     'fill_color': default.get('fill_color', '#CCCCCC'),
                                     'fill_opacity': default.get('fill_opacity', 0.4),
                                     'border_color': default.get('border_color', layer.get('color', '#333333')),
                                     'count': count,
                                     'geometry_type': 'polygon'
-                                })
+                                }
+                                # Add fill_pattern if present
+                                if 'fill_pattern' in default:
+                                    symbol_data['fill_pattern'] = default['fill_pattern']
+                                category_symbols.append(symbol_data)
 
                 layer_info['category_symbols'] = category_symbols
 
