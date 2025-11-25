@@ -369,10 +369,19 @@
                     <!-- Category entries (vertical layout) -->
                     {% for symbol in layer.category_symbols %}
                     <div class="layer-item-child" data-layer-name="{{ layer.name }}">
+                        {% if symbol.geometry_type == 'line' %}
+                        <!-- Line symbology: colored line -->
+                        <svg width="20" height="14" style="margin-right: 6px; vertical-align: middle;">
+                            <line x1="0" y1="7" x2="20" y2="7"
+                                  style="stroke:{{ symbol.color }}; stroke-width:{{ symbol.weight|default(3) }}; opacity:{{ symbol.opacity|default(0.8) }};" />
+                        </svg>
+                        {% else %}
+                        <!-- Polygon symbology: filled rectangle -->
                         <svg width="14" height="14" style="margin-right: 6px; vertical-align: middle;">
                             <rect width="14" height="14"
                                   style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
                         </svg>
+                        {% endif %}
                         <span>{{ symbol.label }} <span class="layer-count">({{ symbol.count }})</span></span>
                     </div>
                     {% endfor %}

@@ -99,6 +99,7 @@ def generate_layer_control_data(groups, layer_results, config):
                 symbology = layer['symbology']
                 field = symbology['field']
                 layer_name = layer['name']
+                geometry_type = layer.get('geometry_type', 'polygon')  # Detect geometry type
                 category_symbols = []
 
                 # Get GeoDataFrame for this layer to count features per category
@@ -118,13 +119,27 @@ def generate_layer_control_data(groups, layer_results, config):
                                 if any(str(attr_value).upper() == str(v).upper() for v in values):
                                     count += 1
 
-                        category_symbols.append({
-                            'label': label,
-                            'fill_color': category.get('fill_color', layer.get('color', '#3388ff')),
-                            'fill_opacity': category.get('fill_opacity', 0.6),
-                            'border_color': category.get('border_color', layer.get('color', '#333333')),
-                            'count': count
-                        })
+                        # Extract attributes based on geometry type
+                        if geometry_type == 'line':
+                            # Line layers use color, weight, opacity
+                            category_symbols.append({
+                                'label': label,
+                                'color': category.get('color', layer.get('color', '#333333')),
+                                'weight': category.get('weight', 3),
+                                'opacity': category.get('opacity', 0.8),
+                                'count': count,
+                                'geometry_type': 'line'  # Pass to template
+                            })
+                        else:  # polygon
+                            # Polygon layers use fill_color, fill_opacity, border_color
+                            category_symbols.append({
+                                'label': label,
+                                'fill_color': category.get('fill_color', layer.get('color', '#3388ff')),
+                                'fill_opacity': category.get('fill_opacity', 0.6),
+                                'border_color': category.get('border_color', layer.get('color', '#333333')),
+                                'count': count,
+                                'geometry_type': 'polygon'  # Pass to template
+                            })
 
                     # Add default category if present
                     if 'default_category' in symbology:
@@ -147,13 +162,25 @@ def generate_layer_control_data(groups, layer_results, config):
                                 count += 1
 
                         if count > 0:  # Only add if there are unmapped features
-                            category_symbols.append({
-                                'label': label,
-                                'fill_color': default.get('fill_color', '#CCCCCC'),
-                                'fill_opacity': default.get('fill_opacity', 0.4),
-                                'border_color': default.get('border_color', layer.get('color', '#333333')),
-                                'count': count
-                            })
+                            # Extract attributes based on geometry type
+                            if geometry_type == 'line':
+                                category_symbols.append({
+                                    'label': label,
+                                    'color': default.get('color', layer.get('color', '#333333')),
+                                    'weight': default.get('weight', 3),
+                                    'opacity': default.get('opacity', 0.8),
+                                    'count': count,
+                                    'geometry_type': 'line'
+                                })
+                            else:  # polygon
+                                category_symbols.append({
+                                    'label': label,
+                                    'fill_color': default.get('fill_color', '#CCCCCC'),
+                                    'fill_opacity': default.get('fill_opacity', 0.4),
+                                    'border_color': default.get('border_color', layer.get('color', '#333333')),
+                                    'count': count,
+                                    'geometry_type': 'polygon'
+                                })
 
                 layer_info['category_symbols'] = category_symbols
 
