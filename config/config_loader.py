@@ -81,6 +81,8 @@ def load_geometry_settings(config: Dict = None) -> Dict:
         - buffer_line_geometries: True
         - auto_repair_invalid: True
         - fallback_crs: 'EPSG:5070'
+        - clip_results_to_buffer: True
+        - clip_buffer_miles: 1.0
 
     Note:
         Returns defaults if 'geometry_settings' section is missing,
@@ -95,7 +97,9 @@ def load_geometry_settings(config: Dict = None) -> Dict:
         'buffer_point_geometries': True,
         'buffer_line_geometries': True,
         'auto_repair_invalid': True,
-        'fallback_crs': 'EPSG:5070'
+        'fallback_crs': 'EPSG:5070',
+        'clip_results_to_buffer': True,
+        'clip_buffer_miles': 1.0
     }
 
     # Get geometry_settings from config, or use defaults

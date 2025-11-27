@@ -29,7 +29,8 @@ def generate_output(
     metadata: Dict[str, Dict],
     config: Dict,
     output_name: Optional[str] = None,
-    input_geometry_metadata: Optional[Dict] = None
+    input_geometry_metadata: Optional[Dict] = None,
+    clip_summary: Optional[Dict] = None
 ) -> Tuple[Path, Optional[str], Optional[str]]:
     """
     Generate output directory with HTML map, GeoJSON data files, XLSX and PDF reports.
@@ -55,6 +56,10 @@ def generate_output(
         Configuration dictionary with layer definitions
     output_name : Optional[str]
         Custom output directory name (defaults to timestamped name)
+    input_geometry_metadata : Optional[Dict]
+        Metadata about input geometry processing (from new pipeline)
+    clip_summary : Optional[Dict]
+        Summary of geometry clipping statistics
 
     Returns:
     --------
@@ -140,6 +145,10 @@ def generate_output(
     # Add input geometry metadata if provided (from new pipeline)
     if input_geometry_metadata:
         summary['input_geometry'] = input_geometry_metadata
+
+    # Add clipping summary if provided
+    if clip_summary:
+        summary['clipping_summary'] = clip_summary
 
     with open(metadata_file, 'w', encoding='utf-8') as f:
         json.dump(summary, f, indent=2)
