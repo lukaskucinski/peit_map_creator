@@ -106,7 +106,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         input_filename = Path(input_file).stem
 
         # Step 2: Process all layers
-        layer_results, metadata = process_all_layers(polygon_gdf, config)
+        layer_results, metadata, clip_summary = process_all_layers(polygon_gdf, config)
 
         # Check if any results found
         if not layer_results:
@@ -143,7 +143,8 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
         output_path, xlsx_file, pdf_file = generate_output(
             map_obj, polygon_gdf, layer_results, metadata, config, output_name,
-            input_geometry_metadata=input_geometry_metadata
+            input_geometry_metadata=input_geometry_metadata,
+            clip_summary=clip_summary
         )
 
         logger.info("")

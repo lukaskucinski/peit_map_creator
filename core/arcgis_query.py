@@ -14,8 +14,10 @@ import requests
 import json
 import time
 from typing import Tuple, Optional, Dict
+from shapely.geometry.base import BaseGeometry
 from utils.geometry_converters import convert_esri_to_geojson
 from utils.logger import get_logger
+from geometry_input.clipping import clip_geodataframe
 
 logger = get_logger(__name__)
 
@@ -24,14 +26,17 @@ def query_arcgis_layer(
     layer_url: str,
     layer_id: int,
     polygon_geom: gpd.GeoDataFrame,
-    layer_name: str = "Layer"
+    layer_name: str = "Layer",
+    clip_boundary: Optional[BaseGeometry] = None,
+    geometry_type: Optional[str] = None
 ) -> Tuple[Optional[gpd.GeoDataFrame], Dict]:
     """
     Query an ArcGIS FeatureServer with spatial intersection.
 
-    Uses a two-stage approach:
+    Uses a three-stage approach:
     1. Server-side: Query using bounding box (envelope) for speed
     2. Client-side: Filter to precise polygon intersection
+    3. Client-side: Clip geometries to buffer boundary (lines/polygons only)
 
     Parameters:
     -----------
@@ -43,6 +48,10 @@ def query_arcgis_layer(
         Input polygon for spatial intersection
     layer_name : str
         Name of the layer for logging
+    clip_boundary : BaseGeometry, optional
+        Geometry boundary to clip results to (typically 1-mile buffer around input)
+    geometry_type : str, optional
+        Type of geometry ('point', 'line', or 'polygon') for clipping decision
 
     Returns:
     --------
@@ -54,6 +63,7 @@ def query_arcgis_layer(
         - feature_count: Final count after filtering
         - bbox_count: Initial count from bounding box query
         - filtered_count: Number of features filtered out
+        - clipping: Clipping statistics (if clipping was applied)
         - query_time: Total query time in seconds
         - warning: Any warnings (e.g., exceededTransferLimit)
         - error: Error message if query failed
@@ -125,7 +135,6 @@ def query_arcgis_layer(
             polygon_geometry = polygon_geom.geometry.iloc[0]
             gdf = gdf[gdf.intersects(polygon_geometry)]
 
-            metadata['feature_count'] = len(gdf)
             metadata['bbox_count'] = initial_count
             metadata['filtered_count'] = initial_count - len(gdf)
 
@@ -140,6 +149,15 @@ def query_arcgis_layer(
                     f"(removed {initial_count - len(gdf)} outside polygon)"
                 )
 
+            # Client-side clipping: clip geometries to buffer boundary
+            # Only applies to line and polygon geometries (points cannot extend beyond boundaries)
+            if clip_boundary is not None and geometry_type in ('line', 'polygon') and len(gdf) > 0:
+                gdf, clip_metadata = clip_geodataframe(
+                    gdf, clip_boundary, layer_name, geometry_type
+                )
+                metadata['clipping'] = clip_metadata
+
+            metadata['feature_count'] = len(gdf)
             logger.info(f"    ✓ Found {len(gdf)} intersecting features")
 
             metadata['query_time'] = time.time() - start_time

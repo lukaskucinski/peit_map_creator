@@ -9,9 +9,11 @@ Modules:
     dissolve: Unify multi-part geometries and repair invalid geometries
     buffering: Buffer point/line geometries in projected CRS, return EPSG:4326
     pipeline: Orchestrate complete geometry processing workflow
+    clipping: Clip query result geometries to buffer boundary
 
 Usage:
     from geometry_input.pipeline import process_input_geometry
+    from geometry_input.clipping import create_clip_boundary, clip_geodataframe
 
     polygon_gdf = process_input_geometry(
         file_path='path/to/input.gpkg',
@@ -20,5 +22,15 @@ Usage:
 """
 
 from geometry_input.pipeline import process_input_geometry
+from geometry_input.clipping import (
+    create_clip_boundary,
+    clip_geodataframe,
+    aggregate_clip_metadata
+)
 
-__all__ = ['process_input_geometry']
+__all__ = [
+    'process_input_geometry',
+    'create_clip_boundary',
+    'clip_geodataframe',
+    'aggregate_clip_metadata'
+]
