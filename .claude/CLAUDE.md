@@ -200,7 +200,8 @@ The tool supports **points, lines, and polygons** as input geometries with autom
     "auto_repair_invalid": true,
     "fallback_crs": "EPSG:5070",
     "clip_results_to_buffer": true,
-    "clip_buffer_miles": 1.0
+    "clip_buffer_miles": 1.0,
+    "state_filter_enabled": true
   }
 }
 ```
@@ -253,6 +254,24 @@ The system tracks clipping statistics at both the per-layer level and globally i
 - Faster map loading times
 - Smaller HTML output files
 - Reduced storage requirements
+
+### State-Based Layer Filtering
+The tool optimizes layer processing by detecting which US state(s) the input geometry intersects and only querying layers relevant to those states.
+
+**How it works:**
+1. Input geometry is buffered using `clip_buffer_miles` setting (default: 1.0 mile)
+2. Buffered geometry is intersected with bundled US state boundaries
+3. Layers with a `states` field are filtered to only those matching intersecting states
+4. Layers without `states` field (national/federal layers) always run
+
+**Configuration:**
+- `geometry_settings.state_filter_enabled`: Enable/disable filtering (default: true)
+- Layer-level `states` field: Array of state names the layer applies to
+
+**Performance:**
+- Skips ~45-60 irrelevant state layers when input is in a single state
+- Reduces total query time significantly for state-specific workflows
+- Metadata tracks filter statistics in `state_filter` section
 
 ### Jinja2 Templates for UI
 HTML/CSS/JavaScript for UI components are stored as Jinja2 templates, not embedded in Python strings. This:
@@ -428,7 +447,8 @@ Configuration file: `config/layers_config.json`
   "fill_opacity": 0.5,
   "description": "Layer description",
   "geometry_type": "point|line|polygon",
-  "group": "Group Name"
+  "group": "Group Name",
+  "states": ["State Name"]
 }
 ```
 
@@ -445,6 +465,7 @@ Configuration file: `config/layers_config.json`
 - `geometry_type`: Feature geometry type (required: "point", "line", or "polygon")
 - `group`: Category for layer organization (required)
 - `area_name_field`: Attribute field containing primary name (optional but recommended, used for popup headers and reports)
+- `states`: Array of US state names this layer applies to (optional, used for state-based filtering optimization)
 
 **Notes**:
 - `icon` and `icon_color` are only used for point layers

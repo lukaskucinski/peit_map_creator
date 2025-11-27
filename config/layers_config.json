@@ -611,7 +611,7 @@
       "group": "EPA Programs",
       "description": "",
       "icon": "droplet",
-      "icon_color": "white",
+      "icon_color": "blue",
       "color": "#FFFFFF"
     },
     {
@@ -1068,73 +1068,97 @@
         "categories": [
           {
             "label": "Solar",
-            "values": ["solar"],
+            "values": [
+              "solar"
+            ],
             "icon": "sun",
             "icon_color": "orange"
           },
           {
             "label": "Natural Gas",
-            "values": ["natural gas"],
+            "values": [
+              "natural gas"
+            ],
             "icon": "fire",
             "icon_color": "red"
           },
           {
             "label": "Hydroelectric",
-            "values": ["hydroelectric"],
+            "values": [
+              "hydroelectric"
+            ],
             "icon": "water",
             "icon_color": "blue"
           },
           {
             "label": "Wind",
-            "values": ["wind"],
+            "values": [
+              "wind"
+            ],
             "icon": "wind",
             "icon_color": "lightblue"
           },
           {
             "label": "Petroleum",
-            "values": ["petroleum"],
+            "values": [
+              "petroleum"
+            ],
             "icon": "oil-can",
             "icon_color": "black"
           },
           {
             "label": "Biomass",
-            "values": ["biomass"],
+            "values": [
+              "biomass"
+            ],
             "icon": "leaf",
             "icon_color": "green"
           },
           {
             "label": "Coal",
-            "values": ["coal"],
+            "values": [
+              "coal"
+            ],
             "icon": "mountain",
             "icon_color": "gray"
           },
           {
             "label": "Batteries",
-            "values": ["batteries"],
+            "values": [
+              "batteries"
+            ],
             "icon": "battery-full",
             "icon_color": "purple"
           },
           {
             "label": "Geothermal",
-            "values": ["geothermal"],
+            "values": [
+              "geothermal"
+            ],
             "icon": "temperature-high",
             "icon_color": "darkred"
           },
           {
             "label": "Nuclear",
-            "values": ["nuclear"],
+            "values": [
+              "nuclear"
+            ],
             "icon": "atom",
             "icon_color": "cadetblue"
           },
           {
             "label": "Pumped Storage",
-            "values": ["pumped storage"],
+            "values": [
+              "pumped storage"
+            ],
             "icon": "database",
             "icon_color": "darkblue"
           },
           {
             "label": "Other",
-            "values": ["other"],
+            "values": [
+              "other"
+            ],
             "icon": "bolt",
             "icon_color": "lightgray"
           }
@@ -2490,7 +2514,7 @@
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "Floodplains",
-      "description": "These data represent the extent of the nation's coastal zone, as defined by the individual states and territories under the Coastal Zone Management Act of 1972 (CZMA). The CZMA was established to preserve, protect, develop, and where possible, to restore or enhance the resources of the nation's coastal zone. The zone generally extends seaward to the boundary of the Submerged Lands Act. The zone extends inland from the shorelines only to the extent necessary to control shorelands that have a direct and significant impact on coastal waters. Lands held in trust by the Federal Government have been included in this boundary unless otherwise noted, as accurately representing these could be erroneous. State jurisdiction extends to 3nm, except for Texas, Puerto Rico and Florida’s Gulf coast extends to 9nm. Great Lakes states have jurisdiction to the international boundary with Canada. CZMA applies in EEZ through federal consistency. This boundary is unofficial. For precise regulatory boundaries, please contact the state or territorial coastal program office.",
+      "description": "These data represent the extent of the nation's coastal zone, as defined by the individual states and territories under the Coastal Zone Management Act of 1972 (CZMA). The CZMA was established to preserve, protect, develop, and where possible, to restore or enhance the resources of the nation's coastal zone. The zone generally extends seaward to the boundary of the Submerged Lands Act. The zone extends inland from the shorelines only to the extent necessary to control shorelands that have a direct and significant impact on coastal waters. Lands held in trust by the Federal Government have been included in this boundary unless otherwise noted, as accurately representing these could be erroneous. State jurisdiction extends to 3nm, except for Texas, Puerto Rico and Florida\u2019s Gulf coast extends to 9nm. Great Lakes states have jurisdiction to the international boundary with Canada. CZMA applies in EEZ through federal consistency. This boundary is unofficial. For precise regulatory boundaries, please contact the state or territorial coastal program office.",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2571,7 +2595,10 @@
       "description": "",
       "color": "#000000",
       "fill_color": "#000000",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Alabama"
+      ]
     },
     {
       "name": "University of Alaska Lands",
@@ -2602,7 +2629,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Alaska"
+      ]
     },
     {
       "name": "Legislative Designated Area",
@@ -2613,7 +2643,10 @@
       "description": "",
       "color": "#333366",
       "fill_color": "#333366",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Alaska"
+      ]
     },
     {
       "name": "State Parks",
@@ -2624,7 +2657,10 @@
       "description": "",
       "color": "#000000",
       "fill_color": "#000000",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Alaska"
+      ]
     },
     {
       "name": "State Forests",
@@ -2655,7 +2691,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Colorado"
+      ]
     },
     {
       "name": "Mental Health Trust Land",
@@ -2666,7 +2705,10 @@
       "description": "",
       "color": "#A8A800",
       "fill_color": "#A8A800",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Alaska"
+      ]
     },
     {
       "name": "DNR State Lands",
@@ -2677,7 +2719,10 @@
       "description": "",
       "color": "#E1E1E1",
       "fill_color": "#E1E1E1",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Alaska"
+      ]
     },
     {
       "name": "Arizona - State Trust Parcels",
@@ -2790,7 +2835,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Arizona"
+      ]
     },
     {
       "name": "Arkansas - Public Lands",
@@ -2801,7 +2849,10 @@
       "description": "",
       "color": "#B3FCC5",
       "fill_color": "#B3FCC5",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Arkansas"
+      ]
     },
     {
       "name": "California - Land Ownership",
@@ -2809,7 +2860,7 @@
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
-      "description": "<p style='margin: 0in 0in 4.5pt; font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'><font size='3' style='font-family: inherit;'>This dataset is intended to provide the best available statewide depiction of land ownership in California. It includes lands owned by federal agencies, state agencies, local government entities, conservation organizations, special districts, etc. It does not include lands that are in private ownership.</font><br /></p><p style='margin: 0in 0in 4.5pt; font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'><font size='3' style='font-family: inherit;'><br /></font></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>This dataset was updated internally April, 2023 and online June 2023. </p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>This ownership dataset was generated primarily from CPAD data, which already tracks the majority of ownership information in California. CPAD is utilized without any snapping or clipping to FRA/SRA/LRA. CPAD has some important data gaps, so additional data sources are used to supplement the CPAD data. Currently this includes the most currently available data from BIA, DOD, and FWS. Additional sources may be added in subsequent versions. Decision rules were developed to identify priority layers in areas of overlap.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>Starting in 2022, the ownership dataset was compiled using a new methodology. Previous versions attempted to match federal ownership boundaries to the FRA footprint, and used a manual process for checking and tracking Federal ownership changes within the FRA, with CPAD ownership information only being used for SRA and LRA lands. The manual portion of that process was proving difficult to maintain, and the new method (described below) was developed in order to decrease the manual workload, and increase accountability by using an automated process by which any final ownership designation could be traced back to a specific dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>The current process for compiling the data sources includes:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Clipping input datasets to the California boundary</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Filtering the FWS data on the Primary Interest field to exclude lands that are managed by but not owned by FWS (ex: Leases, Easements, etc)</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Supplementing the BIA Pacific Region Surface Trust lands data with the Western Region portion of the LAR dataset which extends into California.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Filtering the BIA data to exclude areas that represent only mineral rights rather than surface ownership.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* In the case of overlap, sources were prioritized as follows: FWS &gt; BIA &gt; CPAD &gt; DOD</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* As an exception to the above, DOD lands on FRA which overlapped with CPAD lands that were incorrectly coded as non-Federal were treated as an override, such that the DOD designation could win out over CPAD.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>In addition to this ownership dataset, a supplemental _source dataset is available which designates the source that was used to determine the ownership in this dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>Data Sources:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* GreenInfo Network's California Protected Areas Database (CPAD2022b). <a href='https://www.calands.org/cpad/' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.calands.org/cpad/</a>; <a href='https://www.calands.org/wp-content/uploads/2022/12/CPAD-2022b-Database-Manual.pdf' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.calands.org/wp-content/uploads/2022/12/CPAD-2022b-Database-Manual.pdf</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* US Fish and Wildlife Service FWSInterest dataset (updated February, 2023). <a href='https://fws.maps.arcgis.com/home/item.html?id=0a30eaf43328427db8750282d67f0005' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://fws.maps.arcgis.com/home/item.html?id=0a30eaf43328427db8750282d67f0005</a>or <a href='https://ecos.fws.gov/ServCat/Reference/Profile/144384' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://ecos.fws.gov/ServCat/Reference/Profile/144384</a>or <a href='https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWSInterest/FeatureServer' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWSInterest/FeatureServer</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Department of Defense MIRTA dataset (updated 2022) <a href='https://www.acq.osd.mil/eie/BSI/BEI_DISDI.html' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.acq.osd.mil/eie/BSI/BEI_DISDI.html</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Bureau of Indian Affairs, Pacific Region, Surface Trust and Pacific Region Office (PRO) land boundaries data (2023) via John Mosley <a href='mailto:John.Mosley@bia.gov' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>John.Mosley@bia.gov</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Bureau of Indian Affairs, Land Area Representations (LAR) and BIA Regions datasets (updated Oct 2019) <a href='https://biamaps.doi.gov/bogs/datadownload.html' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://biamaps.doi.gov/bogs/datadownload.html</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>Data Gaps &amp; Changes:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>23_1: </span>A few discrepancies were discovered between data changes that occurred in CPAD when compared with parcel data. These issues will be taken to CPAD for clarification for future updates, but for ownership23_1 it reflects the data as it was coded in CPAD at the time. In addition, there was a change in the DOD input data between last year and this year, with the removal of Camp Pendleton. An inquiry was sent for clarification on this change, but for ownership23_1 it reflects the data per the DOD input dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>22_1 : </span>represents an initial version of ownership with a new methodology which was developed under a short timeframe. A comparison with previous versions of ownership highlighted the some data gaps with the current version. Some of these known gaps include several BOR, ACE and Navy lands which were not included in CPAD nor the DOD MIRTA dataset. Our hope for future versions is to refine the process by pulling in additional data sources to fill in some of those data gaps. In addition, any topological errors (like overlaps or gaps) that exist in the input datasets may thus carry over to the ownership dataset. Ideally, any feedback received about missing or inaccurate data can be taken back to the relevant source data where appropriate, so fixes can occur in the source data, instead of just in this dataset.</p>",
+      "description": "<p style='margin: 0in 0in 4.5pt; font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'><font size='3' style='font-family: inherit;'>This dataset is intended to provide the best available statewide depiction of land ownership in California. It includes lands owned by federal agencies, state agencies, local government entities, conservation organizations, special districts, etc. It does not include lands that are in private ownership.</font><br /></p><p style='margin: 0in 0in 4.5pt; font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'><font size='3' style='font-family: inherit;'><br /></font></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>This dataset was updated internally April, 2023 and online June 2023.\u00a0</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>This ownership dataset was generated primarily from CPAD data, which already tracks the majority of ownership information in California. CPAD is utilized without any snapping or clipping to FRA/SRA/LRA. CPAD has some important data gaps, so additional data sources are used to supplement the CPAD data. Currently this includes the most currently available data from BIA, DOD, and FWS. Additional sources may be added in subsequent versions. Decision rules were developed to identify priority layers in areas of overlap.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>Starting in 2022, the ownership dataset was compiled using a new methodology. Previous versions attempted to match federal ownership boundaries to the FRA footprint, and used a manual process for checking and tracking Federal ownership changes within the FRA, with CPAD ownership information only being used for SRA and LRA lands. The manual portion of that process was proving difficult to maintain, and the new method (described below) was developed in order to decrease the manual workload, and increase accountability by using an automated process by which any final ownership designation could be traced back to a specific dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>The current process for compiling the data sources includes:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Clipping input datasets to the California boundary</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Filtering the FWS data on the Primary Interest field to exclude lands that are managed by but not owned by FWS (ex: Leases, Easements, etc)</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Supplementing the BIA Pacific Region Surface Trust lands data with the Western Region portion of the LAR dataset which extends into California.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Filtering the BIA data to exclude areas that represent only mineral rights rather than surface ownership.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* In the case of overlap, sources were prioritized as follows: FWS &gt; BIA &gt; CPAD &gt; DOD</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* As an exception to the above, DOD lands on FRA which overlapped with CPAD lands that were incorrectly coded as non-Federal were treated as an override, such that the DOD designation could win out over CPAD.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>In addition to this ownership dataset, a supplemental _source dataset is available which designates the source that was used to determine the ownership in this dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>Data Sources:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* GreenInfo Network's California Protected Areas Database (CPAD2022b).\u00a0<a href='https://www.calands.org/cpad/' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.calands.org/cpad/</a>;\u00a0<a href='https://www.calands.org/wp-content/uploads/2022/12/CPAD-2022b-Database-Manual.pdf' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.calands.org/wp-content/uploads/2022/12/CPAD-2022b-Database-Manual.pdf</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* US Fish and Wildlife Service FWSInterest dataset (updated February, 2023).\u00a0<a href='https://fws.maps.arcgis.com/home/item.html?id=0a30eaf43328427db8750282d67f0005' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://fws.maps.arcgis.com/home/item.html?id=0a30eaf43328427db8750282d67f0005</a>or\u00a0<a href='https://ecos.fws.gov/ServCat/Reference/Profile/144384' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://ecos.fws.gov/ServCat/Reference/Profile/144384</a>or\u00a0<a href='https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWSInterest/FeatureServer' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWSInterest/FeatureServer</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Department of Defense MIRTA dataset (updated 2022)\u00a0<a href='https://www.acq.osd.mil/eie/BSI/BEI_DISDI.html' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.acq.osd.mil/eie/BSI/BEI_DISDI.html</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Bureau of Indian Affairs, Pacific Region, Surface Trust and Pacific Region Office (PRO) land boundaries data (2023) via John Mosley\u00a0<a href='mailto:John.Mosley@bia.gov' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>John.Mosley@bia.gov</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Bureau of Indian Affairs, Land Area Representations (LAR) and BIA Regions datasets (updated Oct 2019)\u00a0<a href='https://biamaps.doi.gov/bogs/datadownload.html' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://biamaps.doi.gov/bogs/datadownload.html</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>Data Gaps &amp; Changes:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>23_1:\u00a0</span>A few discrepancies were discovered between data changes that occurred in CPAD when compared with parcel data. These issues will be taken to CPAD for clarification for future updates, but for ownership23_1 it reflects the data as it was coded in CPAD at the time. In addition, there was a change in the DOD input data between last year and this year, with the removal of Camp Pendleton. An inquiry was sent for clarification on this change, but for ownership23_1 it reflects the data per the DOD input dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>22_1 :\u00a0</span>represents an initial version of ownership with a new methodology which was developed under a short timeframe. A comparison with previous versions of ownership highlighted the some data gaps with the current version. Some of these known gaps include several BOR, ACE and Navy lands which were not included in CPAD nor the DOD MIRTA dataset. Our hope for future versions is to refine the process by pulling in additional data sources to fill in some of those data gaps. In addition, any topological errors (like overlaps or gaps) that exist in the input datasets may thus carry over to the ownership dataset. Ideally, any feedback received about missing or inaccurate data can be taken back to the relevant source data where appropriate, so fixes can occur in the source data, instead of just in this dataset.</p>",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2928,7 +2979,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "California"
+      ]
     },
     {
       "name": "Colorado - Parks and Wildfire Managed Properties",
@@ -3039,7 +3093,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Colorado"
+      ]
     },
     {
       "name": "Colorado State Land Board Lands",
@@ -3050,7 +3107,10 @@
       "description": "This layer is from the State of Colorado and shows the lands owned by the state land board. The state lands are used to generate funding for Colorado public schools. This layer is added to the NBAM for permitting NEPA review. ",
       "color": "#E69800",
       "fill_color": "#E69800",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Colorado"
+      ]
     },
     {
       "name": "Connecticut -Dept. of Energy and Environmental Protection Property",
@@ -3169,7 +3229,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Connecticut"
+      ]
     },
     {
       "name": "Delaware Protected Natural Resources - Nature Preserves",
@@ -3177,10 +3240,13 @@
       "layer_id": 8,
       "geometry_type": "polygon",
       "group": "State Lands",
-      "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands – Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund – Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands – Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
+      "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands \u2013 Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund \u2013 Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands \u2013 Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
       "color": "#AA66CD",
       "fill_color": "#AA66CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Delaware"
+      ]
     },
     {
       "name": "Delaware Protected Natural Resources - Natural Areas",
@@ -3188,10 +3254,13 @@
       "layer_id": 5,
       "geometry_type": "polygon",
       "group": "State Lands",
-      "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands – Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund – Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands – Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
+      "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands \u2013 Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund \u2013 Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands \u2013 Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
       "color": "#E8BEFF",
       "fill_color": "#E8BEFF",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Delaware"
+      ]
     },
     {
       "name": "Delaware - Public Protected Lands",
@@ -3199,10 +3268,13 @@
       "layer_id": 11,
       "geometry_type": "polygon",
       "group": "State Lands",
-      "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands – Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund – Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands – Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
+      "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands \u2013 Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund \u2013 Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands \u2013 Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
       "color": "#4CE600",
       "fill_color": "#4CE600",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Delaware"
+      ]
     },
     {
       "name": "District of Columbia -  Government Land",
@@ -3213,7 +3285,10 @@
       "description": "DC Land was obtained from the DC open data page. Data has been filtered to only showing properties owned by DC. This layer is included in the NTIA Permitting and Environmental Information Application. ",
       "color": "#BDFCE7",
       "fill_color": "#BDFCE7",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "District of Columbia"
+      ]
     },
     {
       "name": "Florida - State Owned Lands",
@@ -3308,7 +3383,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Florida"
+      ]
     },
     {
       "name": "Georgia DNR Lands",
@@ -3331,7 +3409,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Georgia"
+      ]
     },
     {
       "name": "Hawaii - Government Lands",
@@ -3378,7 +3459,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Hawaii"
+      ]
     },
     {
       "name": "Idaho State Lands",
@@ -3389,7 +3473,10 @@
       "description": "Idaho State Lands for the permitting maps.",
       "color": "#0084A8",
       "fill_color": "#0084A8",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Idaho"
+      ]
     },
     {
       "name": "Indiana State Lands",
@@ -3400,7 +3487,10 @@
       "description": "Indiana State Lands",
       "color": "#FF5500",
       "fill_color": "#FF5500",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Indiana"
+      ]
     },
     {
       "name": "Iowa - Public Lands",
@@ -3411,7 +3501,10 @@
       "description": "This web service displays public lands in the state of Iowa.  Not all lands shown are open to the public, and signs on the ground should be respected.",
       "color": "#73B273",
       "fill_color": "#73B273",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Iowa"
+      ]
     },
     {
       "name": "Kansas - Public Wildlife Areas",
@@ -3422,7 +3515,10 @@
       "description": "",
       "color": "#BACD4B",
       "fill_color": "#BACD4B",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Kansas"
+      ]
     },
     {
       "name": "State Natural Areas",
@@ -3433,7 +3529,10 @@
       "description": "",
       "color": "#639833",
       "fill_color": "#639833",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Kentucky"
+      ]
     },
     {
       "name": "State Park Boundaries",
@@ -3444,7 +3543,10 @@
       "description": "This map service provides access to trail head, campsite, campgrounds, lodging, public structures, and boundaries for State Parks in the Commonwealth of Kentucky.",
       "color": "#000000",
       "fill_color": "#000000",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Kentucky"
+      ]
     },
     {
       "name": "Public Hunting Areas",
@@ -3475,7 +3577,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Kentucky"
+      ]
     },
     {
       "name": "State Nature Preserves",
@@ -3486,7 +3591,10 @@
       "description": "A State Nature Preserve is a legally dedicated area that has been recognized for its natural significance and protected by law for scientific and educational purposes. Dedicated state nature preserves are established solely to protect and preserve rare species, the natural environment, or exceptional natural scenery or environmental education opportunities. State Nature Preserves available in this layer are open to the public for hiking only. Hiking trails are closely regulated to protect the natural integrity of the preserve so that it may be passed on unimpaired to future generations. Certain preserves are only open for scientific research at this time and are not available in this layer.",
       "color": "#297C45",
       "fill_color": "#297C45",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Kentucky"
+      ]
     },
     {
       "name": "State Forests",
@@ -3497,7 +3605,10 @@
       "description": "Polygons representing the boundaries of State Forests for the Commonwealth of Kentucky.",
       "color": "#E9FFBE",
       "fill_color": "#E9FFBE",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Kentucky"
+      ]
     },
     {
       "name": "Louisiana - State Lands",
@@ -3508,7 +3619,10 @@
       "description": "This layer shows lands owned by the State of Louisiana. The data was downloaded from here: https://www.doa.la.gov/doa/osl/gis-data/  This layer is meant to be used for permitting and environmental review efforts. ",
       "color": "#BDFCCC",
       "fill_color": "#BDFCCC",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Louisiana"
+      ]
     },
     {
       "name": "Maine - Wildlife Management Areas",
@@ -3519,7 +3633,10 @@
       "description": "Property boundaries of Maine Department of Inland Fisheries and Wildlife's Wildlife Management Areas derived from Maine Conserved Lands",
       "color": "#F6C567",
       "fill_color": "#F6C567",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Maine"
+      ]
     },
     {
       "name": "DNR Owned Lands and Conservation Easements",
@@ -3575,7 +3692,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Maryland"
+      ]
     },
     {
       "name": "Local Protected Lands",
@@ -3590,7 +3710,7 @@
         "field": "iMap",
         "categories": [
           {
-            "label": "Local Protected Lands – Fee Simple",
+            "label": "Local Protected Lands \u2013 Fee Simple",
             "values": [
               "LPLFS"
             ],
@@ -3598,7 +3718,7 @@
             "fill_opacity": 0.5
           },
           {
-            "label": "Local Protected Lands – Protected Open Spaces",
+            "label": "Local Protected Lands \u2013 Protected Open Spaces",
             "values": [
               "LPLOS"
             ],
@@ -3606,7 +3726,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Maryland"
+      ]
     },
     {
       "name": "Massachusetts - Public Open Space",
@@ -3702,7 +3825,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Massachusetts"
+      ]
     },
     {
       "name": "Minnesota - State Administered Lands",
@@ -3785,7 +3911,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Minnesota"
+      ]
     },
     {
       "name": "State Parks",
@@ -3796,7 +3925,10 @@
       "description": "Mississippi State Parks and Wildlife Management Areas.",
       "color": "#004DA8",
       "fill_color": "#004DA8",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Colorado"
+      ]
     },
     {
       "name": "Wildlife Management Areas",
@@ -3807,7 +3939,10 @@
       "description": "Mississippi State Parks and Wildlife Management Areas.",
       "color": "#D3FFBE",
       "fill_color": "#D3FFBE",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Mississippi"
+      ]
     },
     {
       "name": "Missouri State Lands",
@@ -3838,7 +3973,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Missouri"
+      ]
     },
     {
       "name": "Montana Public Lands",
@@ -3849,7 +3987,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Montana"
+      ]
     },
     {
       "name": "Nebraska - Game and Parks Commission Property",
@@ -3904,7 +4045,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Nebraska"
+      ]
     },
     {
       "name": "New Hampshire - Conservation/Public Lands",
@@ -3915,7 +4059,10 @@
       "description": "The Conservation and Public Lands in New Hampshire dataset comprises conservation and public areas displayed by management status, protecting agency type, primary protection type, protection level, and gap status. This is a dynamic data set which is updated on a biannual basis. The updates are based on contributions from numerous various conservation entities located throughout New Hampshire. For more information, see http://www.granit.unh.edu/data/metadata?file=consnh/nh/consnh.html",
       "color": "#55FF00",
       "fill_color": "#55FF00",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "New Hampshire"
+      ]
     },
     {
       "name": "New Jersey - Open Space and Recreation Areas",
@@ -4031,7 +4178,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "New Jersey"
+      ]
     },
     {
       "name": "New Mexico - State Trust Land",
@@ -4042,7 +4192,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "New Mexico"
+      ]
     },
     {
       "name": "Adirondack Park Boundary",
@@ -4053,7 +4206,10 @@
       "description": "Boundary polygon of the New York State Adirondack Park for planning purposes, not derived from licensed land survey. 2018 edition.",
       "color": "#000000",
       "fill_color": "#000000",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "New York"
+      ]
     },
     {
       "name": "Adirondack Park Land Use and Development Plan",
@@ -4124,7 +4280,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "New York"
+      ]
     },
     {
       "name": "State Land Map",
@@ -4203,7 +4362,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "New York"
+      ]
     },
     {
       "name": "State Parks",
@@ -4214,7 +4376,10 @@
       "description": "New York State Office of Parks, Recreation and Historic Preservation Property\n",
       "color": "#73D900",
       "fill_color": "#73D900",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "New York"
+      ]
     },
     {
       "name": "State Owned Parcels",
@@ -4222,10 +4387,13 @@
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
-      "description": "Publication Date: April 2025. Updated annually. This map service only contains parcel data for NYS State-owned tax parcels. 2024 Parcel geometry was incorporated as received from County Real Property Departments. No attempt was made to edge-match parcels along adjacent counties. County attribute values were populated using 2024 Assessment Roll tabular data NYS ITS Geospatial Services obtained from the NYS Department of Tax and Finance’s Office of Real Property Tax Services (ORPTS). Attribute values are from the 2024 Assessment roll year. Tabular assessment data was joined to the county provided parcel geometry using the SWIS & SBL or SWIS & PRINT KEY unique identifier for each parcel. Detailed information about assessment attributes can be found in the ORPTS Assessor’s Manuals available here: https://www.tax.ny.gov/research/property/assess/manuals/assersmanual.htm. New York City data comes from NYC MapPluto which can be found here: https://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page. The State-owned tax parcel polygons in this file are the result of a best effort selection based on the Primary Owner and Additional Owner fields in the NYS Statewide Tax Parcels file, Geospatial Services data, State agency data, and online research. These same data and information are also the basis for a best effort assignment of a NYS agency name (listed in the NYS Name field) to most tax parcel polygons where the Owner Type field value is State. The NYS Name Source field consists of a code that describes how the State-owned designation and agency name were determined, if this was verified, and the means of verification, if applicable. Geometry accuracy varies by contributing county. This map service is available to the public. The State of New York, acting through the New York State Office of Information Technology Services, makes no representations or warranties, express or implied, with respect to the use of or reliance on the Data provided. The User accepts the Data provided “as is” with no guarantees that it is error free, complete, accurate, current or fit for any particular purpose and assumes all risks associated with its use. The State disclaims any responsibility or legal liability to Users for damages of any kind, relating to the providing of the Data or the use of it. Users should be aware that temporal changes may have occurred since this Data was created.",
+      "description": "Publication Date: April 2025. Updated annually. This map service only contains parcel data for NYS State-owned tax parcels. 2024 Parcel geometry was incorporated as received from County Real Property Departments. No attempt was made to edge-match parcels along adjacent counties. County attribute values were populated using 2024 Assessment Roll tabular data NYS ITS Geospatial Services obtained from the NYS Department of Tax and Finance\u2019s Office of Real Property Tax Services (ORPTS). Attribute values are from the 2024 Assessment roll year. Tabular assessment data was joined to the county provided parcel geometry using the SWIS & SBL or SWIS & PRINT KEY unique identifier for each parcel. Detailed information about assessment attributes can be found in the ORPTS Assessor\u2019s Manuals available here: https://www.tax.ny.gov/research/property/assess/manuals/assersmanual.htm. New York City data comes from NYC MapPluto which can be found here: https://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page. The State-owned tax parcel polygons in this file are the result of a best effort selection based on the Primary Owner and Additional Owner fields in the NYS Statewide Tax Parcels file, Geospatial Services data, State agency data, and online research. These same data and information are also the basis for a best effort assignment of a NYS agency name (listed in the NYS Name field) to most tax parcel polygons where the Owner Type field value is State. The NYS Name Source field consists of a code that describes how the State-owned designation and agency name were determined, if this was verified, and the means of verification, if applicable. Geometry accuracy varies by contributing county. This map service is available to the public. The State of New York, acting through the New York State Office of Information Technology Services, makes no representations or warranties, express or implied, with respect to the use of or reliance on the Data provided. The User accepts the Data provided \u201cas is\u201d with no guarantees that it is error free, complete, accurate, current or fit for any particular purpose and assumes all risks associated with its use. The State disclaims any responsibility or legal liability to Users for damages of any kind, relating to the providing of the Data or the use of it. Users should be aware that temporal changes may have occurred since this Data was created.",
       "color": "#E35205",
       "fill_color": "#E35205",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "New York"
+      ]
     },
     {
       "name": "North Carolina -  State Owned Lands",
@@ -4236,7 +4404,10 @@
       "description": "",
       "color": "#2EBD00",
       "fill_color": "#2EBD00",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "North Carolina"
+      ]
     },
     {
       "name": "State Parks",
@@ -4247,7 +4418,10 @@
       "description": "The purpose of this data layer is to provide a geographic representation of the state parks.  Other properties owned and/or managed by the ND Parks and Recreation Department are included in this layer.  This dataset is primarily used as a framework layer for use in GIS and other mapping applications and does not represent a land survey of the boundaries.",
       "color": "#FCE8CF",
       "fill_color": "#FCE8CF",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "North Dakota"
+      ]
     },
     {
       "name": "State Forest",
@@ -4258,7 +4432,10 @@
       "description": "The purpose of the data is to provide a geographic representation of state forest lands in North Dakota. This dataset is primarily used as a framework data layer for use in GIS and mapping applications.",
       "color": "#FCD1C2",
       "fill_color": "#FCD1C2",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "North Dakota"
+      ]
     },
     {
       "name": "Ohio - DNR Lands",
@@ -4319,7 +4496,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Ohio"
+      ]
     },
     {
       "name": "Oregon State Parks",
@@ -4330,7 +4510,10 @@
       "description": "Approximate real property boundaries for lands owned or managed by OPRD",
       "color": "#000000",
       "fill_color": "#000000",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Oregon"
+      ]
     },
     {
       "name": "Dept. of Forestry Managed Lands",
@@ -4341,7 +4524,10 @@
       "description": "Board of Forestry lands and Common School Lands Managed by the State Forests Program of the Oregon Department of Forestry.\nTo display ODF managed lands on maps and other graphics, and to conduct analysis involving ownership attributes.",
       "color": "#FCECC2",
       "fill_color": "#FCECC2",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Oregon"
+      ]
     },
     {
       "name": "Puerto Rico - Conservation Areas",
@@ -4352,7 +4538,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Puerto Rico"
+      ]
     },
     {
       "name": "Rhode Island - State Conservation Lands",
@@ -4363,7 +4552,10 @@
       "description": "General reference for planning purposes and small scale cartographic output.",
       "color": "#38A800",
       "fill_color": "#38A800",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Rhode Island"
+      ]
     },
     {
       "name": "South Carolina - DNR Public Properties",
@@ -4374,7 +4566,10 @@
       "description": "",
       "color": "#D4FCFB",
       "fill_color": "#D4FCFB",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "South Carolina"
+      ]
     },
     {
       "name": "Tennessee - Public Access Lands",
@@ -4385,7 +4580,10 @@
       "description": "",
       "color": "#1D5537",
       "fill_color": "#1D5537",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Tennessee"
+      ]
     },
     {
       "name": "Texas State Agency Lands",
@@ -4396,7 +4594,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Texas"
+      ]
     },
     {
       "name": "Utah Land Ownership",
@@ -4407,7 +4608,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Utah"
+      ]
     },
     {
       "name": "Vermont - Agency of Natural Resources Land",
@@ -4420,7 +4624,10 @@
       "symbology": {
         "type": "unique_values",
         "field": "ANRDept",
-        "concat_fields": ["ANRDept", "SOVLegalInterest"],
+        "concat_fields": [
+          "ANRDept",
+          "SOVLegalInterest"
+        ],
         "concat_separator": ",",
         "categories": [
           {
@@ -4472,7 +4679,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Vermont"
+      ]
     },
     {
       "name": "Virginia Conservation Lands",
@@ -4483,7 +4693,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Virginia"
+      ]
     },
     {
       "name": "Major Public Lands Non DNR",
@@ -4592,7 +4805,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Washington"
+      ]
     },
     {
       "name": "DNR Managed Land Parcels",
@@ -4603,7 +4819,10 @@
       "description": "Layers include: WA Survey Points, WA Boundaries, WA Legal Descriptions, WA DNR Regions, WA DNR Districts, WA DNR Units, DNR Managed Land Parcels, Public Land Survey Sections, Public Land Survey Townships, State Outline, State Boundary, and County Boundaries.",
       "color": "#000000",
       "fill_color": "#000000",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Washington"
+      ]
     },
     {
       "name": "Wisconsin - DNR Managed Land",
@@ -4644,7 +4863,10 @@
             "fill_opacity": 0.5
           }
         ]
-      }
+      },
+      "states": [
+        "Wisconsin"
+      ]
     },
     {
       "name": "State Lands",
@@ -4655,7 +4877,10 @@
       "description": "",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Wyoming"
+      ]
     },
     {
       "name": "Public Access Areas",
@@ -4666,7 +4891,10 @@
       "description": "This data set was developed in order to show Public Access Areas in interactive maps on the public website, produce small scale boundary maps published in GeoPDF and KML form, and for individuals with an interest in Wyoming Game and Fish Department Lands. It is also designed for statewide and regional overview use. Attribute data such as open dates, recreational opportunities, etc. for each area is in the PAA_Locations feature class, which can be joined to this feature class by the PAA_Name field.",
       "color": "#00C5FF",
       "fill_color": "#00C5FF",
-      "fill_opacity": 0.5
+      "fill_opacity": 0.5,
+      "states": [
+        "Wyoming"
+      ]
     }
   ],
   "geometry_settings": {
@@ -4676,7 +4904,8 @@
     "auto_repair_invalid": true,
     "fallback_crs": "EPSG:5070",
     "clip_results_to_buffer": true,
-    "clip_buffer_miles": 1.0
+    "clip_buffer_miles": 1.0,
+    "state_filter_enabled": true
   },
   "settings": {
     "max_features_per_layer": 1000,
