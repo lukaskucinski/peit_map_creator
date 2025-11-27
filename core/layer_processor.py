@@ -9,12 +9,13 @@ Functions:
 """
 
 import geopandas as gpd
-from typing import Dict, Tuple
+from typing import Dict, List, Set, Tuple
 from pyproj import CRS
 from core.arcgis_query import query_arcgis_layer
 from geometry_input.clipping import create_clip_boundary, aggregate_clip_metadata
 from config.config_loader import load_geometry_settings
 from utils.logger import get_logger
+from utils.state_filter import get_intersecting_states, filter_layers_by_state
 
 logger = get_logger(__name__)
 
@@ -76,10 +77,30 @@ def process_all_layers(
             logger.warning("Continuing without geometry clipping")
             clip_boundary = None
 
+    # State-based layer filtering
+    state_filter_enabled = geometry_settings.get('state_filter_enabled', True)
+    intersecting_states: Set[str] = set()
+    layers_to_process = config['layers']
+    skipped_count = 0
+    skipped_layers: List[str] = []
+
+    if state_filter_enabled:
+        intersecting_states = get_intersecting_states(polygon_gdf, clip_buffer_miles)
+        if intersecting_states:
+            layers_to_process, skipped_count, skipped_layers = filter_layers_by_state(
+                config['layers'], intersecting_states
+            )
+            logger.info(f"State filter: {len(intersecting_states)} state(s) detected: "
+                        f"{', '.join(sorted(intersecting_states))}")
+            logger.info(f"Processing {len(layers_to_process)} of {len(config['layers'])} layers "
+                        f"({skipped_count} skipped)")
+        else:
+            logger.info("State filter: No states detected (processing all layers)")
+
     results = {}
     metadata = {}
 
-    for layer_config in config['layers']:
+    for layer_config in layers_to_process:
         layer_name = layer_config['name']
         geometry_type = layer_config.get('geometry_type', None)
 
@@ -137,6 +158,16 @@ def process_all_layers(
                     f"  Clip failures: {clip_stats['total_clip_failures']} "
                     f"(original geometry kept)"
                 )
+
+    # Add state filter statistics to clip_summary
+    clip_summary['state_filter'] = {
+        'enabled': state_filter_enabled,
+        'buffer_miles': clip_buffer_miles,
+        'intersecting_states': sorted(list(intersecting_states)),
+        'total_layers': len(config['layers']),
+        'layers_after_filter': len(layers_to_process),
+        'layers_skipped': skipped_count
+    }
 
     logger.info("")
 
