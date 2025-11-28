@@ -794,7 +794,7 @@ def create_web_map(
                             legend_items_html += f"""
                             <div class="legend-item legend-category" data-layer-name="{layer_name}">
                                 <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                                    <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
+                                    <rect width="20" height="15" style="fill:{fill_color}; fill-opacity:{fill_opacity}; stroke:{cat_border}; stroke-width:1;" />
                                 </svg>
                                 <span>{label} ({count})</span>
                             </div>
@@ -841,7 +841,7 @@ def create_web_map(
                             legend_items_html += f"""
                             <div class="legend-item legend-category" data-layer-name="{layer_name}">
                                 <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                                    <rect width="20" height="15" style="fill:{fill_color}; stroke:{cat_border}; stroke-width:1; opacity:{fill_opacity};" />
+                                    <rect width="20" height="15" style="fill:{fill_color}; fill-opacity:{fill_opacity}; stroke:{cat_border}; stroke-width:1;" />
                                 </svg>
                                 <span>{label} ({count})</span>
                             </div>
@@ -878,7 +878,7 @@ def create_web_map(
                 legend_items_html += f"""
                 <div class="legend-item" data-layer-name="{layer_name}">
                     <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
-                        <rect width="20" height="15" style="fill:{fill_color}; stroke:{border_color}; stroke-width:1; opacity:{fill_opacity};" />
+                        <rect width="20" height="15" style="fill:{fill_color}; fill-opacity:{fill_opacity}; stroke:{border_color}; stroke-width:1;" />
                     </svg>
                     <span>{layer_name} ({feature_count})</span>
                 </div>

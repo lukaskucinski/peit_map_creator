@@ -667,6 +667,13 @@ If a layer has both `symbology` and `fill_pattern`, unique value symbology takes
 - All existing layer configurations remain unchanged
 - Unique value symbology is opt-in per layer
 
+**Common Configuration Issues:**
+- **Field name mismatch**: Verify field names in `concat_fields` match exactly the FeatureServer field names (e.g., `SOVInterest` not `SOVLegalInterest`). Query the FeatureServer metadata to confirm field names.
+- **Empty legend categories**: If all category counts are 0, check that configured `values` match actual attribute data. Use the FeatureServer query endpoint to discover actual values.
+
+**SVG Rendering Note:**
+Legend and layer control SVG rectangles use `fill-opacity` (not `opacity`) for polygon symbology. This ensures the stroke remains fully opaque while only the fill is transparent, matching Folium/Leaflet map rendering behavior.
+
 **Layer Groups:**
 Layers are organized into groups for the custom layer control panel:
 - **EPA Programs**: RCRA Sites, NPDES Sites

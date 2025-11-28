@@ -400,7 +400,7 @@
                             <!-- Polygon with solid fill -->
                             <svg width="14" height="14" style="margin-right: 6px; vertical-align: middle;">
                                 <rect width="14" height="14"
-                                      style="fill:{{ symbol.fill_color }}; stroke:{{ symbol.border_color }}; stroke-width:1; opacity:{{ symbol.fill_opacity }};" />
+                                      style="fill:{{ symbol.fill_color }}; fill-opacity:{{ symbol.fill_opacity }}; stroke:{{ symbol.border_color }}; stroke-width:1;" />
                             </svg>
                             {% endif %}
                         {% endif %}
@@ -438,7 +438,7 @@
                             {% else %}
                             <!-- Solid fill polygon symbol -->
                             <svg width="14" height="14" style="margin-right: 8px; vertical-align: middle; flex-shrink: 0;">
-                                <rect width="14" height="14" style="fill:{{ layer.fill_color }}; stroke:{{ layer.color }}; stroke-width:1; opacity:{{ layer.fill_opacity }};" />
+                                <rect width="14" height="14" style="fill:{{ layer.fill_color }}; fill-opacity:{{ layer.fill_opacity }}; stroke:{{ layer.color }}; stroke-width:1;" />
                             </svg>
                             {% endif %}
                         {% endif %}

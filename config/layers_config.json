@@ -4626,7 +4626,7 @@
         "field": "ANRDept",
         "concat_fields": [
           "ANRDept",
-          "SOVLegalInterest"
+          "SOVInterest"
         ],
         "concat_separator": ",",
         "categories": [
