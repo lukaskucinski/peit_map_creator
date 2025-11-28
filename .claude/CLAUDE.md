@@ -416,6 +416,45 @@ window.addEventListener('load', function() {
 
 **Result:** Page automatically refreshes on browser back/forward navigation, ensuring layer visibility and checkbox states are always synchronized.
 
+### Layer Z-Index Management
+
+The tool maintains stable layer rendering order based on the layer list hierarchy in the right panel.
+
+**Hierarchy Rule:**
+- Layer list order (top to bottom) = visual hierarchy (top to bottom)
+- Input polygon is first in the list → renders on top of all layers
+- Environmental layers render in list order below the input polygon
+- Last layer in the list renders at the bottom
+
+**Challenge:**
+Leaflet's `addLayer()` appends layers to the end of their parent pane's DOM, making re-added layers render on top regardless of their intended position.
+
+**Solution - `restoreLayerOrder()` Function:**
+After any layer toggle, the system iterates through all layers in reverse list order and calls `bringToFront()` on each visible layer:
+
+```javascript
+function restoreLayerOrder() {
+    // Iterate in REVERSE order (bottom of list first)
+    // so layers at TOP of list end up on TOP visually
+    for (var i = layerOrderList.length - 1; i >= 0; i--) {
+        var layer = mapLayers[layerOrderList[i]];
+        if (layer && layerStates[layerOrderList[i]] && layer.bringToFront) {
+            layer.bringToFront();
+        }
+    }
+    // Input polygon brought to front last (it's first in list)
+    if (window.inputPolygonLayer && inputToggle.checked) {
+        window.inputPolygonLayer.bringToFront();
+    }
+}
+```
+
+**Implementation Details:**
+- `layerOrderList` is built from DOM on initialization (reads layer items in display order)
+- Called after `addLayer()` in `toggleLayer()` and `toggleInputGeometry()`
+- Also called on initial page load (600ms delay) to ensure correct initial order
+- Works with all layer types: GeoJSON, MarkerCluster, FeatureGroup
+
 ### JavaScript Initialization Retry Logic
 
 The basemap control uses retry-based initialization to handle variable map rendering times:

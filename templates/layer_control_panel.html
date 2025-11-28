@@ -467,6 +467,36 @@
     const layerStates = {};
     const groupLayerStates = {};
 
+    // Ordered list of layer names from UI (top to bottom = front to back visually)
+    // This gets populated on initialization from the DOM
+    var layerOrderList = [];
+
+    // Restore layer z-order based on list position
+    // Layers at TOP of list should render on TOP visually
+    function restoreLayerOrder() {
+        if (!window.mapObject) return;
+
+        // Iterate in REVERSE order (bottom of list first)
+        // so that layers at TOP of list end up on TOP visually
+        for (var i = layerOrderList.length - 1; i >= 0; i--) {
+            var layerName = layerOrderList[i];
+            var layer = mapLayers[layerName];
+
+            if (layer && layerStates[layerName] && layer.bringToFront) {
+                layer.bringToFront();
+            }
+        }
+
+        // Input polygon is first in list (above environmental layers),
+        // so bring it to front last to ensure it renders on top
+        var inputToggle = document.getElementById('input-geometry-toggle');
+        if (window.inputPolygonLayer && inputToggle && inputToggle.checked) {
+            if (window.inputPolygonLayer.bringToFront) {
+                window.inputPolygonLayer.bringToFront();
+            }
+        }
+    }
+
     // Toggle layer control panel collapse/expand
     function toggleLayerPanel() {
         var panel = document.getElementById('layer-control-panel');
@@ -483,6 +513,7 @@
         if (window.inputPolygonLayer && window.mapObject) {
             if (visible) {
                 window.mapObject.addLayer(window.inputPolygonLayer);
+                restoreLayerOrder();  // Restore proper z-order
             } else {
                 window.mapObject.removeLayer(window.inputPolygonLayer);
             }
@@ -567,6 +598,7 @@
         if (layer && window.mapObject) {
             if (isVisible) {
                 window.mapObject.addLayer(layer);
+                restoreLayerOrder();  // Restore proper z-order
             } else {
                 window.mapObject.removeLayer(layer);
             }
@@ -661,6 +693,16 @@
 
     // Initialize layer states
     document.addEventListener('DOMContentLoaded', function() {
+        // Build layer order list from DOM (in display order: top to bottom)
+        // This defines the visual hierarchy: top of list = top of map
+        var layerItems = document.querySelectorAll('.layer-item[data-layer-name]');
+        layerItems.forEach(function(item) {
+            var layerName = item.dataset.layerName;
+            if (layerName && !layerOrderList.includes(layerName)) {
+                layerOrderList.push(layerName);
+            }
+        });
+
         // All layers start as visible
         var layerCheckboxes = document.querySelectorAll('.layer-item input[type="checkbox"]');
         layerCheckboxes.forEach(function(checkbox) {
@@ -676,5 +718,10 @@
         groupLayers.forEach(function(group) {
             group.style.maxHeight = group.scrollHeight + 'px';
         });
+
+        // Apply initial layer order after a delay to ensure map and layers are ready
+        setTimeout(function() {
+            restoreLayerOrder();
+        }, 600);
     });
 </script>
