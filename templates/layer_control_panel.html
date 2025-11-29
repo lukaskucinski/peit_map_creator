@@ -420,7 +420,7 @@
                                onchange="toggleLayer('{{ layer.name }}', this.checked)">
 
                         {% if layer.geometry_type == 'point' %}
-                        <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.color }}"></i>
+                        <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.icon_color }}"></i>
                         {% elif layer.geometry_type == 'line' %}
                         <span class="line-symbol" style="background-color: {{ layer.color }}"></span>
                         {% elif layer.geometry_type == 'polygon' %}
@@ -645,13 +645,17 @@
     function filterLayers(searchTerm) {
         var term = searchTerm.toLowerCase().trim();
         var layerItems = document.querySelectorAll('.layer-item');
+        var childItems = document.querySelectorAll('.layer-item-child');
         var groups = document.querySelectorAll('.layer-group');
         var hasVisibleLayers = false;
 
         if (term === '') {
-            // Show all
+            // Show all layers and their children
             layerItems.forEach(function(item) {
                 item.style.display = 'flex';
+            });
+            childItems.forEach(function(child) {
+                child.style.display = 'flex';
             });
             groups.forEach(function(group) {
                 group.style.display = 'block';
@@ -660,7 +664,11 @@
             return;
         }
 
-        // Filter layers
+        // Filter layers and hide all children initially
+        childItems.forEach(function(child) {
+            child.style.display = 'none';
+        });
+
         layerItems.forEach(function(item) {
             // Add null/undefined checks to prevent errors on elements without data attributes
             var name = (item.dataset.layerName || '').toLowerCase();
@@ -672,6 +680,15 @@
             if (matches) {
                 item.style.display = 'flex';
                 hasVisibleLayers = true;
+                // Show child items for matching layers
+                var layerName = item.dataset.layerName;
+                if (layerName) {
+                    childItems.forEach(function(child) {
+                        if (child.dataset.layerName === layerName) {
+                            child.style.display = 'flex';
+                        }
+                    });
+                }
             } else {
                 item.style.display = 'none';
             }

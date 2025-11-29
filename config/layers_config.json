@@ -258,6 +258,7 @@
       "description": "",
       "icon": "hard-hat",
       "icon_color": "darkred",
+      "area_name_field": "NAME",
       "color": "#00E6A9"
     },
     {
@@ -367,6 +368,7 @@
       "geometry_type": "polygon",
       "group": "Federal/Tribal Land",
       "description": "",
+      "area_name_field": "FEATURENAME",
       "color": "#267300",
       "fill_color": "#267300",
       "fill_opacity": 0.5
@@ -600,7 +602,8 @@
       "group": "EPA Programs",
       "description": "",
       "icon": "water",
-      "icon_color": "lightred",
+      "icon_color": "beige",
+      "area_name_field": "PRIMARY_NAME",
       "color": "#FFA07A"
     },
     {
@@ -611,8 +614,9 @@
       "group": "EPA Programs",
       "description": "",
       "icon": "droplet",
-      "icon_color": "blue",
-      "color": "#FFFFFF"
+      "icon_color": "darkblue",
+      "area_name_field": "PRIMARY_NAME",
+      "color": "#00008B"
     },
     {
       "name": "Toxic Release Inventory (TRI)",
@@ -623,6 +627,7 @@
       "description": "",
       "icon": "flask",
       "icon_color": "purple",
+      "area_name_field": "PRIMARY_NAME",
       "color": "#800080"
     },
     {
@@ -634,6 +639,7 @@
       "description": "",
       "icon": "flask",
       "icon_color": "darkred",
+      "area_name_field": "PRIMARY_NAME",
       "color": "#8B0000"
     },
     {
@@ -645,6 +651,7 @@
       "description": "",
       "icon": "broom",
       "icon_color": "gray",
+      "area_name_field": "PRIMARY_NAME",
       "color": "#808080"
     },
     {
@@ -656,6 +663,7 @@
       "description": "",
       "icon": "wind",
       "icon_color": "cadetblue",
+      "area_name_field": "PRIMARY_NAME",
       "color": "#5F9EA0"
     },
     {
@@ -699,6 +707,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "Water and Hydrological layers for NEPAssist.",
+      "area_name_field": "SSA_NAME",
       "color": "#0084A8",
       "fill_color": "#0084A8",
       "fill_opacity": 0.5
@@ -904,6 +913,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "composite_id_with_state",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -925,7 +935,12 @@
             "fill_color": "#002673",
             "fill_opacity": 0.5
           }
-        ]
+        ],
+        "default_category": {
+          "label": "Other",
+          "fill_color": "#808080",
+          "fill_opacity": 0.5
+        }
       }
     },
     {
@@ -2273,6 +2288,7 @@
       "description": "",
       "icon": "train",
       "icon_color": "orange",
+      "area_name_field": "Railroad_Name",
       "color": "#FFA500"
     },
     {
@@ -2464,6 +2480,7 @@
       "geometry_type": "polygon",
       "group": "Floodplains",
       "description": "",
+      "area_name_field": "SYSTEM_NAME",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5
@@ -2475,6 +2492,7 @@
       "geometry_type": "line",
       "group": "Floodplains",
       "description": "Water and Hydrological layers for NEPAssist.",
+      "area_name_field": "WSR_RIVER_",
       "color": "#00FFC5"
     },
     {
@@ -3471,6 +3489,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Idaho State Lands for the permitting maps.",
+      "area_name_field": "Name",
       "color": "#0084A8",
       "fill_color": "#0084A8",
       "fill_opacity": 0.5,
@@ -3499,6 +3518,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This web service displays public lands in the state of Iowa.  Not all lands shown are open to the public, and signs on the ground should be respected.",
+      "area_name_field": "NAME",
       "color": "#73B273",
       "fill_color": "#73B273",
       "fill_opacity": 0.5,
@@ -4508,6 +4528,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Approximate real property boundaries for lands owned or managed by OPRD",
+      "area_name_field": "NAME",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5,
