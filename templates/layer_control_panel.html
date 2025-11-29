@@ -420,7 +420,7 @@
                                onchange="toggleLayer('{{ layer.name }}', this.checked)">
 
                         {% if layer.geometry_type == 'point' %}
-                        <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.color }}"></i>
+                        <i class="fa fa-{{ layer.icon }}" style="color: {{ layer.icon_color }}"></i>
                         {% elif layer.geometry_type == 'line' %}
                         <span class="line-symbol" style="background-color: {{ layer.color }}"></span>
                         {% elif layer.geometry_type == 'polygon' %}

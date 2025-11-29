@@ -925,7 +925,12 @@
             "fill_color": "#002673",
             "fill_opacity": 0.5
           }
-        ]
+        ],
+        "default_category": {
+          "label": "Other",
+          "fill_color": "#808080",
+          "fill_opacity": 0.5
+        }
       }
     },
     {
