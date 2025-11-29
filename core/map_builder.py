@@ -291,13 +291,39 @@ def create_web_map(
                     if col != 'geometry':
                         popup_html += f"<b>{col}:</b> {format_popup_value(col, row[col])}<br>"
 
+                # Determine icon and color (check for unique value symbology)
+                icon_name = layer_config.get('icon', 'circle')
+                icon_color = layer_config.get('icon_color', 'blue')
+
+                if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
+                    symbology = layer_config['symbology']
+                    field = symbology['field']
+                    attr_value = row.get(field) if field in gdf.columns else None
+
+                    # Find matching category (case-insensitive)
+                    matched_category = None
+                    if attr_value is not None:
+                        for category in symbology['categories']:
+                            if any(str(attr_value).upper() == str(v).upper() for v in category['values']):
+                                matched_category = category
+                                break
+
+                    # Apply category styling or default
+                    if matched_category:
+                        icon_name = matched_category.get('icon', icon_name)
+                        icon_color = matched_category.get('icon_color', icon_color)
+                    elif 'default_category' in symbology:
+                        default = symbology['default_category']
+                        icon_name = default.get('icon', icon_name)
+                        icon_color = default.get('icon_color', icon_color)
+
                 # Add marker to cluster
                 folium.Marker(
                     location=[row.geometry.y, row.geometry.x],
                     popup=folium.Popup(popup_html, max_width=400, max_height=600),
                     icon=folium.Icon(
-                        color=layer_config['icon_color'],
-                        icon=layer_config['icon'],
+                        color=icon_color,
+                        icon=icon_name,
                         prefix='fa'
                     )
                 ).add_to(marker_cluster)

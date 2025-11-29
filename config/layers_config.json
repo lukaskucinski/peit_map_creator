@@ -611,8 +611,8 @@
       "group": "EPA Programs",
       "description": "",
       "icon": "droplet",
-      "icon_color": "blue",
-      "color": "#FFFFFF"
+      "icon_color": "darkblue",
+      "color": "#00008B"
     },
     {
       "name": "Toxic Release Inventory (TRI)",

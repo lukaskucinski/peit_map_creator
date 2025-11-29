@@ -565,10 +565,11 @@ Add optional `fill_pattern` object to polygon layer configuration:
 
 ### Unique Value Symbology
 
-Line and polygon layers can use **attribute-based styling** to categorize features by field values and assign different colors to each category. This matches ArcGIS Pro's "Unique Values" symbology.
+Point, line, and polygon layers can use **attribute-based styling** to categorize features by field values and assign different icons/colors to each category. This matches ArcGIS Pro's "Unique Values" symbology.
 
 **Use Case:**
-Display different colors for features based on an attribute field, such as:
+Display different colors/icons for features based on an attribute field, such as:
+- **Points**: Power plant energy source, facility type, status classification
 - **Lines**: Waterway type, road classification, trail designation
 - **Polygons**: Ownership classification, land use type, administrative status
 
@@ -640,12 +641,57 @@ Display different colors for features based on an attribute field, such as:
 }
 ```
 
+**Point Layer with Symbology:**
+```json
+{
+  "name": "EIA - Power Plants",
+  "url": "https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Power_Plants_in_the_US/FeatureServer",
+  "layer_id": 0,
+  "geometry_type": "point",
+  "icon": "bolt",
+  "icon_color": "white",
+  "area_name_field": "Plant_Name",
+  "symbology": {
+    "type": "unique_values",
+    "field": "PrimSource",
+    "categories": [
+      {
+        "label": "Solar",
+        "values": ["solar"],
+        "icon": "sun",
+        "icon_color": "orange"
+      },
+      {
+        "label": "Natural Gas",
+        "values": ["natural gas"],
+        "icon": "fire",
+        "icon_color": "red"
+      },
+      {
+        "label": "Wind",
+        "values": ["wind"],
+        "icon": "wind",
+        "icon_color": "lightblue"
+      }
+    ],
+    "default_category": {
+      "label": "Other",
+      "icon": "bolt",
+      "icon_color": "gray"
+    }
+  }
+}
+```
+
 **Configuration Fields:**
 - `symbology.type`: Must be `"unique_values"` for attribute-based styling
 - `symbology.field`: Attribute field name to use for categorization
 - `symbology.categories`: Array of category definitions
   - `label`: Display name for this category (used in legend and reports)
   - `values`: Array of attribute values that belong to this category
+  - **For point layers:**
+    - `icon`: Font Awesome icon name (overrides layer-level `icon`)
+    - `icon_color`: Marker color (overrides layer-level `icon_color`)
   - **For line layers:**
     - `color`: Line color for this category (hex format, required)
     - `weight`: Line width in pixels (optional, defaults to 3)
@@ -662,7 +708,7 @@ Display different colors for features based on an attribute field, such as:
 - **Case-insensitive matching**: Attribute values are matched case-insensitively for robustness
 - **Multi-value categories**: A single category can match multiple attribute values (e.g., `["NON-FS", "UNPARTITIONED RIPARIAN INTEREST"]`)
 - **Default category**: Features with `null` or unmapped values use default category styling
-- **No default category**: If no default is specified, unmapped features use layer-level `fill_color` and `fill_opacity`
+- **No default category**: If no default is specified, unmapped features use layer-level styling (`icon`/`icon_color` for points, `fill_color`/`fill_opacity` for polygons)
 
 **Legend Display:**
 Unique value symbology layers show a **header entry** with total count followed by category entries:
@@ -683,10 +729,19 @@ USFS Surface Ownership Parcels (150 total)
     ◻️ Other (5)
 ```
 
+**Point Layer Example:**
+```
+EIA - Power Plants (89 total)
+    ☀️ Solar (23)
+    🔥 Natural Gas (45)
+    💨 Wind (15)
+    ⚡ Other (6)
+```
+
 - Header entry shows layer name and total feature count
-- Sub-entries show category labels with individual counts (colored line or filled rectangle)
+- Sub-entries show category labels with individual counts (colored icons, lines, or filled rectangles)
 - Only categories with features are displayed
-- Line categories show colored line samples, polygon categories show filled rectangles
+- Point categories show Font Awesome icons, line categories show colored line samples, polygon categories show filled rectangles
 
 **Report Integration:**
 PDF and Excel reports include category labels in the layer name column:
