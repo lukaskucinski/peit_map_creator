@@ -653,7 +653,9 @@ def create_web_map(
                 category_counts_point = {}
                 field_name = symbology['field']
 
-                for _, row in gdf.iterrows():
+                # Use layer_results[layer_name] instead of stale gdf variable
+                layer_gdf = layer_results[layer_name]
+                for _, row in layer_gdf.iterrows():
                     field_value = str(row.get(field_name, '')).strip().lower()
                     category_counts_point[field_value] = category_counts_point.get(field_value, 0) + 1
 
