@@ -602,7 +602,7 @@
       "group": "EPA Programs",
       "description": "",
       "icon": "water",
-      "icon_color": "beige",
+      "icon_color": "#FFA07A",
       "area_name_field": "PRIMARY_NAME",
       "color": "#FFA07A"
     },
