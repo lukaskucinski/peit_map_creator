@@ -719,6 +719,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "composite_id_with_state",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -750,6 +751,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "composite_id_with_state",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -781,6 +783,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "composite_id_with_state",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -812,6 +815,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "composite_id_with_state",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -844,6 +848,7 @@
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
       "color": "#333333",
+      "area_name_field": "composite_id_with_state",
       "symbology": {
         "type": "unique_values",
         "field": "current_status",
@@ -874,6 +879,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "composite_id_with_state",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -950,6 +956,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "pollutant_name",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -981,6 +988,7 @@
       "geometry_type": "polygon",
       "group": "EPA Programs",
       "description": "This web service contains polygon layers depicting nonattainment areas and designations in the US.",
+      "area_name_field": "pollutant_name",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -1022,6 +1030,7 @@
       "description": "",
       "icon": "fire",
       "icon_color": "red",
+      "area_name_field": "basin_usgs",
       "color": "#FF0000"
     },
     {
@@ -2298,6 +2307,7 @@
       "geometry_type": "polygon",
       "group": "Floodplains",
       "description": "",
+      "area_name_field": "ZONE_SUBTY",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2879,6 +2889,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "<p style='margin: 0in 0in 4.5pt; font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'><font size='3' style='font-family: inherit;'>This dataset is intended to provide the best available statewide depiction of land ownership in California. It includes lands owned by federal agencies, state agencies, local government entities, conservation organizations, special districts, etc. It does not include lands that are in private ownership.</font><br /></p><p style='margin: 0in 0in 4.5pt; font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'><font size='3' style='font-family: inherit;'><br /></font></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>This dataset was updated internally April, 2023 and online June 2023.\u00a0</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>This ownership dataset was generated primarily from CPAD data, which already tracks the majority of ownership information in California. CPAD is utilized without any snapping or clipping to FRA/SRA/LRA. CPAD has some important data gaps, so additional data sources are used to supplement the CPAD data. Currently this includes the most currently available data from BIA, DOD, and FWS. Additional sources may be added in subsequent versions. Decision rules were developed to identify priority layers in areas of overlap.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>Starting in 2022, the ownership dataset was compiled using a new methodology. Previous versions attempted to match federal ownership boundaries to the FRA footprint, and used a manual process for checking and tracking Federal ownership changes within the FRA, with CPAD ownership information only being used for SRA and LRA lands. The manual portion of that process was proving difficult to maintain, and the new method (described below) was developed in order to decrease the manual workload, and increase accountability by using an automated process by which any final ownership designation could be traced back to a specific dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>The current process for compiling the data sources includes:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Clipping input datasets to the California boundary</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Filtering the FWS data on the Primary Interest field to exclude lands that are managed by but not owned by FWS (ex: Leases, Easements, etc)</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Supplementing the BIA Pacific Region Surface Trust lands data with the Western Region portion of the LAR dataset which extends into California.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Filtering the BIA data to exclude areas that represent only mineral rights rather than surface ownership.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* In the case of overlap, sources were prioritized as follows: FWS &gt; BIA &gt; CPAD &gt; DOD</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* As an exception to the above, DOD lands on FRA which overlapped with CPAD lands that were incorrectly coded as non-Federal were treated as an override, such that the DOD designation could win out over CPAD.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>In addition to this ownership dataset, a supplemental _source dataset is available which designates the source that was used to determine the ownership in this dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>Data Sources:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* GreenInfo Network's California Protected Areas Database (CPAD2022b).\u00a0<a href='https://www.calands.org/cpad/' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.calands.org/cpad/</a>;\u00a0<a href='https://www.calands.org/wp-content/uploads/2022/12/CPAD-2022b-Database-Manual.pdf' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.calands.org/wp-content/uploads/2022/12/CPAD-2022b-Database-Manual.pdf</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* US Fish and Wildlife Service FWSInterest dataset (updated February, 2023).\u00a0<a href='https://fws.maps.arcgis.com/home/item.html?id=0a30eaf43328427db8750282d67f0005' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://fws.maps.arcgis.com/home/item.html?id=0a30eaf43328427db8750282d67f0005</a>or\u00a0<a href='https://ecos.fws.gov/ServCat/Reference/Profile/144384' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://ecos.fws.gov/ServCat/Reference/Profile/144384</a>or\u00a0<a href='https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWSInterest/FeatureServer' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWSInterest/FeatureServer</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Department of Defense MIRTA dataset (updated 2022)\u00a0<a href='https://www.acq.osd.mil/eie/BSI/BEI_DISDI.html' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://www.acq.osd.mil/eie/BSI/BEI_DISDI.html</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Bureau of Indian Affairs, Pacific Region, Surface Trust and Pacific Region Office (PRO) land boundaries data (2023) via John Mosley\u00a0<a href='mailto:John.Mosley@bia.gov' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>John.Mosley@bia.gov</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'>* Bureau of Indian Affairs, Land Area Representations (LAR) and BIA Regions datasets (updated Oct 2019)\u00a0<a href='https://biamaps.doi.gov/bogs/datadownload.html' style='color: rgb(90, 147, 89); text-decoration-line: none; font-family: inherit;'>https://biamaps.doi.gov/bogs/datadownload.html</a></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>Data Gaps &amp; Changes:</span></p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>23_1:\u00a0</span>A few discrepancies were discovered between data changes that occurred in CPAD when compared with parcel data. These issues will be taken to CPAD for clarification for future updates, but for ownership23_1 it reflects the data as it was coded in CPAD at the time. In addition, there was a change in the DOD input data between last year and this year, with the removal of Camp Pendleton. An inquiry was sent for clarification on this change, but for ownership23_1 it reflects the data per the DOD input dataset.</p><p style='margin-top: 0px; margin-bottom: 6px; padding-bottom: 1em; font-family: &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13.3333px;'><span style='font-family: inherit; font-weight: bold;'>22_1 :\u00a0</span>represents an initial version of ownership with a new methodology which was developed under a short timeframe. A comparison with previous versions of ownership highlighted the some data gaps with the current version. Some of these known gaps include several BOR, ACE and Navy lands which were not included in CPAD nor the DOD MIRTA dataset. Our hope for future versions is to refine the process by pulling in additional data sources to fill in some of those data gaps. In addition, any topological errors (like overlaps or gaps) that exist in the input datasets may thus carry over to the ownership dataset. Ideally, any feedback received about missing or inaccurate data can be taken back to the relevant source data where appropriate, so fixes can occur in the source data, instead of just in this dataset.</p>",
+      "area_name_field": "OWN_GROUP",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3857,6 +3868,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This layer depicts state administered lands in Minnesota. The layer was downloaded from here: https://gisdata.mn.gov/dataset/bdry-dnr-managed-areas  Federal areas were removed from the dataset. This layer is meant to be used by permitting and environmental review. ",
+      "area_name_field": "UNIT_NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
