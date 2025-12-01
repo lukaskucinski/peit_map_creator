@@ -45,7 +45,7 @@ export function Header() {
                 asChild
               >
                 <a
-                  href="https://github.com/lukaskucinski/appeit_map_creator"
+                  href="https://github.com/lukaskucinski/peit_map_creator"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
