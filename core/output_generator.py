@@ -1,5 +1,5 @@
 """
-Output generation module for APPEIT Map Creator.
+Output generation module for PEIT Map Creator.
 
 This module handles saving the generated map and data files to the output directory.
 Creates a timestamped directory structure with HTML map, GeoJSON data files, and metadata.
@@ -72,7 +72,7 @@ def generate_output(
     Example:
         >>> output_path, xlsx_file, pdf_file = generate_output(map_obj, polygon_gdf, results, metadata, config)
         >>> output_path
-        Path('outputs/appeit_map_20250108_143022')
+        Path('outputs/peit_map_20250108_143022')
         >>> xlsx_file
         'PEIT_Report_20250108_143022.xlsx'
         >>> pdf_file
@@ -85,9 +85,9 @@ def generate_output(
     # Create timestamped output directory
     if output_name is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_name = f"appeit_map_{timestamp}"
+        output_name = f"peit_map_{timestamp}"
     else:
-        # Extract timestamp from output_name (e.g., "appeit_map_20250110_143022" -> "20250110_143022")
+        # Extract timestamp from output_name (e.g., "peit_map_20250110_143022" -> "20250110_143022")
         if "_" in output_name:
             timestamp = "_".join(output_name.split("_")[-2:])
         else:

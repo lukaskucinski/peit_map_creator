@@ -1,5 +1,5 @@
 """
-ArcGIS FeatureServer query module for APPEIT Map Creator.
+ArcGIS FeatureServer query module for PEIT Map Creator.
 
 This module handles querying ArcGIS FeatureServers with spatial intersection
 and converting the results to GeoDataFrames. Uses POST requests to avoid URI length

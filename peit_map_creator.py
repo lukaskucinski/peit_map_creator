@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """
-APPEIT Map Creator
-==================
-A Python tool to replicate NTIA's APPEIT functionality by querying ArcGIS FeatureServers
+PEIT Map Creator
+================
+A Python tool to replicate NTIA's PEIT functionality by querying ArcGIS FeatureServers
 and generating interactive Leaflet web maps showing environmental layer intersections.
 
 Author: Lukas Kucinski
-Repository: https://github.com/lukaskucinski/appeit_map_creator.git
+Repository: https://github.com/lukaskucinski/peit_map_creator.git
 License: MIT
 """
 
@@ -40,7 +40,7 @@ warnings.filterwarnings('ignore')
 
 def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
     """
-    Main execution workflow for APPEIT Map Creator.
+    Main execution workflow for PEIT Map Creator.
 
     Orchestrates the complete workflow from reading input polygons to generating
     the final interactive map and data files.
@@ -77,7 +77,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
     logger = get_logger(__name__)
 
     logger.info("=" * 80)
-    logger.info("APPEIT MAP CREATOR - Environmental Layer Intersection Tool")
+    logger.info("PEIT MAP CREATOR - Environmental Layer Intersection Tool")
     logger.info("=" * 80)
     logger.info(f"Log file: {log_file}")
     logger.info("")
@@ -139,7 +139,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
         # Step 4: Generate output (uses same timestamp)
         if output_name is None:
-            output_name = f"appeit_map_{timestamp}"
+            output_name = f"peit_map_{timestamp}"
 
         output_path, xlsx_file, pdf_file = generate_output(
             map_obj, polygon_gdf, layer_results, metadata, config, output_name,
@@ -174,7 +174,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
 if __name__ == "__main__":
     # Example: Process the Vermont Project Area (PA) test file
-    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\pa045_mpb.gpkg"
+    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\random_100sqmi_alabama_1.gpkg"
 
     # Run the workflow
     output_dir = main(INPUT_FILE)

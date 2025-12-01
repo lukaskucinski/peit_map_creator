@@ -1,5 +1,5 @@
 """
-XLSX report generator for APPEIT Map Creator.
+XLSX report generator for PEIT Map Creator.
 
 This module generates an Excel (.xlsx) file summarizing intersected environmental
 layer features. Each row represents a single feature with individual hyperlinked

@@ -1,5 +1,5 @@
 """
-Layer processing module for APPEIT Map Creator.
+Layer processing module for PEIT Map Creator.
 
 This module handles batch processing of multiple FeatureServer layers.
 Queries all configured layers and collects results and metadata.

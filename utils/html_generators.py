@@ -1,5 +1,5 @@
 """
-HTML generation utilities for APPEIT Map Creator.
+HTML generation utilities for PEIT Map Creator.
 
 This module provides functions to generate HTML and JavaScript code for map UI elements.
 Used by the map builder to create download menus and embed GeoJSON data.

@@ -1,5 +1,5 @@
 """
-Logging configuration for APPEIT Map Creator.
+Logging configuration for PEIT Map Creator.
 
 This module provides centralized logging configuration for both console and file output.
 Console displays INFO-level messages for user feedback, while file captures DEBUG-level
@@ -46,10 +46,10 @@ def setup_logging(log_dir: Optional[Path] = None) -> Path:
     log_dir.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f'appeit_{timestamp}.log'
+    log_file = log_dir / f'peit_{timestamp}.log'
 
-    # Get root logger for appeit
-    logger = logging.getLogger('appeit')
+    # Get root logger for peit
+    logger = logging.getLogger('peit')
     logger.setLevel(logging.DEBUG)
 
     # Remove existing handlers to avoid duplicates
@@ -97,4 +97,4 @@ def get_logger(name: str) -> logging.Logger:
         >>> logger = get_logger(__name__)
         >>> logger.info("Module initialized")
     """
-    return logging.getLogger(f'appeit.{name}')
+    return logging.getLogger(f'peit.{name}')

@@ -1,5 +1,5 @@
 """
-Input polygon reader module for APPEIT Map Creator.
+Input polygon reader module for PEIT Map Creator.
 
 This module handles reading and preprocessing input polygon files from various
 geospatial formats. All inputs are reprojected to WGS84 (EPSG:4326) for web mapping.

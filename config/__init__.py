@@ -1,5 +1,5 @@
 """
-Configuration package for APPEIT Map Creator.
+Configuration package for PEIT Map Creator.
 
 This package contains configuration loading and validation.
 

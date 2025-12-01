@@ -1,5 +1,5 @@
 """
-Map building module for APPEIT Map Creator.
+Map building module for PEIT Map Creator.
 
 This module creates interactive Leaflet maps with Folium, incorporating layer controls,
 clustering, download functionality, and a collapsible side panel with legend.
