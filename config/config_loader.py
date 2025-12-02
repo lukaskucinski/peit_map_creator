@@ -1,5 +1,5 @@
 """
-Configuration loading for APPEIT Map Creator.
+Configuration loading for PEIT Map Creator.
 
 This module handles loading and validation of the layer configuration JSON file.
 

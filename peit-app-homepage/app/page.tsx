@@ -7,13 +7,14 @@ import { HowItWorks } from "@/components/how-it-works"
 import { ConfigPanel, type ProcessingConfig } from "@/components/config-panel"
 import { ProcessingStatus, type ProgressUpdate } from "@/components/processing-status"
 import { runMockProcessing } from "@/lib/mock-processing"
+import { processFile, downloadResults, isUsingMockMode } from "@/lib/api"
 
 // Application state types
 type AppState =
   | { step: 'upload' }
   | { step: 'configure'; file: File }
   | { step: 'processing'; file: File; config: ProcessingConfig }
-  | { step: 'complete'; file: File; config: ProcessingConfig }
+  | { step: 'complete'; file: File; config: ProcessingConfig; downloadUrl?: string }
   | { step: 'error'; file: File; config: ProcessingConfig; message: string }
 
 export default function HomePage() {
@@ -40,28 +41,56 @@ export default function HomePage() {
     setAppState({ step: 'processing', file, config })
     setProgressUpdates([])
 
-    // Run mock processing
-    const result = await runMockProcessing(file, config, (update) => {
-      setProgressUpdates(prev => [...prev, update])
-    })
-
-    if (result.success) {
-      setAppState({ step: 'complete', file, config })
-    } else {
-      setAppState({
-        step: 'error',
-        file,
-        config,
-        message: result.error || 'An unexpected error occurred',
+    // Use real API if configured, otherwise use mock processing
+    if (isUsingMockMode()) {
+      // Mock processing for development/demo
+      const result = await runMockProcessing(file, config, (update) => {
+        setProgressUpdates(prev => [...prev, update])
       })
+
+      if (result.success) {
+        setAppState({ step: 'complete', file, config })
+      } else {
+        setAppState({
+          step: 'error',
+          file,
+          config,
+          message: result.error || 'An unexpected error occurred',
+        })
+      }
+    } else {
+      // Real API processing
+      const result = await processFile(file, config, (update) => {
+        setProgressUpdates(prev => [...prev, update])
+      })
+
+      if (result.success) {
+        setAppState({ step: 'complete', file, config, downloadUrl: result.downloadUrl })
+      } else {
+        setAppState({
+          step: 'error',
+          file,
+          config,
+          message: result.error || 'An unexpected error occurred',
+        })
+      }
     }
   }, [appState])
 
-  // Handle download (mock for now)
-  const handleDownload = useCallback(() => {
-    // In real implementation, this would trigger download of the ZIP file
-    alert('Download functionality will be available when connected to the backend.')
-  }, [])
+  // Handle download
+  const handleDownload = useCallback(async () => {
+    if (appState.step === 'complete' && appState.downloadUrl) {
+      try {
+        await downloadResults(appState.downloadUrl)
+      } catch (error) {
+        console.error('Download failed:', error)
+        alert('Download failed. Please try again.')
+      }
+    } else if (isUsingMockMode()) {
+      // Mock mode - show message
+      alert('Download functionality will be available when connected to the backend.\n\nTo enable real processing, set NEXT_PUBLIC_MODAL_API_URL in your .env.local file.')
+    }
+  }, [appState])
 
   // Handle process another
   const handleProcessAnother = useCallback(() => {
@@ -85,7 +114,7 @@ export default function HomePage() {
             onFileSelected={handleFileSelected}
             onFileCleared={handleFileCleared}
             selectedFile={appState.step === 'configure' ? appState.file : null}
-            disabled={appState.step === 'processing'}
+            disabled={false}
           />
         )}
 
@@ -110,6 +139,7 @@ export default function HomePage() {
             isComplete={appState.step === 'complete'}
             isError={appState.step === 'error'}
             errorMessage={appState.step === 'error' ? appState.message : undefined}
+            downloadUrl={appState.step === 'complete' ? appState.downloadUrl : undefined}
             onDownload={handleDownload}
             onProcessAnother={handleProcessAnother}
           />

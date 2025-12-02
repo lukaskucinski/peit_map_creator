@@ -262,7 +262,10 @@ def generate_layer_geojson_data(layer_results, polygon_gdf):
             geojson_data[layer_name] = json.loads(gdf.to_json())
 
     # Convert to JavaScript object format
-    js_object = "const layerGeoJSON = " + json.dumps(geojson_data, indent=2) + ";"
+    json_str = json.dumps(geojson_data, indent=2)
+    # Escape forward slashes to prevent </script> breaking out of script context
+    json_str = json_str.replace('</', '<\\/')
+    js_object = "const layerGeoJSON = " + json_str + ";"
 
     logger.debug(f"Generated GeoJSON data for {len(geojson_data)} layers")
     return js_object

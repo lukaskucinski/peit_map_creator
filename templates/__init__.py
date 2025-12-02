@@ -1,5 +1,5 @@
 """
-HTML templates for APPEIT Map Creator.
+HTML templates for PEIT Map Creator.
 
 This package contains Jinja2 templates for generating interactive map UI elements.
 

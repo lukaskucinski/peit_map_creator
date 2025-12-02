@@ -38,6 +38,18 @@ export function ProcessingStatus({
 }: ProcessingStatusProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [startTime] = useState(Date.now())
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  // Handle download with loading state
+  const handleDownloadClick = async () => {
+    if (!onDownload) return
+    setIsDownloading(true)
+    try {
+      await onDownload()
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   // Track elapsed time
   useEffect(() => {
@@ -124,18 +136,29 @@ export function ProcessingStatus({
 
               <div className="flex gap-3">
                 <Button
-                  onClick={onDownload}
+                  onClick={handleDownloadClick}
                   className="gap-2"
                   size="lg"
+                  disabled={isDownloading}
                 >
-                  <Download className="h-5 w-5" />
-                  Download Results
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-5 w-5" />
+                      Download Results
+                    </>
+                  )}
                 </Button>
                 <Button
                   onClick={onProcessAnother}
                   variant="outline"
                   size="lg"
                   className="gap-2"
+                  disabled={isDownloading}
                 >
                   <RotateCcw className="h-4 w-4" />
                   Process Another

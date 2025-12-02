@@ -1,7 +1,7 @@
 """
-Core modules for APPEIT Map Creator.
+Core modules for PEIT Map Creator.
 
-This package contains the main functional modules for the APPEIT environmental
+This package contains the main functional modules for the PEIT environmental
 layer intersection analysis tool.
 
 Modules:

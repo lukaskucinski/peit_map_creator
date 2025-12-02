@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-APPEIT Map Creator replicates NTIA's APPEIT tool functionality without requiring an ArcGIS Pro license. It queries ESRI-hosted FeatureServer REST APIs and generates interactive Leaflet web maps showing environmental features that intersect with user-provided polygons.
+PEIT Map Creator (Permitting and Environmental Information Tool) replicates NTIA's APPEIT tool functionality without requiring an ArcGIS Pro license. It queries ESRI-hosted FeatureServer REST APIs and generates interactive Leaflet web maps showing environmental features that intersect with user-provided polygons.
+
+The project has two deployment modes:
+1. **Local CLI**: Run `peit_map_creator.py` directly with a local file
+2. **Web Application**: Next.js frontend + Modal.com serverless backend for cloud-based processing
 
 ## Architecture
 
@@ -13,9 +17,16 @@ The tool uses a **modular architecture** with separate packages for configuratio
 ### Project Structure
 
 ```
-appeit_map_creator/
-├── appeit_map_creator.py          # Main entry point (~150 lines)
-├── appeit_map_creator_legacy.py   # Original monolithic version (backup)
+peit_map_creator/
+├── peit_map_creator.py            # Main CLI entry point (~150 lines)
+├── peit_map_creator_legacy.py     # Original monolithic version (backup)
+├── modal_app.py                   # Modal.com serverless backend
+│
+├── peit-app-homepage/             # Next.js web frontend (see Web Frontend section)
+│   ├── app/                       # Next.js App Router pages
+│   ├── components/                # React components
+│   ├── lib/                       # API client and utilities
+│   └── public/                    # Static assets (icons, images)
 │
 ├── config/
 │   ├── __init__.py
@@ -68,8 +79,9 @@ appeit_map_creator/
 
 ### Module Responsibilities
 
-**Main Entry Point:**
-- `appeit_map_creator.py`: Orchestrates workflow, sets up logging, handles errors
+**Main Entry Points:**
+- `peit_map_creator.py`: CLI entry point - orchestrates workflow, sets up logging, handles errors
+- `modal_app.py`: Serverless backend - FastAPI endpoints for web-based processing
 
 **Configuration:**
 - `config/config_loader.py`: Loads and validates `layers_config.json`, loads geometry settings
@@ -119,7 +131,7 @@ The code is organized into single-responsibility modules rather than a monolithi
 Dual-output logging provides visibility at different levels:
 - **Console**: INFO-level messages for user feedback
 - **File**: DEBUG-level details for troubleshooting
-- Log files: `logs/appeit_YYYYMMDD_HHMMSS.log`
+- Log files: `logs/peit_YYYYMMDD_HHMMSS.log`
 
 All modules use `utils.logger.get_logger(__name__)` for consistent logging.
 
@@ -791,19 +803,50 @@ Groups only appear in the UI if they contain layers with intersected features.
 
 ## Development Tasks
 
-### Running the Script
+### Running the CLI Script
 ```bash
 # Activate conda environment
 conda activate claude
 
 # Run complete workflow
-python appeit_map_creator.py
+python peit_map_creator.py
 ```
 
 The script will:
-1. Create a log file in `logs/appeit_YYYYMMDD_HHMMSS.log`
+1. Create a log file in `logs/peit_YYYYMMDD_HHMMSS.log`
 2. Display INFO-level progress messages on console
-3. Generate output in `outputs/appeit_map_YYYYMMDD_HHMMSS/`
+3. Generate output in `outputs/peit_map_YYYYMMDD_HHMMSS/`
+
+### Running the Web Application
+
+**Backend (Modal):**
+```bash
+# Development (hot reload)
+modal serve modal_app.py
+
+# Production deployment
+modal deploy modal_app.py
+```
+
+**Frontend (Next.js):**
+```bash
+cd peit-app-homepage
+
+# Install dependencies
+npm install
+
+# Development server
+npm run dev
+
+# Production deployment to Vercel
+npx vercel --prod
+```
+
+**Environment Setup:**
+Create `peit-app-homepage/.env.local`:
+```
+NEXT_PUBLIC_MODAL_API_URL=https://lukaskucinski--peit-processor-fastapi-app.modal.run
+```
 
 ### Adding a New Environmental Layer
 1. Find ArcGIS FeatureServer REST API URL
@@ -909,7 +952,7 @@ Expected behavior:
 5. Metadata shows `buffer_applied: true`
 
 #### Verify Enhanced Metadata
-Check `outputs/appeit_map_TIMESTAMP/metadata.json` for new fields:
+Check `outputs/peit_map_TIMESTAMP/metadata.json` for new fields:
 ```json
 {
   "input_geometry": {
@@ -929,8 +972,8 @@ Check `outputs/appeit_map_TIMESTAMP/metadata.json` for new fields:
 
 ### Debugging Failed Queries
 1. Check console output for layer-specific error messages
-2. Review `outputs/appeit_map_TIMESTAMP/metadata.json` for query statistics
-3. Check log file: `logs/appeit_TIMESTAMP.log` for DEBUG-level details
+2. Review `outputs/peit_map_TIMESTAMP/metadata.json` for query statistics
+3. Check log file: `logs/peit_TIMESTAMP.log` for DEBUG-level details
 4. Verify FeatureServer is accessible: Test URL directly in browser
    - Example: `https://services3.arcgis.com/.../FeatureServer/0/query?where=1=1&f=json`
 5. Check `query_time` in metadata - timeouts occur at 60 seconds
@@ -956,9 +999,9 @@ Check `outputs/appeit_map_TIMESTAMP/metadata.json` for new fields:
 Clean, user-friendly messages showing workflow progress:
 ```
 ================================================================================
-APPEIT MAP CREATOR - Environmental Layer Intersection Tool
+PEIT MAP CREATOR - Environmental Layer Intersection Tool
 ================================================================================
-Log file: logs/appeit_20250108_143022.log
+Log file: logs/peit_20250108_143022.log
 
 Configuration loaded: 4 layers defined
 
@@ -972,16 +1015,16 @@ Reading input polygon from: C:\Users\lukas\Downloads\pa045_mpb.gpkg
 ### Log File Output (DEBUG Level)
 Detailed information for troubleshooting:
 ```
-2025-01-08 14:30:22 - appeit.core.input_reader - INFO - Reading input polygon from: ...
-2025-01-08 14:30:22 - appeit.core.input_reader - DEBUG - File format: GPKG
-2025-01-08 14:30:23 - appeit.core.arcgis_query - DEBUG - Querying: https://services3...
-2025-01-08 14:30:25 - appeit.core.arcgis_query - INFO - Found 152 intersecting features
+2025-01-08 14:30:22 - peit.core.input_reader - INFO - Reading input polygon from: ...
+2025-01-08 14:30:22 - peit.core.input_reader - DEBUG - File format: GPKG
+2025-01-08 14:30:23 - peit.core.arcgis_query - DEBUG - Querying: https://services3...
+2025-01-08 14:30:25 - peit.core.arcgis_query - INFO - Found 152 intersecting features
 ...
 ```
 
 ### Log File Location
 - Directory: `logs/`
-- Filename format: `appeit_YYYYMMDD_HHMMSS.log`
+- Filename format: `peit_YYYYMMDD_HHMMSS.log`
 - Encoding: UTF-8
 - Retention: Manual (old logs are not automatically deleted)
 
@@ -989,7 +1032,7 @@ Detailed information for troubleshooting:
 
 Each run creates timestamped directory in `outputs/`:
 ```
-outputs/appeit_map_20250108_143022/
+outputs/peit_map_20250108_143022/
 ├── index.html                      # Self-contained interactive map (open in browser)
 ├── metadata.json                   # Query statistics, feature counts, timing
 ├── PEIT_Report_20250108_143022.pdf # Formatted PDF report
@@ -1150,10 +1193,10 @@ The `core/arcgis_query.py` module tracks detailed metadata for each query:
 - `error`: Error messages if query fails
 
 ### File Naming
-- Output directories: `appeit_map_YYYYMMDD_HHMMSS`
+- Output directories: `peit_map_YYYYMMDD_HHMMSS`
 - GeoJSON files: Layer names sanitized (spaces→underscores, lowercase, special chars removed)
 - Example: "RCRA Sites" → `rcra_sites.geojson`
-- Log files: `appeit_YYYYMMDD_HHMMSS.log`
+- Log files: `peit_YYYYMMDD_HHMMSS.log`
 
 ### Coordinate System Handling
 All data is standardized to EPSG:4326 (WGS84):
@@ -1164,7 +1207,7 @@ All data is standardized to EPSG:4326 (WGS84):
 ### Import Dependencies
 Modules follow strict layering to avoid circular dependencies:
 ```
-config/ → utils/ → core/ → appeit_map_creator.py
+config/ → utils/ → core/ → peit_map_creator.py
 ```
 
 - Config modules can't import from utils or core
@@ -1484,3 +1527,120 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 - Copy notification toast
 - Responsive positioning with panel states
 - `// @ts-nocheck` comment to suppress Jinja2 template syntax warnings
+
+---
+
+## Web Frontend (peit-app-homepage)
+
+The web frontend is a Next.js 16 application providing a user-friendly interface for uploading geospatial files and processing them via the Modal backend.
+
+### Tech Stack
+- **Framework**: Next.js 16 with App Router
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **Deployment**: Vercel
+- **API Client**: Custom TypeScript client with SSE support
+
+### Key Components
+
+**`components/upload-card.tsx`**
+- Drag-and-drop file upload zone
+- File validation (type, size)
+- Visual feedback for upload states
+
+**`components/config-panel.tsx`**
+- Project name and ID inputs
+- Buffer distance configuration
+- Clip buffer distance slider
+
+**`components/processing-status.tsx`**
+- Real-time progress display via SSE
+- Layer-by-layer processing status
+- Download button for completed results
+
+**`components/header.tsx`**
+- Site navigation and branding
+- GitHub and Donations links
+- Responsive mobile layout
+
+### API Client (`lib/api.ts`)
+TypeScript client for the Modal backend:
+- `checkHealth()`: Verify backend availability
+- `getRateLimitStatus()`: Check daily run limits
+- `processFile()`: Upload and process file with SSE progress streaming
+
+### File Validation (`lib/validation.ts`)
+- **Allowed Extensions**: `.geojson`, `.json`, `.gpkg`, `.kml`, `.kmz`, `.zip`
+- **Max File Size**: 5MB
+- Provides user-friendly error messages
+
+### Environment Variables
+```
+NEXT_PUBLIC_MODAL_API_URL=https://lukaskucinski--peit-processor-fastapi-app.modal.run
+```
+
+### Deployment URLs
+- **Production**: https://peit-app-homepage.vercel.app
+- **GitHub**: https://github.com/lukaskucinski/peit_map_creator
+
+---
+
+## Modal Backend (modal_app.py)
+
+Serverless backend running on Modal.com for cloud-based geospatial processing.
+
+### Architecture
+- **Runtime**: Modal.com serverless functions
+- **Framework**: FastAPI with SSE support
+- **Container**: Micromamba with GDAL/GeoPandas stack
+
+### API Endpoints
+
+**`POST /api/process`**
+- Accepts multipart form data with geospatial file
+- Streams progress updates via Server-Sent Events (SSE)
+- Returns job ID for result download
+
+**`GET /api/download/{job_id}`**
+- Downloads ZIP file containing:
+  - `index.html` (interactive map)
+  - `PEIT_Report_*.pdf`
+  - `PEIT_Report_*.xlsx`
+  - `data/*.geojson` (individual layer files)
+
+**`GET /api/health`**
+- Health check endpoint
+
+**`GET /api/rate-limit`**
+- Returns remaining runs for current IP
+
+### Rate Limiting
+- **Limit**: 20 runs per day per IP address
+- **Storage**: Modal Dict (persistent key-value store)
+- **Reset**: Daily at midnight UTC
+
+### Configuration
+```python
+MAX_RUNS_PER_DAY = 20
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+```
+
+### Container Image
+Uses Micromamba for geospatial dependencies:
+- GDAL >= 3.8
+- GeoPandas >= 0.14
+- Shapely >= 2.0
+- Fiona >= 1.9
+- PyProj >= 3.6
+
+### Deployment
+```bash
+# Development (hot reload)
+modal serve modal_app.py
+
+# Production
+modal deploy modal_app.py
+```
+
+### Volume Storage
+- **peit-results**: Temporary storage for generated ZIP files
+- Files auto-expire (Modal volume lifecycle)

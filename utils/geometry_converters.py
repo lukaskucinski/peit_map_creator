@@ -1,5 +1,5 @@
 """
-Geometry conversion utilities for APPEIT Map Creator.
+Geometry conversion utilities for PEIT Map Creator.
 
 This module provides functions to convert ESRI JSON geometry formats to GeoJSON.
 ArcGIS FeatureServers return geometries in ESRI JSON format, which needs to be

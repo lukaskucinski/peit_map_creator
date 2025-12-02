@@ -1,5 +1,5 @@
 """
-Utility modules for APPEIT Map Creator.
+Utility modules for PEIT Map Creator.
 
 This package contains utility functions and helpers used throughout the application.
 

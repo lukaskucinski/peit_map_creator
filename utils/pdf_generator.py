@@ -1,5 +1,5 @@
 """
-PDF report generator for APPEIT Map Creator.
+PDF report generator for PEIT Map Creator.
 
 This module generates a PDF version of the PEIT report with:
     - Cover page with title and metadata
@@ -37,7 +37,7 @@ class ReportPDF(FPDF):
 
         # Set metadata
         self.set_title("Permitting & Environmental Information (PEIT) Report")
-        self.set_author("APPEIT Map Creator")
+        self.set_author("PEIT Map Creator")
         self.set_subject("Environmental Layer Intersection Analysis")
 
         # Load Unicode fonts for special character support

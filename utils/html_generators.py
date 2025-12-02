@@ -1,5 +1,5 @@
 """
-HTML generation utilities for APPEIT Map Creator.
+HTML generation utilities for PEIT Map Creator.
 
 This module provides functions to generate HTML and JavaScript code for map UI elements.
 Used by the map builder to create download menus and embed GeoJSON data.
@@ -118,6 +118,8 @@ def generate_layer_data_mapping(
     # Add input polygon (convert GeoDataFrame to GeoJSON dict)
     input_geojson = json.loads(polygon_gdf.to_json())
     input_geojson_str = json.dumps(input_geojson, separators=(',', ':'))
+    # Escape forward slashes to prevent </script> breaking out of script context
+    input_geojson_str = input_geojson_str.replace('</', '<\\/')
     # Use double quotes to avoid conflicts with apostrophes in layer names
     mappings.append(f'"Input Polygon": {input_geojson_str}')
 
@@ -125,6 +127,8 @@ def generate_layer_data_mapping(
     for layer_name, gdf in layer_results.items():
         layer_geojson = json.loads(gdf.to_json())
         layer_geojson_str = json.dumps(layer_geojson, separators=(',', ':'))
+        # Escape forward slashes to prevent </script> breaking out of script context
+        layer_geojson_str = layer_geojson_str.replace('</', '<\\/')
         # Escape any double quotes in the layer name and use double quotes
         escaped_name = layer_name.replace('"', '\\"')
         mappings.append(f'"{escaped_name}": {layer_geojson_str}')

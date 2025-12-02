@@ -1,5 +1,5 @@
 """
-Popup formatting utilities for APPEIT Map Creator.
+Popup formatting utilities for PEIT Map Creator.
 
 This module provides functions to format attribute values for display in map popups.
 Handles special cases like URLs (converted to clickable links) and missing values.

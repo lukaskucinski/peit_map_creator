@@ -1,5 +1,5 @@
 """
-JavaScript bundling utilities for APPEIT Map Creator.
+JavaScript bundling utilities for PEIT Map Creator.
 
 This module provides functions to load bundled JavaScript files for inline embedding
 in generated HTML maps, eliminating external CDN dependencies.

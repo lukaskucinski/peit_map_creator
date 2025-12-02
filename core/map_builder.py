@@ -1,5 +1,5 @@
 """
-Map building module for APPEIT Map Creator.
+Map building module for PEIT Map Creator.
 
 This module creates interactive Leaflet maps with Folium, incorporating layer controls,
 clustering, download functionality, and a collapsible side panel with legend.
@@ -8,6 +8,7 @@ Functions:
     create_web_map: Generate complete interactive Leaflet map
 """
 
+import json
 import folium
 import geopandas as gpd
 from folium import plugins
@@ -1075,7 +1076,7 @@ def create_web_map(
     // Store layer references by iterating through map layers and matching them
     // Since we removed 'name' from layers to prevent them appearing in LayerControl,
     // we need to store them by order of creation and match with layer list
-    const layerNames = {list(layer_results.keys())};
+    const layerNames = {json.dumps(list(layer_results.keys()))};
     let layerIndex = 0;
 
     // Function to find and store map object

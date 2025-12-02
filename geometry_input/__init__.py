@@ -1,7 +1,7 @@
 """
 Geometry Input Processing Package
 
-This package provides enhanced geometry processing capabilities for APPEIT Map Creator,
+This package provides enhanced geometry processing capabilities for PEIT Map Creator,
 supporting points, lines, and polygons with automatic buffering and CRS standardization.
 
 Modules:
