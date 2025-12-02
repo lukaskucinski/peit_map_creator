@@ -6,6 +6,8 @@ Supports multiple file formats through GeoPandas.
 """
 
 import geopandas as gpd
+import zipfile
+import tempfile
 from pathlib import Path
 from typing import Tuple
 from utils.logger import get_logger
@@ -37,7 +39,24 @@ def load_geometry_file(file_path: str) -> gpd.GeoDataFrame:
     logger.info(f"Loading geometry from: {file_path}")
 
     try:
-        gdf = gpd.read_file(file_path)
+        # Handle ZIP files containing shapefiles by extracting to temp directory
+        if file_path_obj.suffix.lower() == '.zip':
+            logger.info("  - Detected ZIP file, extracting to read shapefile...")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    zip_ref.extractall(tmpdir)
+                # Find the .shp file in extracted contents
+                shp_files = list(Path(tmpdir).rglob('*.shp'))
+                if not shp_files:
+                    raise ValueError("No shapefile (.shp) found in ZIP archive")
+                if len(shp_files) > 1:
+                    logger.warning(f"  - Multiple shapefiles found in ZIP, using first: {shp_files[0].name}")
+                logger.info(f"  - Found shapefile: {shp_files[0].name}")
+                gdf = gpd.read_file(shp_files[0])
+        else:
+            gdf = gpd.read_file(file_path)
+    except zipfile.BadZipFile:
+        raise ValueError("Invalid ZIP file - file appears to be corrupted")
     except Exception as e:
         raise ValueError(f"Failed to read geospatial file: {e}")
 

@@ -15,23 +15,13 @@ Usage:
 """
 
 import modal
-import os
-import sys
-import uuid
-import json
-import zipfile
-import tempfile
-import shutil
-from datetime import datetime
-from pathlib import Path
-from typing import AsyncGenerator
 
 # Create Modal app
 app = modal.App("peit-processor")
 
 # Modal Dict for rate limiting
 rate_limit_dict = modal.Dict.from_name("peit-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY = 10
+MAX_RUNS_PER_DAY = 20
 
 # Modal Volume for storing results temporarily
 results_volume = modal.Volume.from_name("peit-results", create_if_missing=True)
@@ -71,30 +61,6 @@ peit_image = (
 )
 
 
-def check_rate_limit(ip: str) -> bool:
-    """Check if IP has exceeded daily rate limit."""
-    key = f"{ip}:{datetime.now().strftime('%Y-%m-%d')}"
-    try:
-        count = rate_limit_dict.get(key, 0)
-        if count >= MAX_RUNS_PER_DAY:
-            return False
-        rate_limit_dict[key] = count + 1
-        return True
-    except Exception:
-        # If Dict is unavailable, allow the request
-        return True
-
-
-def get_remaining_runs(ip: str) -> int:
-    """Get remaining runs for today."""
-    key = f"{ip}:{datetime.now().strftime('%Y-%m-%d')}"
-    try:
-        count = rate_limit_dict.get(key, 0)
-        return max(0, MAX_RUNS_PER_DAY - count)
-    except Exception:
-        return MAX_RUNS_PER_DAY
-
-
 @app.function(image=peit_image, timeout=600, volumes={"/results": results_volume})
 def process_file_task(
     file_content: bytes,
@@ -111,13 +77,19 @@ def process_file_task(
     Returns a dict with status and paths to generated files.
     """
     import sys
+    import json
+    import zipfile
+    import tempfile
+    import shutil
+    from datetime import datetime
+    from pathlib import Path
+
     sys.path.insert(0, "/root/peit")
 
     # Import PEIT modules
     from config.config_loader import load_config, load_geometry_settings
     from core.layer_processor import process_all_layers
     from core.map_builder import create_web_map
-    from core.output_generator import generate_output
     from geometry_input.pipeline import process_input_geometry
     from utils.logger import setup_logging, get_logger
 
@@ -135,7 +107,7 @@ def process_file_task(
         # Setup logging
         log_dir = temp_dir / "logs"
         log_dir.mkdir(exist_ok=True)
-        log_file = setup_logging(log_dir)
+        setup_logging(log_dir)
         logger = get_logger(__name__)
 
         logger.info(f"Processing job {job_id}: {filename}")
@@ -199,8 +171,8 @@ def process_file_task(
         from utils.xlsx_generator import generate_xlsx_report
         from utils.pdf_generator import generate_pdf_report
 
-        xlsx_path = generate_xlsx_report(layer_results, config, temp_output, timestamp, project_name, project_id)
-        pdf_path = generate_pdf_report(layer_results, config, temp_output, timestamp, project_name, project_id)
+        generate_xlsx_report(layer_results, config, temp_output, timestamp, project_name, project_id)
+        generate_pdf_report(layer_results, config, temp_output, timestamp, project_name, project_id)
 
         # Save metadata
         summary = {
@@ -259,165 +231,216 @@ def process_file_task(
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-# FastAPI app for the web endpoint
-from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-
-web_app = FastAPI(title="PEIT Processor API")
-
-# Add CORS middleware for frontend access
-web_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to your domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@web_app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "peit-processor"}
-
-
-@web_app.get("/api/rate-limit")
-async def get_rate_limit(request: Request):
-    """Get rate limit status for the requesting IP."""
-    client_ip = request.client.host if request.client else "unknown"
-    remaining = get_remaining_runs(client_ip)
-    return {
-        "remaining_runs": remaining,
-        "max_runs_per_day": MAX_RUNS_PER_DAY,
-        "resets_at": "midnight UTC",
-    }
-
-
-@web_app.post("/api/process")
-async def process_endpoint(
-    request: Request,
-    file: UploadFile = File(...),
-    project_name: str = Form(""),
-    project_id: str = Form(""),
-    buffer_distance_feet: int = Form(500),
-    clip_buffer_miles: float = Form(1.0),
-):
-    """
-    Process a geospatial file and stream progress via SSE.
-
-    Returns Server-Sent Events with progress updates, then final result.
-    """
-    # Rate limit check
-    client_ip = request.client.host if request.client else "unknown"
-    if not check_rate_limit(client_ip):
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error": "Rate limit exceeded",
-                "message": f"Maximum {MAX_RUNS_PER_DAY} runs per day. Please try again tomorrow.",
-                "remaining_runs": 0,
-            }
-        )
-
-    # Validate file
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-
-    # Check file extension
-    valid_extensions = {".shp", ".kml", ".kmz", ".gpkg", ".geojson", ".json", ".gdb", ".zip"}
-    file_ext = Path(file.filename).suffix.lower()
-    if file_ext not in valid_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type. Supported: {', '.join(valid_extensions)}"
-        )
-
-    # Read file content
-    file_content = await file.read()
-
-    # Check file size (25MB limit)
-    max_size = 25 * 1024 * 1024
-    if len(file_content) > max_size:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size: 25MB"
-        )
-
-    # Generate job ID
-    job_id = str(uuid.uuid4())[:8]
-
-    async def event_generator() -> AsyncGenerator[str, None]:
-        """Generate SSE events for progress updates."""
-
-        # Send initial event
-        yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 5, 'job_id': job_id})}\n\n"
-
-        # Spawn the processing task
-        try:
-            # Call the Modal function
-            result = process_file_task.remote(
-                file_content=file_content,
-                filename=file.filename,
-                job_id=job_id,
-                project_name=project_name,
-                project_id=project_id,
-                buffer_distance_feet=buffer_distance_feet,
-                clip_buffer_miles=clip_buffer_miles,
-            )
-
-            # Since Modal function is synchronous, we simulate progress
-            # In a full implementation, you'd use Modal's streaming capabilities
-            yield f"data: {json.dumps({'stage': 'geometry', 'message': 'Processing input geometry...', 'progress': 10})}\n\n"
-            yield f"data: {json.dumps({'stage': 'query', 'message': 'Querying environmental layers...', 'progress': 30})}\n\n"
-            yield f"data: {json.dumps({'stage': 'query', 'message': 'Processing layer results...', 'progress': 60})}\n\n"
-            yield f"data: {json.dumps({'stage': 'map', 'message': 'Generating interactive map...', 'progress': 80})}\n\n"
-            yield f"data: {json.dumps({'stage': 'report', 'message': 'Generating reports...', 'progress': 90})}\n\n"
-
-            # Wait for result
-            if result["success"]:
-                yield f"data: {json.dumps({'stage': 'complete', 'message': 'Processing complete!', 'progress': 100, 'job_id': job_id, 'download_url': f'/api/download/{job_id}'})}\n\n"
-            else:
-                yield f"data: {json.dumps({'stage': 'error', 'message': result.get('error', 'Unknown error'), 'progress': 0, 'error': result.get('error')})}\n\n"
-
-        except Exception as e:
-            yield f"data: {json.dumps({'stage': 'error', 'message': str(e), 'progress': 0, 'error': str(e)})}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
-    )
-
-
-@web_app.get("/api/download/{job_id}")
-async def download_result(job_id: str):
-    """Download the result ZIP file for a completed job."""
-    zip_filename = f"peit_results_{job_id}.zip"
-    zip_path = Path("/results") / job_id / zip_filename
-
-    if not zip_path.exists():
-        raise HTTPException(status_code=404, detail="Result not found or expired")
-
-    return FileResponse(
-        path=str(zip_path),
-        filename=zip_filename,
-        media_type="application/zip"
-    )
-
-
 # Mount the FastAPI app to Modal
+# All FastAPI imports and app creation happen inside this function
+# so they only run in the Modal container, not on the local machine
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
-    allow_concurrent_inputs=10,
 )
+@modal.concurrent(max_inputs=10)
 @modal.asgi_app()
 def fastapi_app():
+    """Create and return the FastAPI application."""
+    import uuid
+    import json
+    import asyncio
+    from pathlib import Path
+    from datetime import datetime
+    from typing import AsyncGenerator
+
+    from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
+    from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+    from fastapi.middleware.cors import CORSMiddleware
+
+    web_app = FastAPI(title="PEIT Processor API")
+
+    # Add CORS middleware for frontend access
+    web_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # In production, restrict to your domain
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    def check_rate_limit(ip: str) -> bool:
+        """Check if IP has exceeded daily rate limit."""
+        key = f"{ip}:{datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            count = rate_limit_dict.get(key, 0)
+            if count >= MAX_RUNS_PER_DAY:
+                return False
+            rate_limit_dict[key] = count + 1
+            return True
+        except Exception:
+            # If Dict is unavailable, allow the request
+            return True
+
+    def get_remaining_runs(ip: str) -> int:
+        """Get remaining runs for today."""
+        key = f"{ip}:{datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            count = rate_limit_dict.get(key, 0)
+            return max(0, MAX_RUNS_PER_DAY - count)
+        except Exception:
+            return MAX_RUNS_PER_DAY
+
+    @web_app.get("/api/health")
+    async def health_check():
+        """Health check endpoint."""
+        return {"status": "healthy", "service": "peit-processor"}
+
+    @web_app.get("/api/rate-limit")
+    async def get_rate_limit_endpoint(request: Request):
+        """Get rate limit status for the requesting IP."""
+        client_ip = request.client.host if request.client else "unknown"
+        remaining = get_remaining_runs(client_ip)
+        return {
+            "remaining_runs": remaining,
+            "max_runs_per_day": MAX_RUNS_PER_DAY,
+            "resets_at": "midnight UTC",
+        }
+
+    @web_app.post("/api/process")
+    async def process_endpoint(
+        request: Request,
+        file: UploadFile = File(...),
+        project_name: str = Form(""),
+        project_id: str = Form(""),
+        buffer_distance_feet: int = Form(500),
+        clip_buffer_miles: float = Form(1.0),
+    ):
+        """
+        Process a geospatial file and stream progress via SSE.
+
+        Returns Server-Sent Events with progress updates, then final result.
+        """
+        # Rate limit check
+        client_ip = request.client.host if request.client else "unknown"
+        if not check_rate_limit(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "Rate limit exceeded",
+                    "message": f"Maximum {MAX_RUNS_PER_DAY} runs per day. Please try again tomorrow.",
+                    "remaining_runs": 0,
+                }
+            )
+
+        # Validate file
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+
+        # Check file extension
+        valid_extensions = {".shp", ".kml", ".kmz", ".gpkg", ".geojson", ".json", ".gdb", ".zip"}
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in valid_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type. Supported: {', '.join(valid_extensions)}"
+            )
+
+        # Read file content
+        file_content = await file.read()
+
+        # Check file size (5MB limit)
+        max_size = 5 * 1024 * 1024
+        if len(file_content) > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail="File too large. Maximum size: 5MB"
+            )
+
+        # Generate job ID
+        job_id = str(uuid.uuid4())[:8]
+
+        def get_progress_message(progress: int) -> str:
+            """Get appropriate progress message based on progress percentage."""
+            if progress <= 15:
+                return "Processing input geometry..."
+            elif progress <= 40:
+                return "Querying environmental layers..."
+            elif progress <= 70:
+                return "Processing layer results..."
+            elif progress <= 85:
+                return "Generating interactive map..."
+            else:
+                return "Generating reports..."
+
+        async def event_generator() -> AsyncGenerator[str, None]:
+            """Generate SSE events for progress updates."""
+
+            # Send initial event
+            yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 5, 'job_id': job_id})}\n\n"
+
+            # Spawn the processing task (non-blocking)
+            try:
+                handle = process_file_task.spawn(
+                    file_content=file_content,
+                    filename=file.filename,
+                    job_id=job_id,
+                    project_name=project_name,
+                    project_id=project_id,
+                    buffer_distance_feet=buffer_distance_feet,
+                    clip_buffer_miles=clip_buffer_miles,
+                )
+
+                # Poll for completion with realistic progress updates
+                progress = 5
+                poll_interval = 3  # seconds between updates
+                max_progress = 95  # Don't exceed this until actually complete
+
+                while True:
+                    await asyncio.sleep(poll_interval)
+
+                    # Check if task is done (non-blocking check)
+                    try:
+                        result = handle.get(timeout=0)
+                        # Task completed!
+                        if result["success"]:
+                            yield f"data: {json.dumps({'stage': 'complete', 'message': 'Processing complete!', 'progress': 100, 'job_id': job_id, 'download_url': f'/api/download/{job_id}'})}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'stage': 'error', 'message': result.get('error', 'Unknown error'), 'progress': 0, 'error': result.get('error')})}\n\n"
+                        break
+                    except TimeoutError:
+                        # Task still running - increment progress slowly
+                        if progress < max_progress:
+                            progress = min(progress + 5, max_progress)
+                            message = get_progress_message(progress)
+                            yield f"data: {json.dumps({'stage': 'processing', 'message': message, 'progress': progress})}\n\n"
+
+            except Exception as e:
+                yield f"data: {json.dumps({'stage': 'error', 'message': str(e), 'progress': 0, 'error': str(e)})}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            }
+        )
+
+    @web_app.get("/api/download/{job_id}")
+    async def download_result(job_id: str):
+        """Download the result ZIP file for a completed job."""
+        # Reload volume to see recent writes from other containers
+        results_volume.reload()
+
+        zip_filename = f"peit_results_{job_id}.zip"
+        zip_path = Path("/results") / job_id / zip_filename
+
+        if not zip_path.exists():
+            raise HTTPException(status_code=404, detail="Result not found or expired")
+
+        return FileResponse(
+            path=str(zip_path),
+            filename=zip_filename,
+            media_type="application/zip"
+        )
+
     return web_app
 
 

@@ -1,10 +1,24 @@
-import { MapPin, Star } from "lucide-react"
+import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+// Landcover icon component (from layer-landcover.svg)
+function LandcoverIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 100 100"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M49.932 22.56a4.725 2.593 0 0 0-3.274.76L1.383 48.166a4.725 2.593 0 0 0 0 3.668L46.658 76.68a4.725 2.593 0 0 0 6.684 0l45.275-24.846a4.725 2.593 0 0 0 0-3.668L53.342 23.32a4.725 2.593 0 0 0-3.41-.76zM50 28.82l8.713 4.782a25.922 25.922 0 0 0-3.606 1.705c-2.827 1.61-5.458 3.774-6.994 6.636c-6.097-.96-12.326-1.538-18.468-1.953L50 28.82zm15.297 8.395L88.596 50l-7.639 4.191c-7.813-5.86-17.33-9.24-27.441-11.29c1.018-1.175 2.451-2.33 4.064-3.249c2.43-1.383 5.237-2.227 6.963-2.304a2.5 2.5 0 0 0 .754-.133zm-43.793 7.244a2.5 2.5 0 0 0 .506.078c19.426 1.07 40.051 2.978 54.074 12.328l-3.334 1.83c-7.592-4.899-16.302-8.454-27.129-7.892c-6.456.335-13.67 2.145-21.84 5.988L11.406 50l10.098-5.541zm27.258 11.08c7.27.138 13.278 2.534 18.96 5.916L50 71.18L29.277 59.807c7.526-3.144 13.88-4.374 19.485-4.268z" />
+    </svg>
+  )
+}
 
 // GitHub icon component
 function GitHubIcon({ className }: { className?: string }) {
@@ -27,14 +41,17 @@ function GitHubIcon({ className }: { className?: string }) {
 export function Header() {
   return (
     <header className="border-b border-border bg-card">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      <div className="flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <MapPin className="h-5 w-5 text-primary-foreground" />
+            <LandcoverIcon className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold text-foreground">PEIT - Permitting and Environmental Information Tool</span>
+          <span className="text-lg font-semibold text-foreground">
+            <span className="hidden sm:inline">PEIT Map Creator - Permitting and Environmental Information Tool</span>
+            <span className="sm:hidden">PEIT Map Creator</span>
+          </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* GitHub Button - Functional */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -50,7 +67,7 @@ export function Header() {
                   rel="noopener noreferrer"
                 >
                   <GitHubIcon className="h-4 w-4" />
-                  GitHub
+                  <span className="hidden sm:inline">GitHub</span>
                 </a>
               </Button>
             </TooltipTrigger>
@@ -59,38 +76,44 @@ export function Header() {
             </TooltipContent>
           </Tooltip>
 
-          {/* Donations Button - Disabled for now */}
+          {/* Donations Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 opacity-50 cursor-not-allowed"
-                disabled
+                className="gap-2"
+                asChild
               >
-                <Star className="h-4 w-4" />
-                Donations
+                <a
+                  href="https://buymeacoffee.com/kucimaps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Star className="h-4 w-4" />
+                  <span className="hidden sm:inline">Donations</span>
+                </a>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>Help us keep the server online (not quite implemented yet though)</p>
+              <p>Help keep our servers running - every contribution counts!</p>
             </TooltipContent>
           </Tooltip>
 
-          {/* Sign In - Disabled */}
+          {/* Sign In - Disabled, hidden on mobile */}
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground opacity-50 cursor-not-allowed"
+            className="hidden sm:inline-flex text-muted-foreground opacity-50 cursor-not-allowed"
             disabled
           >
             Sign In
           </Button>
 
-          {/* Sign Up - Disabled */}
+          {/* Sign Up - Disabled, hidden on mobile */}
           <Button
             size="sm"
-            className="bg-primary text-primary-foreground opacity-50 cursor-not-allowed"
+            className="hidden sm:inline-flex bg-primary text-primary-foreground opacity-50 cursor-not-allowed"
             disabled
           >
             Sign Up

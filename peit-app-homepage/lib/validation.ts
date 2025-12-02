@@ -12,9 +12,9 @@ export const ALLOWED_EXTENSIONS = [
   '.zip', // For shapefiles
 ] as const
 
-// Maximum file size in bytes (25MB)
-export const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024
-export const MAX_FILE_SIZE_MB = 25
+// Maximum file size in bytes (5MB)
+export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
+export const MAX_FILE_SIZE_MB = 5
 
 export interface ValidationResult {
   valid: boolean

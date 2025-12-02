@@ -105,7 +105,9 @@ def generate_xlsx_report(
     layer_results: Dict[str, gpd.GeoDataFrame],
     config: Dict,
     output_path: Path,
-    timestamp: str
+    timestamp: str,
+    project_name: str = "",
+    project_id: str = ""
 ) -> Optional[Path]:
     """
     Generate an Excel report summarizing intersected environmental features.
@@ -124,6 +126,8 @@ def generate_xlsx_report(
         config: Configuration dictionary with layer definitions
         output_path: Directory where report should be saved
         timestamp: Timestamp string for filename (YYYYMMDD_HHMMSS)
+        project_name: Optional project name (currently unused, for API compatibility)
+        project_id: Optional project ID (currently unused, for API compatibility)
 
     Returns:
         Path to generated XLSX file, or None if generation fails
