@@ -23,6 +23,10 @@ app = modal.App("peit-processor")
 rate_limit_dict = modal.Dict.from_name("peit-rate-limits", create_if_missing=True)
 MAX_RUNS_PER_DAY = 20
 
+# Modal Dict for tracking active jobs per IP
+active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
+MAX_CONCURRENT_JOBS_PER_IP = 3
+
 # Modal Volume for storing results temporarily
 results_volume = modal.Volume.from_name("peit-results", create_if_missing=True)
 
@@ -252,13 +256,38 @@ def fastapi_app():
     from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
     from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
     from fastapi.middleware.cors import CORSMiddleware
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    # Request size limit middleware - rejects oversized requests before reading body
+    class LimitUploadSizeMiddleware(BaseHTTPMiddleware):
+        """Reject requests with Content-Length exceeding limit."""
+
+        def __init__(self, app, max_size: int = 6 * 1024 * 1024):
+            super().__init__(app)
+            self.max_size = max_size
+
+        async def dispatch(self, request, call_next):
+            content_length = request.headers.get("content-length")
+            if content_length and int(content_length) > self.max_size:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "Request too large", "max_size_mb": self.max_size // (1024 * 1024)}
+                )
+            return await call_next(request)
 
     web_app = FastAPI(title="PEIT Processor API")
+
+    # Add request size limit middleware (before CORS)
+    web_app.add_middleware(LimitUploadSizeMiddleware, max_size=6 * 1024 * 1024)  # 6MB with overhead
 
     # Add CORS middleware for frontend access
     web_app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # In production, restrict to your domain
+        allow_origins=[
+            "https://peit-app-homepage.vercel.app",
+            "https://peit-app-homepage-*.vercel.app",  # Preview deployments
+            "http://localhost:3000",  # Local development
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -285,6 +314,28 @@ def fastapi_app():
             return max(0, MAX_RUNS_PER_DAY - count)
         except Exception:
             return MAX_RUNS_PER_DAY
+
+    def check_concurrent_limit(ip: str) -> bool:
+        """Check if IP has too many active jobs. Returns True if allowed."""
+        key = f"active:{ip}"
+        try:
+            active = active_jobs_dict.get(key, 0)
+            if active >= MAX_CONCURRENT_JOBS_PER_IP:
+                return False
+            active_jobs_dict[key] = active + 1
+            return True
+        except Exception:
+            # If Dict is unavailable, allow the request
+            return True
+
+    def release_job_slot(ip: str):
+        """Release a job slot when processing completes."""
+        key = f"active:{ip}"
+        try:
+            active = active_jobs_dict.get(key, 1)
+            active_jobs_dict[key] = max(0, active - 1)
+        except Exception:
+            pass
 
     @web_app.get("/api/health")
     async def health_check():
@@ -328,6 +379,16 @@ def fastapi_app():
                 }
             )
 
+        # Concurrent job limit check
+        if not check_concurrent_limit(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "Too many concurrent jobs",
+                    "message": f"Maximum {MAX_CONCURRENT_JOBS_PER_IP} simultaneous jobs. Please wait for current jobs to complete.",
+                }
+            )
+
         # Validate file
         if not file.filename:
             raise HTTPException(status_code=400, detail="No filename provided")
@@ -352,8 +413,8 @@ def fastapi_app():
                 detail="File too large. Maximum size: 5MB"
             )
 
-        # Generate job ID
-        job_id = str(uuid.uuid4())[:8]
+        # Generate job ID (16 chars for security - prevents URL enumeration)
+        job_id = str(uuid.uuid4()).replace("-", "")[:16]
 
         def get_progress_message(progress: int) -> str:
             """Get appropriate progress message based on progress percentage."""
@@ -397,7 +458,8 @@ def fastapi_app():
                     # Check if task is done (non-blocking check)
                     try:
                         result = handle.get(timeout=0)
-                        # Task completed!
+                        # Task completed - release job slot
+                        release_job_slot(client_ip)
                         if result["success"]:
                             yield f"data: {json.dumps({'stage': 'complete', 'message': 'Processing complete!', 'progress': 100, 'job_id': job_id, 'download_url': f'/api/download/{job_id}'})}\n\n"
                         else:
@@ -411,6 +473,8 @@ def fastapi_app():
                             yield f"data: {json.dumps({'stage': 'processing', 'message': message, 'progress': progress})}\n\n"
 
             except Exception as e:
+                # Release job slot on error
+                release_job_slot(client_ip)
                 yield f"data: {json.dumps({'stage': 'error', 'message': str(e), 'progress': 0, 'error': str(e)})}\n\n"
 
         return StreamingResponse(
@@ -442,6 +506,39 @@ def fastapi_app():
         )
 
     return web_app
+
+
+# Scheduled cleanup job - runs daily at 3 AM UTC
+@app.function(
+    image=peit_image,
+    volumes={"/results": results_volume},
+    schedule=modal.Cron("0 3 * * *"),  # 3 AM UTC daily
+)
+def cleanup_old_results():
+    """Delete result folders older than 7 days."""
+    from pathlib import Path
+    from datetime import datetime, timedelta
+    import shutil
+
+    results_path = Path("/results")
+    cutoff = datetime.now() - timedelta(days=7)
+    deleted_count = 0
+
+    if results_path.exists():
+        for job_dir in results_path.iterdir():
+            if job_dir.is_dir():
+                try:
+                    # Check modification time
+                    mtime = datetime.fromtimestamp(job_dir.stat().st_mtime)
+                    if mtime < cutoff:
+                        shutil.rmtree(job_dir)
+                        deleted_count += 1
+                except Exception as e:
+                    print(f"Error cleaning up {job_dir}: {e}")
+
+    results_volume.commit()
+    print(f"Cleanup complete: deleted {deleted_count} expired job folders")
+    return {"deleted": deleted_count, "cutoff_date": cutoff.isoformat()}
 
 
 # Entry point for modal serve/deploy
