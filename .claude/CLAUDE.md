@@ -1613,15 +1613,71 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 **`GET /api/rate-limit`**
 - Returns remaining runs for current IP
 
-### Rate Limiting
-- **Limit**: 20 runs per day per IP address
-- **Storage**: Modal Dict (persistent key-value store)
-- **Reset**: Daily at midnight UTC
+### Security & Rate Limiting
+
+**Protection Layers:**
+
+| Protection | Implementation |
+|------------|----------------|
+| Daily rate limit | 20 runs per day per IP |
+| Concurrent limit | 3 simultaneous jobs per IP |
+| File size | 5MB (validated after upload) |
+| Request size | 6MB (early rejection via middleware) |
+| File types | Whitelist of geo extensions |
+| CORS | Restricted to Vercel domains only |
+| Job IDs | 16-char UUIDs (prevents URL enumeration) |
+| Data retention | 7-day auto-cleanup |
+
+**Rate Limiting:**
+- **Storage**: Modal Dict (`peit-rate-limits`) for daily limits, (`peit-active-jobs`) for concurrent tracking
+- **Reset**: Daily limits reset at midnight UTC
+
+**Request Size Middleware:**
+- Uses `LimitUploadSizeMiddleware` (Starlette middleware)
+- Rejects requests >6MB before reading body (returns 413)
+- Provides early rejection to prevent resource exhaustion
+
+**Concurrent Job Limiting:**
+- Tracks active jobs per IP using Modal Dict
+- `check_concurrent_limit()` blocks new jobs if IP has ≥3 active
+- `release_job_slot()` frees slot on job completion or error
+
+**CORS Restrictions:**
+```python
+allow_origins=[
+    "https://peit-app-homepage.vercel.app",
+    "https://peit-app-homepage-*.vercel.app",  # Preview deployments
+    "http://localhost:3000",  # Local development
+]
+```
+
+### Scheduled Cleanup
+
+**Cron Job:** `cleanup_old_results()` runs daily at 3 AM UTC
+- Deletes job folders older than 7 days
+- Uses file modification time (`st_mtime`) to determine age
+- Commits volume changes after cleanup
+
+```python
+@app.function(
+    image=peit_image,
+    volumes={"/results": results_volume},
+    schedule=modal.Cron("0 3 * * *"),  # 3 AM UTC daily
+)
+def cleanup_old_results():
+    # Deletes folders older than 7 days
+```
+
+**Future Enhancement (auth):** When authentication is added:
+- Free users: 7-day retention
+- Paid users: Indefinite storage (until unsubscribe)
 
 ### Configuration
 ```python
 MAX_RUNS_PER_DAY = 20
+MAX_CONCURRENT_JOBS_PER_IP = 3
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_REQUEST_SIZE = 6 * 1024 * 1024  # 6MB (with overhead)
 ```
 
 ### Container Image
@@ -1643,4 +1699,6 @@ modal deploy modal_app.py
 
 ### Volume Storage
 - **peit-results**: Temporary storage for generated ZIP files
-- Files auto-expire (Modal volume lifecycle)
+- **peit-rate-limits**: Daily rate limit counters per IP
+- **peit-active-jobs**: Active job counters per IP
+- Results auto-cleanup after 7 days via scheduled cron job
