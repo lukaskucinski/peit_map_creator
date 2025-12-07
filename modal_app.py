@@ -286,8 +286,8 @@ def fastapi_app():
     web_app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "https://peit-app-homepage.vercel.app",
-            "https://peit-app-homepage-*.vercel.app",  # Preview deployments
+            "https://peit-map-creator.vercel.app",
+            "https://peit-map-creator-*.vercel.app",  # Preview deployments
             "http://localhost:3000",  # Local development
         ],
         allow_credentials=True,
