@@ -9,7 +9,7 @@ Functions:
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import folium
 import geopandas as gpd
 from folium import plugins
@@ -916,11 +916,14 @@ def create_web_map(
 
     # Render side panel template
     side_panel_template = env.get_template('side_panel.html')
+    # Use US Central timezone (UTC-6) for consistent date across local and Modal environments
+    us_central = timezone(timedelta(hours=-6))
+    now_central = datetime.now(us_central)
     side_panel_html = side_panel_template.render(
         legend_items=legend_items_html,
         xlsx_file=xlsx_relative_path,
         pdf_file=pdf_relative_path,
-        creation_date=datetime.now().strftime("%#m/%#d/%Y")
+        creation_date=f"{now_central.month}/{now_central.day}/{now_central.year}"
     )
     m.get_root().html.add_child(Element(side_panel_html))
 
