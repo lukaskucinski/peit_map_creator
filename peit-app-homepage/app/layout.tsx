@@ -7,17 +7,20 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://peit-map-creator.vercel.app"),
   title: "PEIT Map Creator",
   description: "Upload, process, and visualize geospatial files in seconds.",
   generator: "v0.app",
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
+        url: "/icon-light-48x48.png",
+        sizes: "48x48",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/icon-dark-32x32.png",
+        url: "/icon-dark-48x48.png",
+        sizes: "48x48",
         media: "(prefers-color-scheme: dark)",
       },
       {
@@ -30,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "PEIT Map Creator - Permitting and Environmental Information Tool",
     description: "Upload, process, and visualize geospatial files in seconds.",
-    url: "https://peit-app-homepage.vercel.app",
+    url: "https://peit-map-creator.vercel.app",
     siteName: "PEIT Map Creator",
     images: [
       {
