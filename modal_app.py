@@ -133,6 +133,8 @@ def process_file_task(
         )
 
         input_filename = Path(filename).stem
+        # Use project name for input layer display if provided, otherwise use filename
+        input_layer_name = project_name if project_name else input_filename
 
         # Process all layers
         layer_results, metadata, clip_summary = process_all_layers(polygon_gdf, config)
@@ -144,7 +146,7 @@ def process_file_task(
 
         # Create web map
         map_obj = create_web_map(
-            polygon_gdf, layer_results, metadata, config, input_filename,
+            polygon_gdf, layer_results, metadata, config, input_layer_name,
             xlsx_relative_path=xlsx_filename,
             pdf_relative_path=pdf_filename
         )
