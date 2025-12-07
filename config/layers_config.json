@@ -2512,6 +2512,7 @@
       "geometry_type": "polygon",
       "group": "Floodplains",
       "description": "",
+      "area_name_field": "Name",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2543,6 +2544,7 @@
       "geometry_type": "polygon",
       "group": "Floodplains",
       "description": "These data represent the extent of the nation's coastal zone, as defined by the individual states and territories under the Coastal Zone Management Act of 1972 (CZMA). The CZMA was established to preserve, protect, develop, and where possible, to restore or enhance the resources of the nation's coastal zone. The zone generally extends seaward to the boundary of the Submerged Lands Act. The zone extends inland from the shorelines only to the extent necessary to control shorelands that have a direct and significant impact on coastal waters. Lands held in trust by the Federal Government have been included in this boundary unless otherwise noted, as accurately representing these could be erroneous. State jurisdiction extends to 3nm, except for Texas, Puerto Rico and Florida\u2019s Gulf coast extends to 9nm. Great Lakes states have jurisdiction to the international boundary with Canada. CZMA applies in EEZ through federal consistency. This boundary is unofficial. For precise regulatory boundaries, please contact the state or territorial coastal program office.",
+      "area_name_field": "czmadomain",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2574,6 +2576,7 @@
       "geometry_type": "polygon",
       "group": "Floodplains",
       "description": "This dataset combined all of the coral reef habitat layers for FL, HI and the territories. This layer is included in the NTIA Permitting and Environmental Information Application. ",
+      "area_name_field": "M_STRUCT",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5
@@ -2621,6 +2624,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "Name",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5,
@@ -2635,6 +2639,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "Township",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2663,12 +2668,13 @@
       ]
     },
     {
-      "name": "Legislative Designated Area",
+      "name": "Alaska Legislative Designated Area",
       "url": "https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/SurfaceClassification_LegislativelyDesignatedAreas/MapServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "LDA_NAME_1",
       "color": "#333366",
       "fill_color": "#333366",
       "fill_opacity": 0.5,
@@ -2677,12 +2683,13 @@
       ]
     },
     {
-      "name": "State Parks",
+      "name": "Alaska State Parks",
       "url": "https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Recreational_ParkBoundary/MapServer",
       "layer_id": 2,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "NAME",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5,
@@ -2691,12 +2698,13 @@
       ]
     },
     {
-      "name": "State Forests",
+      "name": "Alaska State Forests",
       "url": "https://services1.arcgis.com/7HDiw78fcUiM2BWn/arcgis/rest/services/State_Forest_Boundary_Public_View_2/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "forestname",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -2721,16 +2729,17 @@
         ]
       },
       "states": [
-        "Colorado"
+        "Alaska"
       ]
     },
     {
-      "name": "Mental Health Trust Land",
+      "name": "Alaska Mental Health Trust Land",
       "url": "https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Ownership_MentalHealthTrustParcels/MapServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "CSTMRLSTNM",
       "color": "#A8A800",
       "fill_color": "#A8A800",
       "fill_opacity": 0.5,
@@ -2739,7 +2748,7 @@
       ]
     },
     {
-      "name": "DNR State Lands",
+      "name": "Alaska DNR State Lands",
       "url": "https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Ownership_StateLandAll/MapServer",
       "layer_id": 1,
       "geometry_type": "polygon",
@@ -2760,6 +2769,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This data set represents surface state trust parcels in Arizona. A surface state trust parcel in Arizona is a piece of state trust land where the State holds and manages the surface rights (for uses such as grazing, agriculture, commercial leases), while the mineral or subsurface rights may be held or leased separately. ",
+      "area_name_field": "accountname",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3022,6 +3032,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "CPW Administrative Boundary AGOL hosted web service data to provide public access to CPW data including CPW Facilities, Roads, Trails, Gold Medal Waters, Property Ownership, Game Management Units, Walk In Access Program, and Organizational Boundaries",
+      "area_name_field": "Pikes Peak SWA",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3136,6 +3147,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This layer is from the State of Colorado and shows the lands owned by the state land board. The state lands are used to generate funding for Colorado public schools. This layer is added to the NBAM for permitting NEPA review. ",
+      "area_name_field": "Net_ID",
       "color": "#E69800",
       "fill_color": "#E69800",
       "fill_opacity": 0.5,
@@ -3150,6 +3162,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "DEEP Property contains property that comprises DEEP facilities such as state forests, parks, and wildlife management areas.",
+      "area_name_field": "PROPERTY",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3272,6 +3285,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands \u2013 Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund \u2013 Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands \u2013 Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
+      "area_name_field": "NAME",
       "color": "#AA66CD",
       "fill_color": "#AA66CD",
       "fill_opacity": 0.5,
@@ -3286,6 +3300,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands \u2013 Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund \u2013 Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands \u2013 Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
+      "area_name_field": "NAME",
       "color": "#E8BEFF",
       "fill_color": "#E8BEFF",
       "fill_opacity": 0.5,
@@ -3300,6 +3315,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "No Build Lines and Points - To ensure that beaches and dunes are able to perform their protective and recreational functions, construction must be kept off them. A Building Line has been established along the coast as part of the Regulations Governing Beach Protection and the Use of Beaches. The Building Line, which parallels the coastline, is designated on DNREC maps. No construction may take place seaward of the Line without a Coastal Construction Permit or Coastal Construction Letter of Approval from the Department of Natural Resources and Environmental Control(DNREC).Park Facilities - outdoor recreational facilities throughout Delaware.Natural Areas - boundaries for the Natural Areas Inventory statewide for the purpose of achieving voluntary land protection of the most important natural areas in Delaware.Outdoor Recreation, Parks and Trails Program Lands \u2013 Lands where Delaware Land &amp; Water Conservation Trust Fund (now the Outdoor Recreation, Parks and Trails Program) monies have been invested.Land and Water Conservation Fund \u2013 Lands protected under the Land and Water Conservation Fund.Nature Preserves - lands preserved under the Delaware Nature Preserves Program.Outdoor Recreation Areas - The Outdoor Recreation Inventory (ORI) was originally created to track publicly owned lands within Delaware that are open for public recreation. The database has since been expanded to include all publicly and privately owned protected lands (Federal, State, County, Municipal and private conservation) regardless of whether they are open to the public or not.Outdoor Recreation, Parks and Trails Program Open Space - land protected in perpetuity under the Outdoor Recreation, Parks and Trails ProgramPublic Protected Lands \u2013 Lands that are publicly owned and open to public access.Conservation Easements - Includes all Conservation Easements held by Delaware State Parks, both current and historic. Also includes a partial &amp; non-comprehensive list of Conservation Easements held by other State agencies and NGOs.Trails and Pathways - Recreational trails and pathwaysSeasonal Restricted Areas - Seasonal Restricted Areas represent portions of Delaware State Parks that are closed to public access during different seasonsPermanent Restricted Areas - Permanent Restricted Areas represent portions of Delaware State Parks that are closed to public access all year long.Wildlife Area Boundaries - Boundaries show the Wildlife Area locations within the State of Delaware.  Some of the boundaries are divided into tracts.",
+      "area_name_field": "NAME",
       "color": "#4CE600",
       "fill_color": "#4CE600",
       "fill_opacity": 0.5,
@@ -3314,6 +3330,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "DC Land was obtained from the DC open data page. Data has been filtered to only showing properties owned by DC. This layer is included in the NTIA Permitting and Environmental Information Application. ",
+      "area_name_field": "BUILDING_U",
       "color": "#BDFCE7",
       "fill_color": "#BDFCE7",
       "fill_opacity": 0.5,
@@ -3328,6 +3345,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This service contains the following:\nFL-SOLARIS/LITS State Owned Lands\nFL-SOLARIS/CLEAR Conservation Easements - added 5/18/2018\nFL-SOLARIS/CLEAR Conservation Owned Lands - added 5/18/2018",
+      "area_name_field": "PROJECT_NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3426,6 +3444,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This layer shows the lands owned by Georgia DNR. This data was downloaded from: https://georgiawildlife.com/land",
+      "area_name_field": "Name",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3452,6 +3471,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "ParcelsZoning",
+      "area_name_field": "majorowner",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3517,6 +3537,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Indiana State Lands",
+      "area_name_field": "Name",
       "color": "#FF5500",
       "fill_color": "#FF5500",
       "fill_opacity": 0.5,
@@ -3546,6 +3567,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "NAME",
       "color": "#BACD4B",
       "fill_color": "#BACD4B",
       "fill_opacity": 0.5,
@@ -3554,12 +3576,13 @@
       ]
     },
     {
-      "name": "State Natural Areas",
+      "name": "Kentucky State Natural Areas",
       "url": "https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_KNP_Natural_Areas_WGS84WM/MapServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "MANAME",
       "color": "#639833",
       "fill_color": "#639833",
       "fill_opacity": 0.5,
@@ -3568,12 +3591,13 @@
       ]
     },
     {
-      "name": "State Park Boundaries",
+      "name": "Kentucky State Park Boundaries",
       "url": "https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_State_Parks_Features_WGS84WM/MapServer",
       "layer_id": 8,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This map service provides access to trail head, campsite, campgrounds, lodging, public structures, and boundaries for State Parks in the Commonwealth of Kentucky.",
+      "area_name_field": "PARK_NAME",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5,
@@ -3582,12 +3606,13 @@
       ]
     },
     {
-      "name": "Public Hunting Areas",
+      "name": "Kentucky Public Hunting Areas",
       "url": "https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_Public_Hunting_Areas_WGS84WM/MapServer",
       "layer_id": 1,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This map service provides access to both open and restricted public hunting areas in the Commonwealth of Kentucky as maintained by KDFWR.",
+      "area_name_field": "AREANAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3616,12 +3641,13 @@
       ]
     },
     {
-      "name": "State Nature Preserves",
+      "name": "Kentucky State Nature Preserves",
       "url": "https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_KNP_State_Nature_Preserves_WGS84WM/MapServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "A State Nature Preserve is a legally dedicated area that has been recognized for its natural significance and protected by law for scientific and educational purposes. Dedicated state nature preserves are established solely to protect and preserve rare species, the natural environment, or exceptional natural scenery or environmental education opportunities. State Nature Preserves available in this layer are open to the public for hiking only. Hiking trails are closely regulated to protect the natural integrity of the preserve so that it may be passed on unimpaired to future generations. Certain preserves are only open for scientific research at this time and are not available in this layer.",
+      "area_name_field": "MANAME",
       "color": "#297C45",
       "fill_color": "#297C45",
       "fill_opacity": 0.5,
@@ -3630,12 +3656,13 @@
       ]
     },
     {
-      "name": "State Forests",
+      "name": "Kentucky State Forests",
       "url": "https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_StateForests_WGS84WM/MapServer",
       "layer_id": 1,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Polygons representing the boundaries of State Forests for the Commonwealth of Kentucky.",
+      "area_name_field": "NAME",
       "color": "#E9FFBE",
       "fill_color": "#E9FFBE",
       "fill_opacity": 0.5,
@@ -3650,6 +3677,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This layer shows lands owned by the State of Louisiana. The data was downloaded from here: https://www.doa.la.gov/doa/osl/gis-data/  This layer is meant to be used for permitting and environmental review efforts. ",
+      "area_name_field": "FACILITY_N",
       "color": "#BDFCCC",
       "fill_color": "#BDFCCC",
       "fill_opacity": 0.5,
@@ -3664,6 +3692,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Property boundaries of Maine Department of Inland Fisheries and Wildlife's Wildlife Management Areas derived from Maine Conserved Lands",
+      "area_name_field": "Project",
       "color": "#F6C567",
       "fill_color": "#F6C567",
       "fill_opacity": 0.5,
@@ -3672,12 +3701,13 @@
       ]
     },
     {
-      "name": "DNR Owned Lands and Conservation Easements",
+      "name": "Maryland DNR Owned Lands and Conservation Easements",
       "url": "https://geodata.md.gov/imap/rest/services/Environment/MD_ProtectedLands/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Polygon boundaries of various protected lands in Maryland including: DNR Owned Properties and Conservation Easements, Rural Legacy Properties, MD Environmental Trust Easements, Forest Conservation Act Easements, MD Agricultural Land Preservation Foundation Easements, Local Protected Lands, Coastal and Estuarine Land Conservation Program, Private Conservation Lands and Protected Federal Lands.\n\nInformation on the number of acres protected in Maryland can be found on the Maryland Protected Lands Reporting site at http://dnrweb.dnr.state.md.us/gis/plreports/.\n",
+      "area_name_field": "DNRName",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3731,12 +3761,13 @@
       ]
     },
     {
-      "name": "Local Protected Lands",
+      "name": "Maryland Local Protected Lands",
       "url": "https://geodata.md.gov/imap/rest/services/Environment/MD_ProtectedLands/FeatureServer",
       "layer_id": 5,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Polygon boundaries of various protected lands in Maryland including: DNR Owned Properties and Conservation Easements, Rural Legacy Properties, MD Environmental Trust Easements, Forest Conservation Act Easements, MD Agricultural Land Preservation Foundation Easements, Local Protected Lands, Coastal and Estuarine Land Conservation Program, Private Conservation Lands and Protected Federal Lands.\n\nInformation on the number of acres protected in Maryland can be found on the Maryland Protected Lands Reporting site at http://dnrweb.dnr.state.md.us/gis/plreports/.\n",
+      "area_name_field": "OthrPrgNm",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3771,6 +3802,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This layer shows public open spaces in Maryland at the local and state level. This data was downloaded here: https://www.mass.gov/info-details/massgis-data-protected-and-recreational-openspace  The data was filtered to remove Federal and private lands. This layer is meant to be used for permitting and environmental review purposes. ",
+      "area_name_field": "SITE_NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -3957,11 +3989,12 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Mississippi State Parks and Wildlife Management Areas.",
+      "area_name_field": "NAME",
       "color": "#004DA8",
       "fill_color": "#004DA8",
       "fill_opacity": 0.5,
       "states": [
-        "Colorado"
+        "Mississippi"
       ]
     },
     {
@@ -3971,6 +4004,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Mississippi State Parks and Wildlife Management Areas.",
+      "area_name_field": "Name",
       "color": "#D3FFBE",
       "fill_color": "#D3FFBE",
       "fill_opacity": 0.5,
@@ -3985,6 +4019,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Missouri State Lands",
+      "area_name_field": "Name",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4019,6 +4054,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "OWNER",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4033,6 +4069,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "NPGCProperties2023_2024",
+      "area_name_field": "AreaName",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4091,6 +4128,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "The Conservation and Public Lands in New Hampshire dataset comprises conservation and public areas displayed by management status, protecting agency type, primary protection type, protection level, and gap status. This is a dynamic data set which is updated on a biannual basis. The updates are based on contributions from numerous various conservation entities located throughout New Hampshire. For more information, see http://www.granit.unh.edu/data/metadata?file=consnh/nh/consnh.html",
+      "area_name_field": "NAME",
       "color": "#55FF00",
       "fill_color": "#55FF00",
       "fill_opacity": 0.5,
@@ -4105,6 +4143,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "NJDEP's Land data for publication and use in public applications.",
+      "area_name_field": "FEE_SIMPLE_ALTRNT_NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4224,6 +4263,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "Descriptio",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4238,6 +4278,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Boundary polygon of the New York State Adirondack Park for planning purposes, not derived from licensed land survey. 2018 edition.",
+      "area_name_field": "OBJECTID",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5,
@@ -4252,6 +4293,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Feature Service of State and Private Land Classification in the Adirondack Park of New York",
+      "area_name_field": "TownVil",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4320,12 +4362,13 @@
       ]
     },
     {
-      "name": "State Land Map",
+      "name": "New York State Land Map",
       "url": "https://services2.arcgis.com/8krRUWgifzA4cgL3/arcgis/rest/services/Adirondack_Park_State_and_Private_Land_Class_Features/FeatureServer",
       "layer_id": 1,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Feature Service of State and Private Land Classification in the Adirondack Park of New York",
+      "area_name_field": "GNIS_Name",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4402,12 +4445,13 @@
       ]
     },
     {
-      "name": "State Parks",
+      "name": "New York State Parks",
       "url": "https://services.arcgis.com/1xFZPtKn1wKC6POA/arcgis/rest/services/NYS_Park_Polygons/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "New York State Office of Parks, Recreation and Historic Preservation Property\n",
+      "area_name_field": "Name",
       "color": "#73D900",
       "fill_color": "#73D900",
       "fill_opacity": 0.5,
@@ -4416,12 +4460,13 @@
       ]
     },
     {
-      "name": "State Owned Parcels",
+      "name": "New York State Owned Parcels",
       "url": "https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Tax_Parcels_State_Owned/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Publication Date: April 2025. Updated annually. This map service only contains parcel data for NYS State-owned tax parcels. 2024 Parcel geometry was incorporated as received from County Real Property Departments. No attempt was made to edge-match parcels along adjacent counties. County attribute values were populated using 2024 Assessment Roll tabular data NYS ITS Geospatial Services obtained from the NYS Department of Tax and Finance\u2019s Office of Real Property Tax Services (ORPTS). Attribute values are from the 2024 Assessment roll year. Tabular assessment data was joined to the county provided parcel geometry using the SWIS & SBL or SWIS & PRINT KEY unique identifier for each parcel. Detailed information about assessment attributes can be found in the ORPTS Assessor\u2019s Manuals available here: https://www.tax.ny.gov/research/property/assess/manuals/assersmanual.htm. New York City data comes from NYC MapPluto which can be found here: https://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page. The State-owned tax parcel polygons in this file are the result of a best effort selection based on the Primary Owner and Additional Owner fields in the NYS Statewide Tax Parcels file, Geospatial Services data, State agency data, and online research. These same data and information are also the basis for a best effort assignment of a NYS agency name (listed in the NYS Name field) to most tax parcel polygons where the Owner Type field value is State. The NYS Name Source field consists of a code that describes how the State-owned designation and agency name were determined, if this was verified, and the means of verification, if applicable. Geometry accuracy varies by contributing county. This map service is available to the public. The State of New York, acting through the New York State Office of Information Technology Services, makes no representations or warranties, express or implied, with respect to the use of or reliance on the Data provided. The User accepts the Data provided \u201cas is\u201d with no guarantees that it is error free, complete, accurate, current or fit for any particular purpose and assumes all risks associated with its use. The State disclaims any responsibility or legal liability to Users for damages of any kind, relating to the providing of the Data or the use of it. Users should be aware that temporal changes may have occurred since this Data was created.",
+      "area_name_field": "CITYTOWN_NAME",
       "color": "#E35205",
       "fill_color": "#E35205",
       "fill_opacity": 0.5,
@@ -4436,6 +4481,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "SCHOOL_NAME",
       "color": "#2EBD00",
       "fill_color": "#2EBD00",
       "fill_opacity": 0.5,
@@ -4444,12 +4490,13 @@
       ]
     },
     {
-      "name": "State Parks",
+      "name": "North Dakota State Parks",
       "url": "https://services1.arcgis.com/GOcSXpzwBHyk2nog/arcgis/rest/services/NDGISHUB_State_Parks/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "The purpose of this data layer is to provide a geographic representation of the state parks.  Other properties owned and/or managed by the ND Parks and Recreation Department are included in this layer.  This dataset is primarily used as a framework layer for use in GIS and other mapping applications and does not represent a land survey of the boundaries.",
+      "area_name_field": "UNIT_NAME",
       "color": "#FCE8CF",
       "fill_color": "#FCE8CF",
       "fill_opacity": 0.5,
@@ -4458,12 +4505,13 @@
       ]
     },
     {
-      "name": "State Forest",
+      "name": "North Dakota State Forest",
       "url": "https://services1.arcgis.com/GOcSXpzwBHyk2nog/arcgis/rest/services/NDGISHUB_State_Forest/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "The purpose of the data is to provide a geographic representation of state forest lands in North Dakota. This dataset is primarily used as a framework data layer for use in GIS and mapping applications.",
+      "area_name_field": "DESCRIPTION",
       "color": "#FCD1C2",
       "fill_color": "#FCD1C2",
       "fill_opacity": 0.5,
@@ -4478,6 +4526,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "The ODNR_LANDS feature class is a generalized digital representation of the Ohio Department of Natural Resources land facilities, and contains property type and ownership classifications.\n",
+      "area_name_field": "ALT_NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4551,12 +4600,13 @@
       ]
     },
     {
-      "name": "Dept. of Forestry Managed Lands",
+      "name": "Oregon Dept. of Forestry Managed Lands",
       "url": "https://services8.arcgis.com/8PAo5HGmvRMlF2eU/arcgis/rest/services/Ownership_ManagedLands/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Board of Forestry lands and Common School Lands Managed by the State Forests Program of the Oregon Department of Forestry.\nTo display ODF managed lands on maps and other graphics, and to conduct analysis involving ownership attributes.",
+      "area_name_field": "DISTRICT",
       "color": "#FCECC2",
       "fill_color": "#FCECC2",
       "fill_opacity": 0.5,
@@ -4571,6 +4621,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "names",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4585,6 +4636,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "General reference for planning purposes and small scale cartographic output.",
+      "area_name_field": "NAME",
       "color": "#38A800",
       "fill_color": "#38A800",
       "fill_opacity": 0.5,
@@ -4600,6 +4652,7 @@
       "group": "State Lands",
       "description": "",
       "color": "#D4FCFB",
+      "area_name_field": "PropertyName",
       "fill_color": "#D4FCFB",
       "fill_opacity": 0.5,
       "states": [
@@ -4613,6 +4666,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "NAME_1",
       "color": "#1D5537",
       "fill_color": "#1D5537",
       "fill_opacity": 0.5,
@@ -4627,6 +4681,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "varSurveyName",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4641,6 +4696,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "OWNER",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4655,6 +4711,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "ANR Open Data Service - Cadastral",
+      "area_name_field": "NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4726,6 +4783,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "LABEL",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4734,12 +4792,13 @@
       ]
     },
     {
-      "name": "Major Public Lands Non DNR",
+      "name": "Washington Major Public Lands Non DNR",
       "url": "https://gis.dnr.wa.gov/site3/rest/services/Public_Boundaries/WADNR_PUBLIC_Major_Public_Lands_NonDNR/MapServer",
       "layer_id": 1,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "<div style='text-align:Left;'><div><div><p><span>The Non-DNR Major Public Lands (NDMPL) layers contain ownership parcels for Federal, State (excluding WA DNR), County and City lands within the State of Washington. It also includes Tribal administrative boundaries. This data is not connected to WA DNR's Cadastre layers (these data include WADNR ownership, Public Land Survey System and other cadastral data). As updates are made to Cadastre layers, they may not be reflected in NDMPL.</span></p><p><span>Layers include: Wilderness Areas, Non-DNR Major Public Lands, and Tribal Lands.</span></p></div></div></div>",
+      "area_name_field": "NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4846,12 +4905,13 @@
       ]
     },
     {
-      "name": "DNR Managed Land Parcels",
+      "name": "Washington DNR Managed Land Parcels",
       "url": "https://gis.dnr.wa.gov/site3/rest/services/Public_Boundaries/WADNR_PUBLIC_Cadastre_OpenData/MapServer",
       "layer_id": 6,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Layers include: WA Survey Points, WA Boundaries, WA Legal Descriptions, WA DNR Regions, WA DNR Districts, WA DNR Units, DNR Managed Land Parcels, Public Land Survey Sections, Public Land Survey Townships, State Outline, State Boundary, and County Boundaries.",
+      "area_name_field": "COUNTY_JURISDICT_DESG_CD",
       "color": "#000000",
       "fill_color": "#000000",
       "fill_opacity": 0.5,
@@ -4866,6 +4926,7 @@
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "Contains:\nDNR Mgd Lands by Property - Prop Names Included: Parcels dissovled on Prop Code with Property Names attached, DNR easements on private lands not included.\nDNR Mgd Lands by Parcels-No Property NAmes: Contains DNR Mgd Land as parcels, open easements included-- closed easement and inholding are not.",
+      "area_name_field": "PROP_NAME",
       "color": "#333333",
       "symbology": {
         "type": "unique_values",
@@ -4904,12 +4965,13 @@
       ]
     },
     {
-      "name": "State Lands",
+      "name": "Wyoming State Lands",
       "url": "https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Wyoming_State_Lands/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "",
+      "area_name_field": "Acquisitio",
       "color": "#4C81CD",
       "fill_color": "#4C81CD",
       "fill_opacity": 0.5,
@@ -4918,12 +4980,13 @@
       ]
     },
     {
-      "name": "Public Access Areas",
+      "name": "Wyoming Public Access Areas",
       "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/PublicAccessAreaBoundaries/FeatureServer",
       "layer_id": 0,
       "geometry_type": "polygon",
       "group": "State Lands",
       "description": "This data set was developed in order to show Public Access Areas in interactive maps on the public website, produce small scale boundary maps published in GeoPDF and KML form, and for individuals with an interest in Wyoming Game and Fish Department Lands. It is also designed for statewide and regional overview use. Attribute data such as open dates, recreational opportunities, etc. for each area is in the PAA_Locations feature class, which can be joined to this feature class by the PAA_Name field.",
+      "area_name_field": "PAA_Name",
       "color": "#00C5FF",
       "fill_color": "#00C5FF",
       "fill_opacity": 0.5,

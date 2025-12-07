@@ -174,7 +174,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
 if __name__ == "__main__":
     # Example: Process the Vermont Project Area test file
-    INPUT_FILE = r"C:\Users\lukas\Downloads\tim_export_test.kml"
+    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\random_elongated_100sqmi_montana_6.gpkg"
 
     # Run the workflow
     output_dir = main(INPUT_FILE)

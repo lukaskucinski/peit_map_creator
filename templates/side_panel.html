@@ -194,33 +194,24 @@
                 <summary>ℹ️ About PEIT Map Creator</summary>
                 <div class="about-content">
                     <p>
-                        The <strong>PEIT Map Creator</strong> replicates NTIA's PEIT tool functionality
-                        without requiring an ArcGIS Pro license. This tool queries ESRI-hosted FeatureServer
-                        REST APIs to perform spatial intersection analysis.
-                    </p>
-                    <p>
-                        <strong>Features:</strong> Interactive Leaflet maps, multi-layer visualization,
-                        marker clustering, and GeoJSON export capabilities.
-                    </p>
-                    <p style="font-size: 11px;">
-                        <strong>Data Sources:</strong> EPA RCRA Sites, NPDES Permits, USACE Navigable
-                        Waterways, National Register of Historic Places, and other environmental datasets.
+                        The <strong><a href="https://peit-app-homepage.vercel.app/" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none;">PEIT Map Creator</a></strong> replicates NTIA's <a href="https://nbam.ntia.gov/content/37fa42c6313e4bdb9d8a9c05d2624891/about" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none;">APPEIT</a> tool functionality
+                        without requiring an ArcGIS Pro license. This tool queries ESRI FeatureServer APIs to identify environmental and permitting constraints that may impact construction projects, including federal lands, critical habitats, historic sites, and EPA-regulated areas.
                     </p>
                     {% if xlsx_file %}
                     <p style="font-size: 11px; margin-top: 10px;">
                         📊 <strong>PEIT Report (XLSX):</strong> <a href="{{ xlsx_file }}" download target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none; font-weight: 500;">Download XLSX Report</a>
-                        <br><span style="font-size: 10px; color: #666;">Summary table with hyperlinked resource areas</span>
+                        <br><span style="font-size: 10px; color: #666;">Summary table with linked resource areas</span>
                     </p>
                     {% endif %}
 
                     {% if pdf_file %}
                     <p style="font-size: 11px; margin-top: 10px;">
                         📄 <strong>PEIT Report (PDF):</strong> <a href="{{ pdf_file }}" download target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none; font-weight: 500;">Download PDF Report</a>
-                        <br><span style="font-size: 10px; color: #666;">Formatted report with cover page and BMP links</span>
+                        <br><span style="font-size: 10px; color: #666;">Formatted report with feature names and resource links</span>
                     </p>
                     {% endif %}
                     <p style="font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 8px; margin-top: 10px;">
-                        Created by <a href="https://www.linkedin.com/in/lukas-kucinski-3303a9148/" target="_blank" style="color: #0066cc; text-decoration: none;">Lukas Kucinski</a> | Open source environmental analysis tool
+                        Created by <a href="https://www.linkedin.com/in/lukas-kucinski-3303a9148/" target="_blank" style="color: #0066cc; text-decoration: none;">Lukas Kucinski</a> | {{ creation_date }}
                     </p>
                 </div>
             </details>
