@@ -1510,11 +1510,23 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 **Purpose**: Left side collapsible panel with legend
 
 **Features**:
-- About section with project information
+- About section with project information and hyperlinks to PEIT Map Creator and APPEIT
+- Dynamic creation date (US Central timezone, MM/DD/YYYY format without leading zeros)
+- PDF and XLSX report download links
 - Dynamic legend with icons/colors
 - Synchronizes with layer visibility from right panel
 - Shows only visible layers
 - Feature counts for each layer
+
+**Creation Date Implementation**:
+The creation date is rendered at map generation time using US Central timezone (UTC-6) to ensure consistent dates across local Windows development and Modal Linux containers. The date is embedded as static text in the HTML, so it shows when the map was created, not when it's viewed.
+
+```python
+# In core/map_builder.py
+us_central = timezone(timedelta(hours=-6))
+now_central = datetime.now(us_central)
+creation_date = f"{now_central.month}/{now_central.day}/{now_central.year}"  # e.g., "12/6/2025"
+```
 
 ### templates.download_control
 **Purpose**: Download button and menu interface
