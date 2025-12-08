@@ -1,0 +1,396 @@
+"use client"
+
+import { useEffect, useRef, useState, useCallback } from "react"
+import { MapContainer, TileLayer, FeatureGroup, useMap } from "react-leaflet"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
+import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css"
+import "@geoman-io/leaflet-geoman-free"
+import { Button } from "@/components/ui/button"
+import { X, Check, Trash2, Search, Layers, AlertCircle } from "lucide-react"
+import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary } from "@/lib/geojson-utils"
+import type { FeatureCollection } from "geojson"
+import type { FeatureGroup as LeafletFeatureGroup } from "leaflet"
+
+// Fix Leaflet default icon paths (needed for markers)
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+})
+
+// CONUS center coordinates
+const CONUS_CENTER: [number, number] = [39.8283, -98.5795]
+const INITIAL_ZOOM = 4
+
+// Base map options
+const BASE_MAPS = {
+  street: {
+    name: "Street Map",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  },
+  light: {
+    name: "Light Theme",
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+  },
+  dark: {
+    name: "Dark Theme",
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+  },
+  satellite: {
+    name: "Satellite",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
+  }
+}
+
+interface MapDrawerProps {
+  onComplete: (file: File) => void
+  onCancel: () => void
+}
+
+// Component to initialize Geoman drawing controls and handle events
+function GeomanControls({
+  featureGroupRef,
+  onFeatureChange
+}: {
+  featureGroupRef: React.RefObject<LeafletFeatureGroup | null>
+  onFeatureChange: () => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map || !featureGroupRef.current) return
+
+    // Small delay to ensure map is fully initialized
+    const timer = setTimeout(() => {
+      // Check if pm is available on the map
+      if (!map.pm) {
+        console.error("Geoman not initialized on map")
+        return
+      }
+
+      // Add Geoman controls to the map
+      map.pm.addControls({
+        position: "topleft",
+        drawMarker: true,
+        drawCircleMarker: false,
+        drawPolyline: true,
+        drawRectangle: true,
+        drawPolygon: true,
+        drawCircle: false,
+        drawText: false,
+        editMode: true,
+        dragMode: true,
+        cutPolygon: false,
+        removalMode: true,
+        rotateMode: false,
+      })
+
+      // Set global options
+      if (featureGroupRef.current) {
+        map.pm.setGlobalOptions({
+          layerGroup: featureGroupRef.current,
+          snappable: true,
+          snapDistance: 15,
+        })
+      }
+
+      // Set up event listeners for feature changes
+      map.on("pm:create", onFeatureChange)
+      map.on("pm:remove", onFeatureChange)
+      map.on("pm:cut", onFeatureChange)
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+      // Cleanup event listeners
+      map.off("pm:create", onFeatureChange)
+      map.off("pm:remove", onFeatureChange)
+      map.off("pm:cut", onFeatureChange)
+      // Cleanup Geoman controls on unmount
+      if (map.pm) {
+        map.pm.removeControls()
+      }
+    }
+  }, [map, featureGroupRef, onFeatureChange])
+
+  return null
+}
+
+// Component for address/coordinate search
+function SearchControl() {
+  const map = useMap()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) return
+
+    setIsSearching(true)
+    setSearchError(null)
+
+    try {
+      // Check if input looks like coordinates (lat, lng or lat lng)
+      const coordMatch = searchQuery.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/)
+
+      if (coordMatch) {
+        const lat = parseFloat(coordMatch[1])
+        const lng = parseFloat(coordMatch[2])
+
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          map.setView([lat, lng], 15)
+          setIsSearching(false)
+          return
+        }
+      }
+
+      // Use Nominatim geocoder for address search
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=us`,
+        {
+          headers: {
+            "User-Agent": "PEIT-Map-Creator/1.0"
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Search failed")
+      }
+
+      const results = await response.json()
+
+      if (results.length > 0) {
+        const { lat, lon, boundingbox } = results[0]
+
+        if (boundingbox) {
+          map.fitBounds([
+            [parseFloat(boundingbox[0]), parseFloat(boundingbox[2])],
+            [parseFloat(boundingbox[1]), parseFloat(boundingbox[3])]
+          ])
+        } else {
+          map.setView([parseFloat(lat), parseFloat(lon)], 15)
+        }
+      } else {
+        setSearchError("Location not found")
+      }
+    } catch {
+      setSearchError("Search failed. Please try again.")
+    } finally {
+      setIsSearching(false)
+    }
+  }, [map, searchQuery])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch()
+    }
+  }, [handleSearch])
+
+  return (
+    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search address or coordinates..."
+          className="w-64 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          disabled={isSearching}
+        />
+        <Button
+          size="sm"
+          onClick={handleSearch}
+          disabled={isSearching || !searchQuery.trim()}
+          className="shadow-md"
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+      </div>
+      {searchError && (
+        <div className="bg-red-50 text-red-600 text-xs px-2 py-1 rounded">
+          {searchError}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Component for base map selector
+function BaseMapSelector({
+  currentBaseMap,
+  onBaseMapChange
+}: {
+  currentBaseMap: keyof typeof BASE_MAPS
+  onBaseMapChange: (key: keyof typeof BASE_MAPS) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div className="absolute bottom-3 right-3 z-[1000]">
+      <div className="relative">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setIsOpen(!isOpen)}
+          className="shadow-md bg-white hover:bg-gray-100"
+        >
+          <Layers className="h-4 w-4 mr-1" />
+          {BASE_MAPS[currentBaseMap].name}
+        </Button>
+
+        {isOpen && (
+          <div className="absolute bottom-full right-0 mb-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden min-w-[140px]">
+            {Object.entries(BASE_MAPS).map(([key, value]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  onBaseMapChange(key as keyof typeof BASE_MAPS)
+                  setIsOpen(false)
+                }}
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                  currentBaseMap === key ? "bg-gray-100 font-medium" : ""
+                }`}
+              >
+                {value.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
+  const [baseMap, setBaseMap] = useState<keyof typeof BASE_MAPS>("street")
+  const [featureCount, setFeatureCount] = useState(0)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const featureGroupRef = useRef<LeafletFeatureGroup | null>(null)
+
+  // Update feature count when shapes are drawn or removed
+  const updateFeatureCount = useCallback(() => {
+    if (featureGroupRef.current) {
+      const geojson = layersToGeoJSON(featureGroupRef.current)
+      setFeatureCount(geojson.features.length)
+      setValidationError(null)
+    }
+  }, [])
+
+  const handleClear = useCallback(() => {
+    if (featureGroupRef.current) {
+      featureGroupRef.current.clearLayers()
+      setFeatureCount(0)
+      setValidationError(null)
+    }
+  }, [])
+
+  const handleDone = useCallback(() => {
+    if (!featureGroupRef.current) return
+
+    const geojson = layersToGeoJSON(featureGroupRef.current)
+    const validation = validateDrawnGeometry(geojson)
+
+    if (!validation.valid) {
+      setValidationError(validation.error || "Invalid geometry")
+      return
+    }
+
+    // Convert to File and pass to parent
+    const jsonString = JSON.stringify(geojson, null, 2)
+    const blob = new Blob([jsonString], { type: "application/geo+json" })
+    const file = new File([blob], "drawn_geometry.geojson", { type: "application/geo+json" })
+
+    onComplete(file)
+  }, [onComplete])
+
+  const currentGeojson = featureGroupRef.current ? layersToGeoJSON(featureGroupRef.current) : null
+  const summary = currentGeojson ? getGeometrySummary(currentGeojson) : "No shapes drawn"
+
+  return (
+    <div className="fixed inset-0 top-16 z-50 flex flex-col bg-background">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Draw Your Geometry</h2>
+          <p className="text-sm text-muted-foreground">
+            Use the tools on the left to draw polygons, lines, or points
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onCancel}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Map Container - fills remaining space */}
+      <div className="relative flex-1 min-h-0">
+        <MapContainer
+          center={CONUS_CENTER}
+          zoom={INITIAL_ZOOM}
+          className="h-full w-full"
+        >
+          <TileLayer
+            key={baseMap}
+            url={BASE_MAPS[baseMap].url}
+            attribution={BASE_MAPS[baseMap].attribution}
+          />
+          <FeatureGroup ref={featureGroupRef}>
+            <GeomanControls featureGroupRef={featureGroupRef} onFeatureChange={updateFeatureCount} />
+          </FeatureGroup>
+          <SearchControl />
+          <BaseMapSelector currentBaseMap={baseMap} onBaseMapChange={setBaseMap} />
+        </MapContainer>
+      </div>
+
+      {/* Footer Bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">
+            {featureCount > 0 ? summary : "Draw shapes on the map to get started"}
+          </span>
+          {validationError && (
+            <div className="flex items-center gap-1 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              {validationError}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClear}
+            disabled={featureCount === 0}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Clear All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleDone}
+            disabled={featureCount === 0}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Check className="h-4 w-4 mr-1" />
+            Use This Geometry
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

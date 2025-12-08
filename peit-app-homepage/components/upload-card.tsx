@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useCallback } from "react"
-import { Upload, FileCheck, X, AlertCircle } from "lucide-react"
+import { Upload, FileCheck, X, AlertCircle, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { validateFile, formatFileSize, getAllowedTypesDescription } from "@/lib/validation"
@@ -10,6 +10,7 @@ import { validateFile, formatFileSize, getAllowedTypesDescription } from "@/lib/
 interface UploadCardProps {
   onFileSelected?: (file: File) => void
   onFileCleared?: () => void
+  onDrawClick?: () => void
   selectedFile?: File | null
   disabled?: boolean
 }
@@ -17,6 +18,7 @@ interface UploadCardProps {
 export function UploadCard({
   onFileSelected,
   onFileCleared,
+  onDrawClick,
   selectedFile: externalSelectedFile,
   disabled = false
 }: UploadCardProps) {
@@ -174,14 +176,33 @@ export function UploadCard({
             Choose File
           </Button>
 
-          <p className="mb-6 text-sm text-muted-foreground">or drag and drop your file here</p>
+          <p className="mb-4 text-sm text-muted-foreground">or drag and drop your file here</p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-6 text-xs text-muted-foreground">
             <span className="rounded-full bg-secondary px-3 py-1.5 font-medium">GeoJSON</span>
             <span className="rounded-full bg-secondary px-3 py-1.5 font-medium">Shapefile</span>
             <span className="rounded-full bg-secondary px-3 py-1.5 font-medium">GPKG</span>
             <span className="rounded-full bg-secondary px-3 py-1.5 font-medium">KML</span>
           </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6 w-full max-w-md">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Draw Your Own Button */}
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={onDrawClick}
+            disabled={disabled || !onDrawClick}
+            className="group h-14 w-full max-w-md gap-3 rounded-xl text-base font-medium transition-all hover:bg-accent hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            <Pencil className="h-5 w-5 transition-transform group-hover:rotate-[-15deg]" />
+            Draw Your Own!
+          </Button>
         </div>
       </div>
     </div>
