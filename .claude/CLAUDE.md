@@ -1106,6 +1106,7 @@ The generated HTML map includes several interactive features:
 - **Synchronization**: Legend automatically updates to show only visible layers (controlled by right panel)
 - **Auto-adjusts**: Left-side Leaflet controls shift 350px when panel is expanded
 - **Navigation Handling**: Report links open in new tabs to prevent navigation away from map
+- **Dynamic height**: Legend section uses flexbox to automatically expand when About section is collapsed, eliminating dead white space
 
 #### Right Panel (Layer Control)
 - **Location**: Right side of map
@@ -1591,8 +1592,15 @@ NEXT_PUBLIC_MODAL_API_URL=https://lukaskucinski--peit-processor-fastapi-app.moda
 ```
 
 ### Deployment URLs
-- **Production**: https://peit-app-homepage.vercel.app
+- **Production**: https://peit-map-creator.vercel.app
 - **GitHub**: https://github.com/lukaskucinski/peit_map_creator
+
+### SEO Configuration
+- `public/robots.txt`: Allows all crawlers, references sitemap
+- `public/sitemap.xml`: Lists main pages for search engine indexing
+- `app/layout.tsx`: Contains `metadataBase` URL for OpenGraph/Twitter cards
+- `public/google*.html`: Google Search Console verification file
+- Favicons: 48x48 PNG icons with tight cropping for browser tabs (generated via `scripts/generate-icons.mjs`)
 
 ---
 
@@ -1657,8 +1665,8 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 **CORS Restrictions:**
 ```python
 allow_origins=[
-    "https://peit-app-homepage.vercel.app",
-    "https://peit-app-homepage-*.vercel.app",  # Preview deployments
+    "https://peit-map-creator.vercel.app",
+    "https://peit-map-creator-*.vercel.app",  # Preview deployments
     "http://localhost:3000",  # Local development
 ]
 ```
