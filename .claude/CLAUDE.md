@@ -194,6 +194,19 @@ The tool supports **points, lines, and polygons** as input geometries with autom
 - **Polygon/MultiPolygon**: Dissolved → single polygon (no buffer applied)
 - **LineString/MultiLineString**: Dissolved → buffered in projected CRS → polygon
 - **Point/MultiPoint**: Dissolved → buffered in projected CRS → polygon
+- **Mixed/FeatureCollection** (NEW): Separated by type → each type processed individually → merged into unified polygon
+
+**Mixed Geometry Processing (FeatureCollections):**
+When input contains multiple geometry types (e.g., points + lines + polygons from "Draw Your Own" feature):
+1. **Separation**: `_separate_geometry_types()` extracts points, lines, and polygons into separate lists
+2. **Individual Processing**:
+   - Points are unioned and buffered
+   - Lines are unioned and buffered
+   - Polygons are unioned (no buffer)
+3. **Merging**: All resulting polygons combined via `unary_union()` into single unified polygon
+4. **Metadata**: `mixed_geometry_processing: true` flag added to track this processing path
+
+This ensures users can draw any combination of geometry types and get proper buffering behavior.
 
 **Buffer Implementation:**
 - **Unit Conversion**: Feet → meters (0.3048 conversion factor)
@@ -1559,6 +1572,19 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Drag-and-drop file upload zone
 - File validation (type, size)
 - Visual feedback for upload states
+- "Draw Your Own!" button to launch interactive map drawing
+
+**`components/map-drawer.tsx`** (NEW)
+- Interactive map for drawing custom geometries
+- Full-screen overlay below header
+- Leaflet-Geoman integration for drawing tools (polygon, polyline, rectangle, marker)
+- Address/coordinate search using Nominatim geocoder
+- Base map selector (Street, Light, Dark, Satellite)
+- Converts drawn geometries to GeoJSON file for processing pipeline
+
+**`components/map-drawer-dynamic.tsx`**
+- Dynamic import wrapper with `ssr: false` for Leaflet compatibility
+- Loading state with centered spinner
 
 **`components/config-panel.tsx`**
 - Project name and ID inputs
@@ -1574,6 +1600,34 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Site navigation and branding
 - GitHub and Donations links
 - Responsive mobile layout
+
+### Draw Your Own Feature
+
+Users can draw custom geometries on an interactive map instead of uploading a file:
+
+**Frontend Flow:**
+1. User clicks "Draw Your Own!" button on upload card
+2. Full-screen map appears with Leaflet-Geoman drawing tools
+3. User draws polygons, lines, and/or points
+4. Clicking "Use This Geometry" converts drawings to GeoJSON file
+5. File is passed to config panel like any uploaded file
+
+**Geometry Processing:**
+- Polygons: Used as-is (no buffering)
+- Lines: Buffered by configured distance (default 500 ft)
+- Points: Buffered by configured distance (default 500 ft)
+- Mixed types (FeatureCollection): Separated, buffered individually, merged into unified polygon
+
+**Dependencies:**
+- `leaflet` - Map rendering
+- `react-leaflet` - React bindings for Leaflet
+- `@geoman-io/leaflet-geoman-free` - Drawing tools
+
+**Utility Functions (`lib/geojson-utils.ts`):**
+- `layersToGeoJSON()`: Convert Leaflet layers to GeoJSON FeatureCollection
+- `geojsonToFile()`: Convert GeoJSON to File object
+- `validateDrawnGeometry()`: Ensure geometry is valid and non-empty
+- `getGeometrySummary()`: Generate human-readable geometry summary
 
 ### API Client (`lib/api.ts`)
 TypeScript client for the Modal backend:

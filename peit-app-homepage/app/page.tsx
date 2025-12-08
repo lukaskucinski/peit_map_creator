@@ -6,12 +6,14 @@ import { UploadCard } from "@/components/upload-card"
 import { HowItWorks } from "@/components/how-it-works"
 import { ConfigPanel, type ProcessingConfig } from "@/components/config-panel"
 import { ProcessingStatus, type ProgressUpdate } from "@/components/processing-status"
+import { MapDrawer } from "@/components/map-drawer-dynamic"
 import { runMockProcessing } from "@/lib/mock-processing"
 import { processFile, downloadResults, isUsingMockMode } from "@/lib/api"
 
 // Application state types
 type AppState =
   | { step: 'upload' }
+  | { step: 'draw' }
   | { step: 'configure'; file: File }
   | { step: 'processing'; file: File; config: ProcessingConfig }
   | { step: 'complete'; file: File; config: ProcessingConfig; downloadUrl?: string }
@@ -29,6 +31,24 @@ export default function HomePage() {
 
   // Handle file cleared
   const handleFileCleared = useCallback(() => {
+    setAppState({ step: 'upload' })
+    setProgressUpdates([])
+  }, [])
+
+  // Handle draw mode
+  const handleDrawClick = useCallback(() => {
+    setAppState({ step: 'draw' })
+    setProgressUpdates([])
+  }, [])
+
+  // Handle draw complete (geometry drawn and confirmed)
+  const handleDrawComplete = useCallback((file: File) => {
+    setAppState({ step: 'configure', file })
+    setProgressUpdates([])
+  }, [])
+
+  // Handle draw cancel
+  const handleDrawCancel = useCallback(() => {
     setAppState({ step: 'upload' })
     setProgressUpdates([])
   }, [])
@@ -101,6 +121,7 @@ export default function HomePage() {
   // Determine what to show based on state
   const showHowItWorks = appState.step === 'upload' || appState.step === 'configure' || appState.step === 'error'
   const showUploadCard = appState.step === 'upload' || appState.step === 'configure'
+  const showMapDrawer = appState.step === 'draw'
   const showConfigPanel = appState.step === 'configure'
   const showProcessingStatus = appState.step === 'processing' || appState.step === 'complete' || appState.step === 'error'
 
@@ -113,8 +134,17 @@ export default function HomePage() {
           <UploadCard
             onFileSelected={handleFileSelected}
             onFileCleared={handleFileCleared}
+            onDrawClick={handleDrawClick}
             selectedFile={appState.step === 'configure' ? appState.file : null}
             disabled={false}
+          />
+        )}
+
+        {/* Map Drawer - for drawing geometry */}
+        {showMapDrawer && (
+          <MapDrawer
+            onComplete={handleDrawComplete}
+            onCancel={handleDrawCancel}
           />
         )}
 

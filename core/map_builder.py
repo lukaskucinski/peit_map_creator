@@ -137,6 +137,8 @@ def create_web_map(
     logger.info("  - Adding input polygon...")
     layer_name = input_filename if input_filename else 'Input Area'
 
+    # Note: We don't add tooltip when interactive=False because Leaflet's tooltip
+    # focus listener handling fails on non-interactive layers (getElement error)
     folium.GeoJson(
         polygon_gdf,
         name=layer_name,
@@ -147,8 +149,8 @@ def create_web_map(
             'fillOpacity': 0.2,
             'className': 'appeit-input-polygon',  # Unique identifier for JavaScript detection
             'interactive': False  # Make non-interactive so clicks pass through to layers below
-        },
-        tooltip=layer_name
+        }
+        # tooltip removed - conflicts with interactive=False causing getElement error
     ).add_to(m)
 
     # Store layer variable names for JavaScript reference
