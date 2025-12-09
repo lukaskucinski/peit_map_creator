@@ -289,6 +289,20 @@ def process_input_geometry(file_path: str,
             logger.info(f"Geometry type '{geom_type}' is polygon - skipping buffer")
             metadata['buffer_applied'] = False
 
+            # Calculate area for polygons (needed for area validation even without buffering)
+            # First ensure we're in EPSG:4326 for consistent area calculation
+            if gdf.crs != CRS.from_epsg(4326):
+                temp_gdf = gpd.GeoDataFrame([{'geometry': dissolved_geom}], crs=gdf.crs)
+                temp_gdf = temp_gdf.to_crs('EPSG:4326')
+                area_geom = temp_gdf.geometry.iloc[0]
+            else:
+                area_geom = dissolved_geom
+
+            # Calculate area using the same function as buffered geometries
+            polygon_area_info = calculate_buffer_area(area_geom)
+            metadata['buffer_area'] = polygon_area_info
+            logger.info(f"  - Polygon area: ~{polygon_area_info.get('area_sq_miles_approx', 0):.2f} sq miles")
+
         # Step 9: Ensure geometry is in EPSG:4326
         if not buffer_applied:  # If buffer was applied, already in EPSG:4326
             if gdf.crs != CRS.from_epsg(4326):
@@ -318,10 +332,13 @@ def process_input_geometry(file_path: str,
     logger.info(f"  ✓ Input: {metadata['geometry_type']} ({metadata['feature_count']} features)")
     logger.info(f"  ✓ Output: {metadata['final_geometry_type']} (1 feature)")
     logger.info(f"  ✓ CRS: {metadata['original_crs']} → {metadata['final_crs']}")
-    logger.info(f"  ✓ Buffer applied: {buffer_applied}")
-    if buffer_applied:
+    logger.info(f"  ✓ Buffer applied: {metadata.get('buffer_applied', False)}")
+    if metadata.get('buffer_applied'):
         logger.info(f"  ✓ Buffer distance: {buffer_distance_feet} ft")
-        logger.info(f"  ✓ Buffer area: ~{buffer_info.get('area_sq_miles_approx', 0):.2f} sq miles")
+    # Always show area if available (for both buffered and polygon inputs)
+    if metadata.get('buffer_area'):
+        area_sq_miles = metadata['buffer_area'].get('area_sq_miles_approx', 0)
+        logger.info(f"  ✓ Geometry area: ~{area_sq_miles:.2f} sq miles")
     logger.info("="*80)
 
     return output_gdf, metadata

@@ -5003,7 +5003,8 @@
     "fallback_crs": "EPSG:5070",
     "clip_results_to_buffer": true,
     "clip_buffer_miles": 1.0,
-    "state_filter_enabled": true
+    "state_filter_enabled": true,
+    "max_input_area_sq_miles": 5000
   },
   "settings": {
     "max_features_per_layer": 1000,

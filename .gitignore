@@ -13,8 +13,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -59,7 +59,7 @@ logs/
 *.swp
 *.swo
 *~
-.claude/
+# .claude/ - KEEP tracked for CLAUDE.md instructions
 
 # OS
 .DS_Store

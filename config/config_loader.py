@@ -101,7 +101,8 @@ def load_geometry_settings(config: Dict = None) -> Dict:
         'fallback_crs': 'EPSG:5070',
         'clip_results_to_buffer': True,
         'clip_buffer_miles': 1.0,
-        'state_filter_enabled': True
+        'state_filter_enabled': True,
+        'max_input_area_sq_miles': 5000
     }
 
     # Get geometry_settings from config, or use defaults

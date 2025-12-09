@@ -24,6 +24,8 @@ export function isUsingMockMode(): boolean {
 export interface RateLimitInfo {
   remaining_runs: number
   max_runs_per_day: number
+  global_remaining_runs: number
+  max_global_runs_per_day: number
   resets_at: string
 }
 

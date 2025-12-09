@@ -1,0 +1,275 @@
+import type { FeatureCollection, Feature, Geometry } from 'geojson'
+import type { Layer, FeatureGroup } from 'leaflet'
+import * as turf from '@turf/turf'
+
+// Area limit constants (in square miles)
+export const MAX_AREA_SQ_MILES = 5000
+export const WARN_AREA_SQ_MILES = 2500
+
+// Conversion: 1 square mile = 2,589,988 square meters
+const SQ_METERS_PER_SQ_MILE = 2589988
+
+/**
+ * Convert Leaflet layers from a FeatureGroup to a GeoJSON FeatureCollection
+ */
+export function layersToGeoJSON(featureGroup: FeatureGroup): FeatureCollection {
+  const features: Feature[] = []
+
+  featureGroup.eachLayer((layer: Layer) => {
+    // Check if layer has toGeoJSON method (it should for drawn shapes)
+    if ('toGeoJSON' in layer && typeof layer.toGeoJSON === 'function') {
+      const geojson = layer.toGeoJSON() as Feature | FeatureCollection
+
+      // Handle both single features and feature collections
+      if (geojson.type === 'FeatureCollection') {
+        features.push(...geojson.features)
+      } else if (geojson.type === 'Feature') {
+        features.push(geojson)
+      }
+    }
+  })
+
+  return {
+    type: 'FeatureCollection',
+    features
+  }
+}
+
+/**
+ * Convert a GeoJSON object to a File object that can be uploaded
+ */
+export function geojsonToFile(geojson: FeatureCollection, filename: string = 'drawn_geometry.geojson'): File {
+  const jsonString = JSON.stringify(geojson, null, 2)
+  const blob = new Blob([jsonString], { type: 'application/geo+json' })
+  return new File([blob], filename, { type: 'application/geo+json' })
+}
+
+/**
+ * Validate that the drawn geometry is not empty and has valid features
+ */
+export function validateDrawnGeometry(geojson: FeatureCollection): { valid: boolean; error?: string } {
+  if (!geojson || geojson.type !== 'FeatureCollection') {
+    return { valid: false, error: 'Invalid GeoJSON format' }
+  }
+
+  if (!geojson.features || geojson.features.length === 0) {
+    return { valid: false, error: 'Please draw at least one shape on the map' }
+  }
+
+  // Check that all features have valid geometry
+  for (const feature of geojson.features) {
+    if (!feature.geometry) {
+      return { valid: false, error: 'One or more shapes have invalid geometry' }
+    }
+
+    const geomType = feature.geometry.type
+    if (!['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon'].includes(geomType)) {
+      return { valid: false, error: `Unsupported geometry type: ${geomType}` }
+    }
+
+    // Check for empty coordinates
+    const coords = (feature.geometry as Geometry & { coordinates: unknown }).coordinates
+    if (!coords || (Array.isArray(coords) && coords.length === 0)) {
+      return { valid: false, error: 'One or more shapes have empty coordinates' }
+    }
+  }
+
+  return { valid: true }
+}
+
+/**
+ * Get a summary of the drawn geometry for display
+ */
+export function getGeometrySummary(geojson: FeatureCollection): string {
+  if (!geojson.features || geojson.features.length === 0) {
+    return 'No shapes drawn'
+  }
+
+  const counts: Record<string, number> = {}
+
+  for (const feature of geojson.features) {
+    const type = feature.geometry?.type || 'Unknown'
+    counts[type] = (counts[type] || 0) + 1
+  }
+
+  const parts: string[] = []
+
+  if (counts['Polygon'] || counts['MultiPolygon']) {
+    const total = (counts['Polygon'] || 0) + (counts['MultiPolygon'] || 0)
+    parts.push(`${total} polygon${total > 1 ? 's' : ''}`)
+  }
+
+  if (counts['LineString'] || counts['MultiLineString']) {
+    const total = (counts['LineString'] || 0) + (counts['MultiLineString'] || 0)
+    parts.push(`${total} line${total > 1 ? 's' : ''}`)
+  }
+
+  if (counts['Point'] || counts['MultiPoint']) {
+    const total = (counts['Point'] || 0) + (counts['MultiPoint'] || 0)
+    parts.push(`${total} point${total > 1 ? 's' : ''}`)
+  }
+
+  return parts.join(', ') || `${geojson.features.length} shape(s)`
+}
+
+/**
+ * Detected geometry type for a FeatureCollection
+ */
+export type DetectedGeometryType = 'polygon' | 'line' | 'point' | 'mixed' | 'unknown'
+
+/**
+ * Detect the primary geometry type in a FeatureCollection
+ * Returns 'polygon', 'line', 'point', 'mixed', or 'unknown'
+ */
+export function detectGeometryType(geojson: FeatureCollection): DetectedGeometryType {
+  if (!geojson.features || geojson.features.length === 0) {
+    return 'unknown'
+  }
+
+  const types = new Set<string>()
+
+  for (const feature of geojson.features) {
+    if (!feature.geometry) continue
+
+    const geomType = feature.geometry.type
+    if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+      types.add('polygon')
+    } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+      types.add('line')
+    } else if (geomType === 'Point' || geomType === 'MultiPoint') {
+      types.add('point')
+    }
+  }
+
+  if (types.size === 0) return 'unknown'
+  if (types.size > 1) return 'mixed'
+
+  // Return the single type
+  return types.values().next().value as DetectedGeometryType
+}
+
+/**
+ * Calculate the area of polygon features in a GeoJSON FeatureCollection
+ * Returns area in square miles
+ */
+export function calculatePolygonAreaSqMiles(geojson: FeatureCollection): number {
+  if (!geojson.features || geojson.features.length === 0) {
+    return 0
+  }
+
+  try {
+    let totalAreaSqMeters = 0
+
+    for (const feature of geojson.features) {
+      if (feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') {
+        totalAreaSqMeters += turf.area(feature)
+      }
+    }
+
+    return totalAreaSqMeters / SQ_METERS_PER_SQ_MILE
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Estimate the buffered area of a GeoJSON FeatureCollection
+ * Applies buffer to points and lines, then calculates total area
+ *
+ * @param geojson - The FeatureCollection to calculate area for
+ * @param bufferDistanceFeet - Buffer distance in feet for points/lines
+ * @returns Estimated area in square miles
+ */
+export function estimateBufferedAreaSqMiles(
+  geojson: FeatureCollection,
+  bufferDistanceFeet: number
+): number {
+  if (!geojson.features || geojson.features.length === 0) {
+    return 0
+  }
+
+  try {
+    const bufferMiles = bufferDistanceFeet / 5280
+    const bufferedFeatures: Feature[] = []
+
+    for (const feature of geojson.features) {
+      if (!feature.geometry) continue
+
+      const geomType = feature.geometry.type
+
+      if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+        // Polygons don't get buffered, use as-is
+        bufferedFeatures.push(feature)
+      } else if (geomType === 'Point' || geomType === 'MultiPoint') {
+        // Buffer points
+        const buffered = turf.buffer(feature, bufferMiles, { units: 'miles' })
+        if (buffered) bufferedFeatures.push(buffered)
+      } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+        // Buffer lines
+        const buffered = turf.buffer(feature, bufferMiles, { units: 'miles' })
+        if (buffered) bufferedFeatures.push(buffered)
+      }
+    }
+
+    if (bufferedFeatures.length === 0) return 0
+
+    // Calculate total area of all buffered features
+    // Note: This doesn't dissolve overlapping areas, so may overestimate
+    // but is good enough for validation purposes
+    let totalAreaSqMeters = 0
+    for (const feature of bufferedFeatures) {
+      totalAreaSqMeters += turf.area(feature)
+    }
+
+    return totalAreaSqMeters / SQ_METERS_PER_SQ_MILE
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Area validation result
+ */
+export interface AreaValidation {
+  valid: boolean
+  areaSqMiles: number
+  warning?: string
+  error?: string
+}
+
+/**
+ * Validate geometry area against limits
+ *
+ * @param geojson - The FeatureCollection to validate
+ * @param bufferDistanceFeet - Buffer distance in feet (for points/lines)
+ * @param maxAreaSqMiles - Maximum allowed area (default: 5000)
+ * @returns Validation result with area and any warnings/errors
+ */
+export function validateGeometryArea(
+  geojson: FeatureCollection,
+  bufferDistanceFeet: number,
+  maxAreaSqMiles: number = MAX_AREA_SQ_MILES
+): AreaValidation {
+  const estimatedArea = estimateBufferedAreaSqMiles(geojson, bufferDistanceFeet)
+
+  if (estimatedArea > maxAreaSqMiles) {
+    return {
+      valid: false,
+      areaSqMiles: estimatedArea,
+      error: `Estimated area (${estimatedArea.toFixed(1)} sq mi) exceeds limit (${maxAreaSqMiles} sq mi). Please reduce your geometry size or buffer distance.`
+    }
+  }
+
+  if (estimatedArea > WARN_AREA_SQ_MILES) {
+    return {
+      valid: true,
+      areaSqMiles: estimatedArea,
+      warning: `Large area detected (${estimatedArea.toFixed(1)} sq mi). Processing may take longer.`
+    }
+  }
+
+  return {
+    valid: true,
+    areaSqMiles: estimatedArea
+  }
+}

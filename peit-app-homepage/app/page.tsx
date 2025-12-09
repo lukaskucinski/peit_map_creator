@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import type { FeatureCollection } from "geojson"
 import { Header } from "@/components/header"
 import { UploadCard } from "@/components/upload-card"
 import { HowItWorks } from "@/components/how-it-works"
@@ -9,12 +10,13 @@ import { ProcessingStatus, type ProgressUpdate } from "@/components/processing-s
 import { MapDrawer } from "@/components/map-drawer-dynamic"
 import { runMockProcessing } from "@/lib/mock-processing"
 import { processFile, downloadResults, isUsingMockMode } from "@/lib/api"
+import { parseGeospatialFile } from "@/lib/file-parsers"
 
 // Application state types
 type AppState =
   | { step: 'upload' }
   | { step: 'draw' }
-  | { step: 'configure'; file: File }
+  | { step: 'configure'; file: File; geojsonData?: FeatureCollection | null }
   | { step: 'processing'; file: File; config: ProcessingConfig }
   | { step: 'complete'; file: File; config: ProcessingConfig; downloadUrl?: string }
   | { step: 'error'; file: File; config: ProcessingConfig; message: string }
@@ -22,17 +24,29 @@ type AppState =
 export default function HomePage() {
   const [appState, setAppState] = useState<AppState>({ step: 'upload' })
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
+  const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
 
   // Handle file selection
   const handleFileSelected = useCallback((file: File) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
+
+    // Parse file for area calculation and geometry type detection
+    // Supports: GeoJSON, Shapefile, KML, KMZ, GeoPackage (lazy-loaded WASM)
+    parseGeospatialFile(file)
+      .then((parsed) => {
+        setGeojsonData(parsed)
+      })
+      .catch(() => {
+        setGeojsonData(null)
+      })
   }, [])
 
   // Handle file cleared
   const handleFileCleared = useCallback(() => {
     setAppState({ step: 'upload' })
     setProgressUpdates([])
+    setGeojsonData(null)
   }, [])
 
   // Handle draw mode
@@ -45,6 +59,16 @@ export default function HomePage() {
   const handleDrawComplete = useCallback((file: File) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
+
+    // Parse the drawn geometry file for area calculation
+    // Drawn geometry is always GeoJSON, but use unified parser for consistency
+    parseGeospatialFile(file)
+      .then((parsed) => {
+        setGeojsonData(parsed)
+      })
+      .catch(() => {
+        setGeojsonData(null)
+      })
   }, [])
 
   // Handle draw cancel
@@ -154,6 +178,7 @@ export default function HomePage() {
             filename={appState.file.name}
             onRun={handleRun}
             disabled={false}
+            geojsonData={geojsonData}
           />
         )}
 
