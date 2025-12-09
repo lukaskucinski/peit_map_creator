@@ -1587,9 +1587,12 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Loading state with centered spinner
 
 **`components/config-panel.tsx`**
-- Project name and ID inputs
-- Buffer distance configuration
-- Clip buffer distance slider
+- Project name and ID inputs with tooltips explaining their purpose
+- Buffer distance configuration (hidden for polygon inputs since polygons don't get buffered)
+- Clip buffer distance slider with tooltip
+- Real-time area estimation based on geometry and buffer settings
+- Area validation against 5,000 sq mi limit with warning at 2,500 sq mi
+- Uses `LabelWithTooltip` helper component for consistent tooltip UI
 
 **`components/processing-status.tsx`**
 - Real-time progress display via SSE
@@ -1628,6 +1631,14 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 - `geojsonToFile()`: Convert GeoJSON to File object
 - `validateDrawnGeometry()`: Ensure geometry is valid and non-empty
 - `getGeometrySummary()`: Generate human-readable geometry summary
+- `detectGeometryType()`: Detect primary geometry type (polygon/line/point/mixed)
+- `calculatePolygonAreaSqMiles()`: Calculate area of polygon features using Turf.js
+- `estimateBufferedAreaSqMiles()`: Estimate area after applying buffer to all geometry types
+- `validateGeometryArea()`: Validate area against limits (5,000 sq mi max, 2,500 sq mi warning)
+
+**Area Validation Constants:**
+- `MAX_AREA_SQ_MILES`: 5,000 sq mi - Maximum allowed area
+- `WARN_AREA_SQ_MILES`: 2,500 sq mi - Warning threshold for large areas
 
 ### API Client (`lib/api.ts`)
 TypeScript client for the Modal backend:
@@ -1639,6 +1650,54 @@ TypeScript client for the Modal backend:
 - **Allowed Extensions**: `.geojson`, `.json`, `.gpkg`, `.kml`, `.kmz`, `.zip`
 - **Max File Size**: 5MB
 - Provides user-friendly error messages
+
+### Client-Side File Parsing (`lib/file-parsers.ts`)
+Parses geospatial files in the browser for area estimation and geometry type detection before upload.
+
+**Supported Formats:**
+| Format | Library | Notes |
+|--------|---------|-------|
+| GeoJSON (.geojson, .json) | Native JSON.parse | Handles FeatureCollection, Feature, and raw Geometry |
+| Shapefile (.shp, .zip) | `shpjs` | Merges multi-layer ZIPs into single FeatureCollection |
+| KML (.kml) | `@tmcw/togeojson` | XML parsing via DOMParser |
+| KMZ (.kmz) | `@tmcw/togeojson` + `jszip` | Extracts KML from ZIP archive |
+| GeoPackage (.gpkg) | `@ngageoint/geopackage` | WASM-based SQLite, lazy-loaded from unpkg CDN |
+
+**GeoPackage Implementation Details:**
+The GeoPackage parser uses `@ngageoint/geopackage` which bundles sql.js (SQLite compiled to WebAssembly). Key implementation notes:
+
+1. **WASM Loading**: Configured via `setSqljsWasmLocateFile()` to load from unpkg CDN
+2. **Browser Compatibility**: Requires Turbopack/webpack aliases for Node.js modules (`fs`, `path`, `crypto`) that sql.js tries to import
+3. **Raw SQL Queries**: Uses `geoPackage.connection.all()` for reliable data access (DAO methods have API inconsistencies)
+4. **Geometry Parsing**: Uses `GeometryData.fromData()` to parse GeoPackage geometry blobs (GP header + WKB)
+5. **WKB Fallback**: If WKB parsing fails (unsupported encoding), falls back to envelope bounding box for area estimation
+6. **Envelope Extraction**: GeoPackage stores bounding box in geometry header, parsed separately from WKB body
+
+**Next.js Configuration** (`next.config.mjs`):
+```javascript
+// Required for sql.js browser compatibility
+turbopack: {
+  resolveAlias: {
+    fs: { browser: './lib/empty-module.js' },
+    path: { browser: './lib/empty-module.js' },
+    crypto: { browser: './lib/empty-module.js' },
+  },
+},
+webpack: (config, { isServer }) => {
+  if (!isServer) {
+    config.resolve.fallback = { fs: false, path: false, crypto: false }
+  }
+  return config
+},
+```
+
+**Usage:**
+```typescript
+import { parseGeospatialFile } from '@/lib/file-parsers'
+
+const geojson = await parseGeospatialFile(file)
+// Returns FeatureCollection or null if parsing fails
+```
 
 ### Environment Variables
 ```
@@ -1693,8 +1752,10 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 
 | Protection | Implementation |
 |------------|----------------|
-| Daily rate limit | 20 runs per day per IP |
+| Daily rate limit (per-IP) | 20 runs per day per IP address |
+| Daily rate limit (global) | 200 runs per day across all users |
 | Concurrent limit | 3 simultaneous jobs per IP |
+| Input geometry area limit | 5000 sq miles maximum |
 | File size | 5MB (validated after upload) |
 | Request size | 6MB (early rejection via middleware) |
 | File types | Whitelist of geo extensions |
@@ -1703,8 +1764,28 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 | Data retention | 7-day auto-cleanup |
 
 **Rate Limiting:**
-- **Storage**: Modal Dict (`peit-rate-limits`) for daily limits, (`peit-active-jobs`) for concurrent tracking
-- **Reset**: Daily limits reset at midnight UTC
+- **Per-IP Storage**: Modal Dict (`peit-rate-limits`) with key format `{ip}:{date}`
+- **Global Storage**: Modal Dict (`peit-global-rate-limit`) with key format `global:{date}`
+- **Concurrent Jobs**: Modal Dict (`peit-active-jobs`) with key format `active:{ip}`
+- **Reset**: All daily limits reset at midnight UTC
+- **Order of Checks**: Global limit → Per-IP limit → Concurrent limit
+
+**Global Rate Limit:**
+- Prevents service abuse regardless of IP address rotation
+- Checked BEFORE per-IP limit to fail fast
+- Returns 429 with `limit_type: "global"` when exceeded
+- Configurable via `MAX_GLOBAL_RUNS_PER_DAY` constant (default: 200)
+
+**Input Geometry Area Limit:**
+- Maximum input area: 5000 sq miles (configurable in `geometry_settings.max_input_area_sq_miles`)
+- Warning threshold: 2500 sq miles (displays yellow warning)
+- Validated on backend after geometry processing (includes buffer)
+- Frontend displays estimated area for GeoJSON files and drawn geometries
+- Uses turf.js for client-side area estimation
+- Non-GeoJSON formats (GPKG, SHP) show "not available" message; limit still enforced on backend
+- Auto-detects geometry type and sets buffer to 0ft for polygon-only inputs
+- Recommended: Urban areas should not exceed 100 sq mi for optimal results
+- Prevents state-scale runs that would overwhelm the system
 
 **Request Size Middleware:**
 - Uses `LimitUploadSizeMiddleware` (Starlette middleware)

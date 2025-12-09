@@ -27,6 +27,13 @@ MAX_RUNS_PER_DAY = 20
 active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
 MAX_CONCURRENT_JOBS_PER_IP = 3
 
+# Modal Dict for global rate limit (across all users)
+global_rate_limit_dict = modal.Dict.from_name("peit-global-rate-limit", create_if_missing=True)
+MAX_GLOBAL_RUNS_PER_DAY = 200
+
+# Maximum input geometry area in square miles
+MAX_INPUT_AREA_SQ_MILES = 5000
+
 # Modal Volume for storing results temporarily
 results_volume = modal.Volume.from_name("peit-results", create_if_missing=True)
 
@@ -131,6 +138,17 @@ def process_file_task(
             str(input_file),
             buffer_distance_feet=geometry_settings["buffer_distance_feet"]
         )
+
+        # Validate input geometry area against limit
+        max_area = geometry_settings.get('max_input_area_sq_miles', MAX_INPUT_AREA_SQ_MILES)
+        if input_geometry_metadata and input_geometry_metadata.get('buffer_area'):
+            actual_area = input_geometry_metadata['buffer_area'].get('area_sq_miles_approx', 0)
+            if actual_area > max_area:
+                raise ValueError(
+                    f"Input area ({actual_area:.1f} sq mi) exceeds maximum allowed ({max_area} sq mi). "
+                    "Please use a smaller geometry or reduce buffer distance."
+                )
+            logger.info(f"Input geometry area: {actual_area:.1f} sq mi (limit: {max_area} sq mi)")
 
         input_filename = Path(filename).stem
         # Use project name for input layer display if provided, otherwise use filename
@@ -339,6 +357,28 @@ def fastapi_app():
         except Exception:
             pass
 
+    def check_global_rate_limit() -> bool:
+        """Check if global daily limit has been exceeded. Returns True if allowed."""
+        key = f"global:{datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            count = global_rate_limit_dict.get(key, 0)
+            if count >= MAX_GLOBAL_RUNS_PER_DAY:
+                return False
+            global_rate_limit_dict[key] = count + 1
+            return True
+        except Exception:
+            # If Dict is unavailable, allow the request
+            return True
+
+    def get_global_remaining_runs() -> int:
+        """Get remaining global runs for today."""
+        key = f"global:{datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            count = global_rate_limit_dict.get(key, 0)
+            return max(0, MAX_GLOBAL_RUNS_PER_DAY - count)
+        except Exception:
+            return MAX_GLOBAL_RUNS_PER_DAY
+
     @web_app.get("/api/health")
     async def health_check():
         """Health check endpoint."""
@@ -349,9 +389,12 @@ def fastapi_app():
         """Get rate limit status for the requesting IP."""
         client_ip = request.client.host if request.client else "unknown"
         remaining = get_remaining_runs(client_ip)
+        global_remaining = get_global_remaining_runs()
         return {
             "remaining_runs": remaining,
             "max_runs_per_day": MAX_RUNS_PER_DAY,
+            "global_remaining_runs": global_remaining,
+            "max_global_runs_per_day": MAX_GLOBAL_RUNS_PER_DAY,
             "resets_at": "midnight UTC",
         }
 
@@ -369,14 +412,28 @@ def fastapi_app():
 
         Returns Server-Sent Events with progress updates, then final result.
         """
-        # Rate limit check
         client_ip = request.client.host if request.client else "unknown"
+
+        # Global rate limit check (check FIRST, before per-IP)
+        if not check_global_rate_limit():
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "Service limit reached",
+                    "message": "Daily processing limit reached for all users. Please try again tomorrow.",
+                    "limit_type": "global",
+                    "remaining_runs": 0,
+                }
+            )
+
+        # Per-IP rate limit check
         if not check_rate_limit(client_ip):
             return JSONResponse(
                 status_code=429,
                 content={
                     "error": "Rate limit exceeded",
                     "message": f"Maximum {MAX_RUNS_PER_DAY} runs per day. Please try again tomorrow.",
+                    "limit_type": "per_ip",
                     "remaining_runs": 0,
                 }
             )
