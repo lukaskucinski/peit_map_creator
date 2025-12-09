@@ -1587,9 +1587,12 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Loading state with centered spinner
 
 **`components/config-panel.tsx`**
-- Project name and ID inputs
-- Buffer distance configuration
-- Clip buffer distance slider
+- Project name and ID inputs with tooltips explaining their purpose
+- Buffer distance configuration (hidden for polygon inputs since polygons don't get buffered)
+- Clip buffer distance slider with tooltip
+- Real-time area estimation based on geometry and buffer settings
+- Area validation against 5,000 sq mi limit with warning at 2,500 sq mi
+- Uses `LabelWithTooltip` helper component for consistent tooltip UI
 
 **`components/processing-status.tsx`**
 - Real-time progress display via SSE
@@ -1628,6 +1631,14 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 - `geojsonToFile()`: Convert GeoJSON to File object
 - `validateDrawnGeometry()`: Ensure geometry is valid and non-empty
 - `getGeometrySummary()`: Generate human-readable geometry summary
+- `detectGeometryType()`: Detect primary geometry type (polygon/line/point/mixed)
+- `calculatePolygonAreaSqMiles()`: Calculate area of polygon features using Turf.js
+- `estimateBufferedAreaSqMiles()`: Estimate area after applying buffer to all geometry types
+- `validateGeometryArea()`: Validate area against limits (5,000 sq mi max, 2,500 sq mi warning)
+
+**Area Validation Constants:**
+- `MAX_AREA_SQ_MILES`: 5,000 sq mi - Maximum allowed area
+- `WARN_AREA_SQ_MILES`: 2,500 sq mi - Warning threshold for large areas
 
 ### API Client (`lib/api.ts`)
 TypeScript client for the Modal backend:

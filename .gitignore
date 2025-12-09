@@ -60,6 +60,8 @@ logs/
 *.swo
 *~
 # .claude/ - KEEP tracked for CLAUDE.md instructions
+# But exclude local settings (contains user-specific permissions)
+.claude/settings.local.json
 
 # OS
 .DS_Store
