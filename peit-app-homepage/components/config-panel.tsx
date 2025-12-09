@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { Play, Settings, AlertTriangle, AlertCircle, MapPin } from "lucide-react"
+import { Play, Settings, AlertTriangle, AlertCircle, MapPin, HelpCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { FeatureCollection } from "geojson"
 import {
   validateGeometryArea,
@@ -38,6 +39,31 @@ const MAX_BUFFER_FEET = 26400 // 5 miles in feet
 const DEFAULT_CLIP_MILES = 1.0
 const MIN_CLIP_MILES = 0.1
 const MAX_CLIP_MILES = 5.0
+
+// Tooltip content for each configuration option
+const TOOLTIPS = {
+  projectName: "The display name for your project that appears in the generated map and reports. Defaults to the uploaded filename if left blank.",
+  projectId: "A unique identifier for tracking and referencing this processing run. Appears in the PDF report and metadata files. Auto-generated if left blank.",
+  inputBuffer: "The distance to expand around your input geometry to create the search area. Points become circular search areas; lines become corridor-style buffers. Larger buffers capture more environmental features but increase processing time.",
+  clipBuffer: "Controls how far beyond your input geometry the results are clipped. Environmental features that extend beyond this distance are trimmed. Reduces output file size and focuses results on the area of interest.",
+}
+
+// Helper component for label with tooltip
+function LabelWithTooltip({ label, tooltip, htmlFor }: { label: string; tooltip: string; htmlFor?: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label htmlFor={htmlFor}>{label}</Label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
 
 export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: ConfigPanelProps) {
   const [projectName, setProjectName] = useState("")
@@ -131,7 +157,7 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
       <CardContent className="space-y-6">
         {/* Project Name */}
         <div className="space-y-2">
-          <Label htmlFor="projectName">Project Name</Label>
+          <LabelWithTooltip label="Project Name" tooltip={TOOLTIPS.projectName} htmlFor="projectName" />
           <Input
             id="projectName"
             placeholder={defaultProjectName}
@@ -147,7 +173,7 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
 
         {/* Project ID */}
         <div className="space-y-2">
-          <Label htmlFor="projectId">Project ID</Label>
+          <LabelWithTooltip label="Project ID" tooltip={TOOLTIPS.projectId} htmlFor="projectId" />
           <Input
             id="projectId"
             placeholder="Auto-generated"
@@ -161,41 +187,42 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
           </p>
         </div>
 
-        {/* Input Buffer Distance */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label>Input Buffer Distance</Label>
-            <span className="text-sm font-medium text-foreground">
-              {formatBufferFeet(bufferDistanceFeet)}
-            </span>
+        {/* Input Buffer Distance - only shown for non-polygon geometries */}
+        {detectedGeomType !== 'polygon' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <LabelWithTooltip label="Input Buffer Distance" tooltip={TOOLTIPS.inputBuffer} />
+              <span className="text-sm font-medium text-foreground">
+                {formatBufferFeet(bufferDistanceFeet)}
+              </span>
+            </div>
+            <Slider
+              value={[bufferDistanceFeet]}
+              onValueChange={(value) => setBufferDistanceFeet(value[0])}
+              min={MIN_BUFFER_FEET}
+              max={MAX_BUFFER_FEET}
+              step={100}
+              disabled={disabled}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0 ft</span>
+              <span>26,400 ft (5 mi)</span>
+            </div>
+            {detectedGeomType && (
+              <p className="text-xs text-muted-foreground">
+                {detectedGeomType === 'line' && "Line detected - buffer applied on both sides"}
+                {detectedGeomType === 'point' && "Point detected - buffer creates circular search area"}
+                {detectedGeomType === 'mixed' && "Mixed geometry - buffer applied to points/lines only"}
+              </p>
+            )}
           </div>
-          <Slider
-            value={[bufferDistanceFeet]}
-            onValueChange={(value) => setBufferDistanceFeet(value[0])}
-            min={MIN_BUFFER_FEET}
-            max={MAX_BUFFER_FEET}
-            step={100}
-            disabled={disabled}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0 ft</span>
-            <span>26,400 ft (5 mi)</span>
-          </div>
-          {detectedGeomType && (
-            <p className="text-xs text-muted-foreground">
-              {detectedGeomType === 'polygon' && "Polygon detected - buffer set to 0 ft (no buffer needed)"}
-              {detectedGeomType === 'line' && "Line detected - buffer applied on both sides"}
-              {detectedGeomType === 'point' && "Point detected - buffer creates circular search area"}
-              {detectedGeomType === 'mixed' && "Mixed geometry - buffer applied to points/lines only"}
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Clip Buffer Distance */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label>Clip Buffer Distance</Label>
+            <LabelWithTooltip label="Clip Buffer Distance" tooltip={TOOLTIPS.clipBuffer} />
             <span className="text-sm font-medium text-foreground">
               {clipBufferMiles.toFixed(1)} mi
             </span>

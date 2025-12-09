@@ -174,10 +174,10 @@ export function calculatePolygonAreaSqMiles(geojson: FeatureCollection): number 
 
 /**
  * Estimate the buffered area of a GeoJSON FeatureCollection
- * Applies buffer to points and lines, then calculates total area
+ * Applies buffer to all geometry types when buffer distance > 0
  *
  * @param geojson - The FeatureCollection to calculate area for
- * @param bufferDistanceFeet - Buffer distance in feet for points/lines
+ * @param bufferDistanceFeet - Buffer distance in feet (applied to all geometry types)
  * @returns Estimated area in square miles
  */
 export function estimateBufferedAreaSqMiles(
@@ -198,8 +198,13 @@ export function estimateBufferedAreaSqMiles(
       const geomType = feature.geometry.type
 
       if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-        // Polygons don't get buffered, use as-is
-        bufferedFeatures.push(feature)
+        // Buffer polygons if buffer distance is specified, otherwise use as-is
+        if (bufferMiles > 0) {
+          const buffered = turf.buffer(feature, bufferMiles, { units: 'miles' })
+          if (buffered) bufferedFeatures.push(buffered)
+        } else {
+          bufferedFeatures.push(feature)
+        }
       } else if (geomType === 'Point' || geomType === 'MultiPoint') {
         // Buffer points
         const buffered = turf.buffer(feature, bufferMiles, { units: 'miles' })
