@@ -49,13 +49,20 @@ const TOOLTIPS = {
 }
 
 // Helper component for label with tooltip
+// Uses a button wrapper so tooltips work on mobile (tap to focus) and desktop (hover)
 function LabelWithTooltip({ label, tooltip, htmlFor }: { label: string; tooltip: string; htmlFor?: string }) {
   return (
     <div className="flex items-center gap-1.5">
       <Label htmlFor={htmlFor}>{label}</Label>
       <Tooltip>
         <TooltipTrigger asChild>
-          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            aria-label={`More info about ${label}`}
+          >
+            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+          </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <p>{tooltip}</p>
