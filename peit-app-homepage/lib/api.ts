@@ -36,6 +36,10 @@ export interface ProcessingResult {
   success: boolean
   jobId?: string
   downloadUrl?: string
+  mapUrl?: string
+  mapBlobUrl?: string
+  pdfUrl?: string
+  xlsxUrl?: string
   error?: string
 }
 
@@ -187,14 +191,24 @@ export async function processFile(
 
           // Check for completion
           if (update.stage === "complete") {
-            // Extract download URL from the update
-            const downloadUrl = (update as ProgressUpdate & { download_url?: string; job_id?: string }).download_url
-            const jobId = (update as ProgressUpdate & { job_id?: string }).job_id
+            // Extract URLs from the update
+            const extendedUpdate = update as ProgressUpdate & {
+              download_url?: string
+              job_id?: string
+              map_url?: string
+              map_blob_url?: string
+              pdf_url?: string
+              xlsx_url?: string
+            }
 
             return {
               success: true,
-              jobId,
-              downloadUrl: downloadUrl ? `${API_URL}${downloadUrl}` : undefined,
+              jobId: extendedUpdate.job_id,
+              downloadUrl: extendedUpdate.download_url ? `${API_URL}${extendedUpdate.download_url}` : undefined,
+              mapUrl: extendedUpdate.map_url,
+              mapBlobUrl: extendedUpdate.map_blob_url,
+              pdfUrl: extendedUpdate.pdf_url,
+              xlsxUrl: extendedUpdate.xlsx_url,
             }
           }
         }
@@ -203,13 +217,23 @@ export async function processFile(
 
     // If we got here without a complete event, check last update
     if (lastUpdate?.stage === "complete") {
-      const downloadUrl = (lastUpdate as ProgressUpdate & { download_url?: string }).download_url
-      const jobId = (lastUpdate as ProgressUpdate & { job_id?: string }).job_id
+      const extendedUpdate = lastUpdate as ProgressUpdate & {
+        download_url?: string
+        job_id?: string
+        map_url?: string
+        map_blob_url?: string
+        pdf_url?: string
+        xlsx_url?: string
+      }
 
       return {
         success: true,
-        jobId,
-        downloadUrl: downloadUrl ? `${API_URL}${downloadUrl}` : undefined,
+        jobId: extendedUpdate.job_id,
+        downloadUrl: extendedUpdate.download_url ? `${API_URL}${extendedUpdate.download_url}` : undefined,
+        mapUrl: extendedUpdate.map_url,
+        mapBlobUrl: extendedUpdate.map_blob_url,
+        pdfUrl: extendedUpdate.pdf_url,
+        xlsxUrl: extendedUpdate.xlsx_url,
       }
     }
 

@@ -1597,7 +1597,11 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 **`components/processing-status.tsx`**
 - Real-time progress display via SSE
 - Layer-by-layer processing status
-- Download button for completed results
+- "View Live Map" button - opens shareable map URL in new tab
+- "Download ZIP" button - downloads full results package
+- "Copy" button - copies shareable URL to clipboard
+- Direct PDF/XLSX report links
+- Expiration notice (7 days)
 
 **`components/header.tsx`**
 - Site navigation and branding
@@ -1639,6 +1643,21 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 **Area Validation Constants:**
 - `MAX_AREA_SQ_MILES`: 5,000 sq mi - Maximum allowed area
 - `WARN_AREA_SQ_MILES`: 2,500 sq mi - Warning threshold for large areas
+
+### Map Viewer Routes
+
+**`app/maps/[jobId]/page.tsx`**
+- Server-side route that redirects to Vercel Blob URL
+- Validates job ID format (16 hex chars)
+- Uses `@vercel/blob` `head()` to check if blob exists
+- Redirects to `/maps/expired` if blob not found
+
+**`app/maps/expired/page.tsx`**
+- Static page displayed when map link has expired or is invalid
+- Shows "Map Expired" message with Clock icon
+- Links back to homepage to create new map
+
+**URL Format:** `https://peit-map-creator.vercel.app/maps/{jobId}`
 
 ### API Client (`lib/api.ts`)
 TypeScript client for the Modal backend:
@@ -1806,21 +1825,56 @@ allow_origins=[
 ]
 ```
 
+### Live Map URLs (Vercel Blob)
+
+Generated maps are automatically uploaded to Vercel Blob storage, providing shareable live URLs.
+
+**Features:**
+- **Live URLs**: Maps accessible at `https://peit-map-creator.vercel.app/maps/{job_id}`
+- **Direct report links**: PDF and XLSX reports have direct download URLs
+- **7-day retention**: Matches ZIP download retention policy
+- **Zero additional cost**: Within Vercel Blob free tier (1GB storage, 10GB transfer/month)
+
+**Files Uploaded to Blob:**
+- `maps/{job_id}/index.html` - Interactive map (~4-5MB)
+- `maps/{job_id}/PEIT_Report_*.pdf` - PDF report
+- `maps/{job_id}/PEIT_Report_*.xlsx` - Excel report
+
+**NOT Uploaded (ZIP only):**
+- `data/*.geojson` files - Not needed since map has embedded GeoJSON
+
+**SSE Completion Event:**
+```python
+{
+    'stage': 'complete',
+    'job_id': job_id,
+    'download_url': '/api/download/{job_id}',
+    'map_url': 'https://peit-map-creator.vercel.app/maps/{job_id}',
+    'pdf_url': '<blob_url>',
+    'xlsx_url': '<blob_url>',
+}
+```
+
+**Environment Setup:**
+1. Create Vercel Blob store in Vercel dashboard
+2. Add Modal secret: `modal secret create vercel-blob BLOB_READ_WRITE_TOKEN=xxx`
+
 ### Scheduled Cleanup
 
 **Cron Job:** `cleanup_old_results()` runs daily at 3 AM UTC
-- Deletes job folders older than 7 days
-- Uses file modification time (`st_mtime`) to determine age
-- Commits volume changes after cleanup
+- Deletes Modal Volume job folders older than 7 days
+- Deletes Vercel Blob files older than 7 days
+- Uses file modification time (`st_mtime`) for volume, `uploadedAt` for blobs
 
 ```python
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
+    secrets=[vercel_blob_secret],
     schedule=modal.Cron("0 3 * * *"),  # 3 AM UTC daily
 )
 def cleanup_old_results():
-    # Deletes folders older than 7 days
+    # Deletes volume folders and blobs older than 7 days
 ```
 
 **Future Enhancement (auth):** When authentication is added:

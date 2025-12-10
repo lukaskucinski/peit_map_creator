@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, CheckCircle, Download, RotateCcw, XCircle } from "lucide-react"
+import { Loader2, CheckCircle, Download, RotateCcw, XCircle, ExternalLink, Copy, Check, FileText, FileSpreadsheet } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,9 @@ interface ProcessingStatusProps {
   isError: boolean
   errorMessage?: string
   downloadUrl?: string
+  mapUrl?: string
+  pdfUrl?: string
+  xlsxUrl?: string
   onDownload?: () => void
   onProcessAnother?: () => void
 }
@@ -33,12 +36,29 @@ export function ProcessingStatus({
   isError,
   errorMessage,
   downloadUrl,
+  mapUrl,
+  pdfUrl,
+  xlsxUrl,
   onDownload,
   onProcessAnother,
 }: ProcessingStatusProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [startTime] = useState(Date.now())
   const [isDownloading, setIsDownloading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  // Copy map URL to clipboard
+  const copyMapUrl = async () => {
+    if (mapUrl) {
+      try {
+        await navigator.clipboard.writeText(mapUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch (err) {
+        console.error("Failed to copy:", err)
+      }
+    }
+  }
 
   // Handle download with loading state
   const handleDownloadClick = async () => {
@@ -134,34 +154,104 @@ export function ProcessingStatus({
                 Completed in {formatTime(elapsedTime)}
               </p>
 
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleDownloadClick}
-                  className="gap-2"
-                  size="lg"
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Downloading...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-5 w-5" />
-                      Download Results
-                    </>
+              <div className="flex flex-col gap-4 w-full max-w-md">
+                {/* Primary actions */}
+                <div className="flex gap-3 justify-center">
+                  {mapUrl && (
+                    <Button
+                      onClick={() => window.open(mapUrl, '_blank')}
+                      className="gap-2"
+                      size="lg"
+                    >
+                      <ExternalLink className="h-5 w-5" />
+                      View Live Map
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    onClick={handleDownloadClick}
+                    variant={mapUrl ? "outline" : "default"}
+                    size="lg"
+                    className="gap-2"
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-5 w-5" />
+                        Download ZIP
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Share section */}
+                {mapUrl && (
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Share:</span>
+                    <code className="bg-muted px-2 py-1 rounded text-xs max-w-[200px] truncate">
+                      {mapUrl}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyMapUrl}
+                      className="gap-1 h-8"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Direct report links */}
+                {(pdfUrl || xlsxUrl) && (
+                  <div className="flex gap-4 justify-center text-sm">
+                    {pdfUrl && (
+                      <a
+                        href={pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <FileText className="h-4 w-4" />
+                        PDF Report
+                      </a>
+                    )}
+                    {xlsxUrl && (
+                      <a
+                        href={xlsxUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Excel Report
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Expiration notice */}
+                {mapUrl && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Live links expire in 7 days
+                  </p>
+                )}
+
+                {/* Process another */}
                 <Button
                   onClick={onProcessAnother}
-                  variant="outline"
-                  size="lg"
-                  className="gap-2"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 mx-auto"
                   disabled={isDownloading}
                 >
                   <RotateCcw className="h-4 w-4" />
-                  Process Another
+                  Process Another File
                 </Button>
               </div>
             </div>
