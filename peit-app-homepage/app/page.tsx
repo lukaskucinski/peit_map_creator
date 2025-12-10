@@ -18,7 +18,7 @@ type AppState =
   | { step: 'draw' }
   | { step: 'configure'; file: File; geojsonData?: FeatureCollection | null }
   | { step: 'processing'; file: File; config: ProcessingConfig }
-  | { step: 'complete'; file: File; config: ProcessingConfig; downloadUrl?: string }
+  | { step: 'complete'; file: File; config: ProcessingConfig; downloadUrl?: string; mapUrl?: string; pdfUrl?: string; xlsxUrl?: string }
   | { step: 'error'; file: File; config: ProcessingConfig; message: string }
 
 export default function HomePage() {
@@ -109,7 +109,15 @@ export default function HomePage() {
       })
 
       if (result.success) {
-        setAppState({ step: 'complete', file, config, downloadUrl: result.downloadUrl })
+        setAppState({
+          step: 'complete',
+          file,
+          config,
+          downloadUrl: result.downloadUrl,
+          mapUrl: result.mapUrl,
+          pdfUrl: result.pdfUrl,
+          xlsxUrl: result.xlsxUrl,
+        })
       } else {
         setAppState({
           step: 'error',
@@ -195,6 +203,9 @@ export default function HomePage() {
             isError={appState.step === 'error'}
             errorMessage={appState.step === 'error' ? appState.message : undefined}
             downloadUrl={appState.step === 'complete' ? appState.downloadUrl : undefined}
+            mapUrl={appState.step === 'complete' ? appState.mapUrl : undefined}
+            pdfUrl={appState.step === 'complete' ? appState.pdfUrl : undefined}
+            xlsxUrl={appState.step === 'complete' ? appState.xlsxUrl : undefined}
             onDownload={handleDownload}
             onProcessAnother={handleProcessAnother}
           />
