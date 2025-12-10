@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { head } from '@vercel/blob'
+import { list } from '@vercel/blob'
 
 interface Props {
   params: Promise<{ jobId: string }>
@@ -14,12 +14,12 @@ export default async function MapPage({ params }: Props) {
   }
 
   try {
-    // Check if blob exists by looking for the index.html
-    const blobInfo = await head(`maps/${jobId}/index.html`)
+    // List blobs with this job's prefix to find the index.html
+    const { blobs } = await list({ prefix: `maps/${jobId}/index.html` })
 
-    if (blobInfo && blobInfo.url) {
+    if (blobs.length > 0 && blobs[0].url) {
       // Redirect to the actual blob URL
-      redirect(blobInfo.url)
+      redirect(blobs[0].url)
     }
   } catch {
     // Blob not found or error - redirect to expired page
