@@ -43,6 +43,7 @@ def create_web_map(
     metadata: Dict[str, Dict],
     config: Dict,
     input_filename: Optional[str] = None,
+    project_name: Optional[str] = None,
     xlsx_relative_path: Optional[str] = None,
     pdf_relative_path: Optional[str] = None
 ) -> folium.Map:
@@ -71,6 +72,8 @@ def create_web_map(
         Configuration dictionary
     input_filename : Optional[str]
         Name of input file (without extension) for layer naming
+    project_name : Optional[str]
+        Project name for page title (displays as "PEIT Map - {project_name}")
     xlsx_relative_path : Optional[str]
         Relative path to XLSX report file (for About section link)
     pdf_relative_path : Optional[str]
@@ -1253,6 +1256,18 @@ def create_web_map(
 
     # Fit bounds to polygon
     m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
+
+    # Set page title with project name
+    title = f"PEIT Map - {project_name}" if project_name else "PEIT Map"
+    m.get_root().title = title
+
+    # Add inline SVG favicon (purple map layers icon matching app branding)
+    # URL-encoded SVG for data URI compatibility
+    favicon_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect fill="%237C3AED" width="48" height="48" rx="8"/><path fill="white" d="M12 16h24l-12 8zm0 8h24l-12 8z" opacity="0.9"/></svg>'
+    favicon_element = Element(f'''
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{favicon_svg}">
+    ''')
+    m.get_root().header.add_child(favicon_element)
 
     logger.info("  ✓ Map created successfully\n")
 

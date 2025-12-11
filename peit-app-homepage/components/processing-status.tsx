@@ -199,7 +199,7 @@ export function ProcessingStatus({
                       variant="ghost"
                       size="sm"
                       onClick={copyMapUrl}
-                      className="gap-1 h-8"
+                      className="gap-1 h-8 hover:bg-accent hover:scale-105 active:scale-95 transition-all duration-200"
                     >
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       {copied ? 'Copied!' : 'Copy'}
@@ -247,7 +247,7 @@ export function ProcessingStatus({
                   onClick={onProcessAnother}
                   variant="ghost"
                   size="sm"
-                  className="gap-2 mx-auto"
+                  className="gap-2 mx-auto hover:bg-accent hover:scale-105 active:scale-95 transition-all duration-200"
                   disabled={isDownloading}
                 >
                   <RotateCcw className="h-4 w-4" />

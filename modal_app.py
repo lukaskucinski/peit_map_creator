@@ -204,6 +204,7 @@ def process_file_task(
         # Create web map
         map_obj = create_web_map(
             polygon_gdf, layer_results, metadata, config, input_layer_name,
+            project_name=project_name,
             xlsx_relative_path=xlsx_filename,
             pdf_relative_path=pdf_filename
         )

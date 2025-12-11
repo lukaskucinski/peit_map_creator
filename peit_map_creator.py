@@ -121,8 +121,10 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         pdf_filename = f"PEIT_Report_{timestamp}.pdf"
 
         # Step 3: Create web map (with XLSX and PDF filenames for About section links)
+        # Note: CLI doesn't have project name input yet, so pass None
         map_obj = create_web_map(
             polygon_gdf, layer_results, metadata, config, input_filename,
+            project_name=None,
             xlsx_relative_path=xlsx_filename,
             pdf_relative_path=pdf_filename
         )
