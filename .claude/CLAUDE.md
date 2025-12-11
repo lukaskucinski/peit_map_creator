@@ -1435,7 +1435,8 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 **Purpose**: Generate interactive Leaflet maps
 
 **Functions**:
-- `create_web_map(polygon_gdf, layer_results, metadata, config, input_filename, project_name, xlsx_relative_path, pdf_relative_path)`: Build complete map with dynamic title and embedded favicon
+- `calculate_optimal_bounds(polygon_gdf, layer_results, clip_boundary)`: Calculate optimal viewport bounds encompassing all visible features
+- `create_web_map(polygon_gdf, layer_results, metadata, config, input_filename, project_name, xlsx_relative_path, pdf_relative_path, clip_boundary)`: Build complete map with dynamic title and embedded favicon
 
 ### core.output_generator
 **Purpose**: Save output files
@@ -1533,6 +1534,7 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 **Features**:
 - About section with project information and hyperlinks to PEIT Map Creator and APPEIT
 - Dynamic creation date (US Central timezone, MM/DD/YYYY format without leading zeros)
+- Buy Me a Coffee button linking to https://buymeacoffee.com/kucimaps
 - PDF and XLSX report download links
 - Dynamic legend with icons/colors
 - Synchronizes with layer visibility from right panel
