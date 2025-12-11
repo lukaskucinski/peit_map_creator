@@ -194,7 +194,7 @@ def process_file_task(
         input_layer_name = project_name if project_name else input_filename
 
         # Process all layers
-        layer_results, metadata, clip_summary = process_all_layers(polygon_gdf, config)
+        layer_results, metadata, clip_summary, clip_boundary = process_all_layers(polygon_gdf, config)
 
         # Generate timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -206,7 +206,8 @@ def process_file_task(
             polygon_gdf, layer_results, metadata, config, input_layer_name,
             project_name=project_name,
             xlsx_relative_path=xlsx_filename,
-            pdf_relative_path=pdf_filename
+            pdf_relative_path=pdf_filename,
+            clip_boundary=clip_boundary
         )
 
         # Generate output (temporarily to local temp)

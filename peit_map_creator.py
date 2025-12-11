@@ -106,7 +106,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         input_filename = Path(input_file).stem
 
         # Step 2: Process all layers
-        layer_results, metadata, clip_summary = process_all_layers(polygon_gdf, config)
+        layer_results, metadata, clip_summary, clip_boundary = process_all_layers(polygon_gdf, config)
 
         # Check if any results found
         if not layer_results:
@@ -126,7 +126,8 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
             polygon_gdf, layer_results, metadata, config, input_filename,
             project_name=None,
             xlsx_relative_path=xlsx_filename,
-            pdf_relative_path=pdf_filename
+            pdf_relative_path=pdf_filename,
+            clip_boundary=clip_boundary
         )
 
         # Calculate total execution time (before generate_output so it's included in metadata.json)
