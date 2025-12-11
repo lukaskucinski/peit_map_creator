@@ -9,8 +9,9 @@ Functions:
 """
 
 import geopandas as gpd
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from pyproj import CRS
+from shapely.geometry.base import BaseGeometry
 from core.arcgis_query import query_arcgis_layer
 from geometry_input.clipping import create_clip_boundary, aggregate_clip_metadata
 from config.config_loader import load_geometry_settings
@@ -23,7 +24,7 @@ logger = get_logger(__name__)
 def process_all_layers(
     polygon_gdf: gpd.GeoDataFrame,
     config: Dict
-) -> Tuple[Dict[str, gpd.GeoDataFrame], Dict[str, Dict], Dict]:
+) -> Tuple[Dict[str, gpd.GeoDataFrame], Dict[str, Dict], Dict, Optional[BaseGeometry]]:
     """
     Query all configured FeatureServer layers.
 
@@ -40,13 +41,14 @@ def process_all_layers(
 
     Returns:
     --------
-    Tuple[Dict[str, gpd.GeoDataFrame], Dict[str, Dict], Dict]
+    Tuple[Dict[str, gpd.GeoDataFrame], Dict[str, Dict], Dict, Optional[BaseGeometry]]
         - Dictionary of layer results (layer name -> GeoDataFrame)
         - Dictionary of metadata (layer name -> metadata dict)
         - Dictionary of clipping summary statistics
+        - Clip boundary geometry (Shapely polygon in EPSG:4326), or None if clipping disabled
 
     Example:
-        >>> results, metadata, clip_summary = process_all_layers(polygon_gdf, config)
+        >>> results, metadata, clip_summary, clip_boundary = process_all_layers(polygon_gdf, config)
         >>> len(results)  # Number of layers with features
         3
         >>> metadata['RCRA Sites']['feature_count']
@@ -171,4 +173,4 @@ def process_all_layers(
 
     logger.info("")
 
-    return results, metadata, clip_summary
+    return results, metadata, clip_summary, clip_boundary

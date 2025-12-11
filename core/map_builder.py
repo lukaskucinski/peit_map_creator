@@ -18,6 +18,8 @@ from folium import Element
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 from typing import Dict, Optional
+from shapely.ops import unary_union
+from shapely.geometry.base import BaseGeometry
 from utils.html_generators import generate_layer_download_sections, generate_layer_data_mapping
 from utils.popup_formatters import format_popup_value
 from utils.layer_control_helpers import organize_layers_by_group, generate_layer_control_data, generate_layer_geojson_data
@@ -37,6 +39,94 @@ TEMPLATES_DIR = Path(__file__).parent.parent / 'templates'
 plugins.StripePattern.default_js = []  # Disable external CDN loading
 
 
+def calculate_optimal_bounds(
+    polygon_gdf: gpd.GeoDataFrame,
+    layer_results: Dict[str, gpd.GeoDataFrame],
+    clip_boundary: Optional[BaseGeometry] = None
+) -> tuple:
+    """
+    Calculate optimal map bounds that encompass all visible features.
+
+    Strategy:
+    1. If layer_results exist, compute union of all layer geometries
+    2. Compute union of input polygon + layer union
+    3. If clip_boundary provided, use it as a ceiling (don't exceed it)
+    4. Fall back to input polygon bounds if no layer results or on error
+
+    Parameters:
+    -----------
+    polygon_gdf : gpd.GeoDataFrame
+        Input polygon geometry
+    layer_results : Dict[str, gpd.GeoDataFrame]
+        Dictionary of layer results (layer name -> GeoDataFrame)
+    clip_boundary : Optional[BaseGeometry]
+        Clip boundary geometry (if clipping is enabled)
+
+    Returns:
+    --------
+    tuple
+        Bounds as (minx, miny, maxx, maxy) in EPSG:4326
+
+    Example:
+        >>> bounds = calculate_optimal_bounds(polygon_gdf, layer_results, clip_boundary)
+        >>> bounds
+        (-72.5, 44.0, -72.0, 44.5)
+    """
+    # Start with input polygon bounds
+    input_bounds = polygon_gdf.total_bounds
+
+    # If no layer results, return input polygon bounds
+    if not layer_results:
+        logger.debug("No layer results found, using input polygon bounds")
+        return tuple(input_bounds)
+
+    try:
+        # Collect all geometries from layer results
+        all_geometries = []
+
+        # Add input polygon geometry
+        all_geometries.append(polygon_gdf.geometry.iloc[0])
+
+        # Add all layer result geometries
+        for layer_name, gdf in layer_results.items():
+            if gdf is not None and len(gdf) > 0:
+                # Use unary_union to combine multi-part geometries within each layer
+                layer_union = unary_union(gdf.geometry.tolist())
+                all_geometries.append(layer_union)
+
+        # Compute union of all geometries
+        total_union = unary_union(all_geometries)
+
+        # Get bounds of the union
+        union_bounds = total_union.bounds  # Returns (minx, miny, maxx, maxy)
+
+        # If clip_boundary provided, use it as a ceiling
+        if clip_boundary is not None:
+            clip_bounds = clip_boundary.bounds
+
+            # Use the minimum bounding box that contains union but doesn't exceed clip boundary
+            final_bounds = (
+                max(union_bounds[0], clip_bounds[0]),  # minx
+                max(union_bounds[1], clip_bounds[1]),  # miny
+                min(union_bounds[2], clip_bounds[2]),  # maxx
+                min(union_bounds[3], clip_bounds[3])   # maxy
+            )
+
+            logger.debug(f"Union bounds: {union_bounds}")
+            logger.debug(f"Clip bounds: {clip_bounds}")
+            logger.debug(f"Final bounds (clipped to boundary): {final_bounds}")
+
+            return final_bounds
+        else:
+            logger.debug(f"Optimal bounds (from feature union): {union_bounds}")
+            return union_bounds
+
+    except Exception as e:
+        logger.warning(f"Failed to calculate optimal bounds: {e}")
+        logger.warning("Falling back to input polygon bounds")
+        return tuple(input_bounds)
+
+
 def create_web_map(
     polygon_gdf: gpd.GeoDataFrame,
     layer_results: Dict[str, gpd.GeoDataFrame],
@@ -45,7 +135,8 @@ def create_web_map(
     input_filename: Optional[str] = None,
     project_name: Optional[str] = None,
     xlsx_relative_path: Optional[str] = None,
-    pdf_relative_path: Optional[str] = None
+    pdf_relative_path: Optional[str] = None,
+    clip_boundary: Optional[BaseGeometry] = None
 ) -> folium.Map:
     """
     Create an interactive Leaflet map with all layers.
@@ -78,6 +169,9 @@ def create_web_map(
         Relative path to XLSX report file (for About section link)
     pdf_relative_path : Optional[str]
         Relative path to PDF report file (for About section link)
+    clip_boundary : Optional[BaseGeometry]
+        Clip boundary geometry for optimal viewport calculation. If provided,
+        the map will fit to encompass all visible features up to this boundary.
 
     Returns:
     --------
@@ -92,8 +186,8 @@ def create_web_map(
     logger.info("Creating Interactive Web Map")
     logger.info("=" * 80)
 
-    # Calculate map center from polygon bounds
-    bounds = polygon_gdf.total_bounds
+    # Calculate optimal map bounds that encompass all visible features
+    bounds = calculate_optimal_bounds(polygon_gdf, layer_results, clip_boundary)
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
 
