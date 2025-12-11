@@ -1081,6 +1081,13 @@ Timestamped directories prevent overwriting previous runs.
 
 The generated HTML map includes several interactive features:
 
+### Page Title and Favicon
+- **Dynamic Title**: Browser tab shows "PEIT Map - {Project Name}" when project name is provided, otherwise "PEIT Map"
+- **Favicon**: Embedded inline PNG favicons with light/dark mode support via media queries
+  - Light mode: Black map layers icon (`icon-light-48x48.png`)
+  - Dark mode: White map layers icon (`icon-dark-48x48.png`)
+- **Self-contained**: Both title and favicon are embedded in the HTML, working with file://, blob URLs, and downloaded ZIPs
+
 ### Download Control
 - **Location**: Fixed bottom-right corner, shifts with right panel
 - **Formats**: GeoJSON, Shapefile (ZIP), KMZ
@@ -1428,7 +1435,7 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 **Purpose**: Generate interactive Leaflet maps
 
 **Functions**:
-- `create_web_map(polygon_gdf, layer_results, metadata, config, input_filename)`: Build complete map
+- `create_web_map(polygon_gdf, layer_results, metadata, config, input_filename, project_name, xlsx_relative_path, pdf_relative_path)`: Build complete map with dynamic title and embedded favicon
 
 ### core.output_generator
 **Purpose**: Save output files
