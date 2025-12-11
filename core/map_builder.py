@@ -43,6 +43,7 @@ def create_web_map(
     metadata: Dict[str, Dict],
     config: Dict,
     input_filename: Optional[str] = None,
+    project_name: Optional[str] = None,
     xlsx_relative_path: Optional[str] = None,
     pdf_relative_path: Optional[str] = None
 ) -> folium.Map:
@@ -71,6 +72,8 @@ def create_web_map(
         Configuration dictionary
     input_filename : Optional[str]
         Name of input file (without extension) for layer naming
+    project_name : Optional[str]
+        Project name for page title (displays as "PEIT Map - {project_name}")
     xlsx_relative_path : Optional[str]
         Relative path to XLSX report file (for About section link)
     pdf_relative_path : Optional[str]
@@ -1253,6 +1256,20 @@ def create_web_map(
 
     # Fit bounds to polygon
     m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
+
+    # Set page title with project name
+    title = f"PEIT Map - {project_name}" if project_name else "PEIT Map"
+    m.get_root().title = title
+
+    # Add inline PNG favicons with light/dark mode support (matching homepage)
+    # Base64-encoded icons for data URI compatibility
+    favicon_light_b64 = 'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAADLUlEQVR4nO3VjXHiRhiH8f9WwHaAOohSgdWBSQWQCixX4KWCkys4U0HuKoioILoO5A7kDvJsXsisxIf5HMYzPDM/mMFG2neRwOmLdx/g1t0HuHX3AW7dfYBbdx/g1l1rAI8nFLJqSa/ocNGuMcAUFTzSOpRY4GI5XKoJviHT/lpJz/iBs3M4t0LSCwr1+0CJWIUR0mpJc9Q6I4dTy2Q7PkFaXHi10iHmUa6MkPYmG6TVCTkcm0fc8RLDFgjavZj4vqDtVZijw8E5HJrHE0p4pC0x0+6F5/iO+LyvDhVe0eHTHA5piiApU78lgvZfxzPZ4te9o0IDjyDpN6S1stcX2JvDvgrZdZ5jWCu7fjs0iP1Ch3UT/IXYB0q8abOZbMFjpDV4Rq0d7RogxzcUOq0GHXJ4dPgdrfYXZEOOkFbLBmnQazhAJrvRZtrsFZlsQesecEy1zE802JZHiRcMe5Pd6K1WOcQ8nhC02QJByZt2VMjK4VFIyrR5WaxrZT9mCzQYlsnOO8WwINvQzvFQyK5Tj7QlgmzHzq2QyfGIYbVsZ2ttVsjW8YC0Dn84Hio8Ia1DiQWOKccI8dkjVst6Rytrkoj/v67BM2r1m6KCR9rc8RCbyaYcI62V9CdqbS+T7egEhT6vlR2rlm2OxwRB/XNXmCPHd2Tq944g7gnHQ1qJoP6uxGrZAWvZSR9RIse2PtAglmOEYa1YgFbXMmayc48Ri695pH0gyAb8L4dhHiVeMKyWLchjXTxoLbshm5Vt5ShkO/6AdR2CbJAcf8Nj2BwVOvyfw64y2YGn2NYSbzLHlmnz2K3s9WELBNnfN3L4rBwVHpDWocIcp5ZJ+gcew5Yo0WBnDodWyHZ7jLRWtkMLHNMUQVKmfr9QotYBORzbTHbiMdJq2adRa3+F7P4q1O8dQbZJB+dwSh7lyghpteyrt1W/TPaVWKjfB6qVDkflcE4eQZs/hLE32ScSe8FMm70i6ISFr3O4RJlsBx+R1iHmkfYTJVqdmcMlK2Q7+oBtLRFkl9lFcrhGE1QYI/aOEj9w0RyuWSar1ZVy+NLdB7h19wFu3X2AW3cf4NZ9+QH+BRgjuPGfw6IsAAAAAElFTkSuQmCC'  # black icon for light mode
+    favicon_dark_b64 = 'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAADwElEQVR4nO2Vi5HbNhRFLyoQOhA7CFPBsoNVKpBSwXIrWKoCUxVYqiDrCgJVELkDqgNsBZsDQ3RA6rP6bTSe0Zk5vhobeHgPImWjX5z7ALfmPsCtuQ9wa+4D3Jr7ALfmUwZ4f3+3xBMWijhJM2OMJ6/K1Qeg+TFRo8UUjyVDLMirYfAq0PiI+IKZDtNIemaQV/JiDF4EjReSXrBQlzcsMVDjAFOcpKkxxukCzh6AxjPFGx9hSmi8DtKcJ8NaS5QbB5gyVxyk0RmcPMCmmXDjJfZZYLWvGfaGfZV2U+PUbIY+FoNHweGWeMISLaYsccLhjXbA3pz4iiEP4bHGGbU8+SEGP4QGxkQlKVOXJVYc5rQH9k4Um29ZY40rtFhJ+g1TGvH31F2QBzG4Fw4vFJ/zHPs0is+vxxUGvnOoJ3/A/hHxFwbCu1Hy73P1YN1ENCxpiCkrfGaP0x52DkDBnPiChc5jhR5ztOjxdxppdADOrcSQOMAUpzjIiuzQGYACmeILOtE2M8wUG2p5wFNwin7b1UyAHixR4gv2mSu+6I02GGw3PWGlbRYYnsdGB6BGoUiOFgtJmbYfi5ZG0isuzI5hqJeJcyWNsU8lLpR93rCwUHxOLaYsMTTudCGbMwrF4R6xj1O8Wacem72Vtr9tj3+EAWo+PGGKx/DCLcijoVZODDCkxYBTZG023yLrRkRrWN+ywmfWOSWwfkzUaDFlavgjLJgoTjnElEbSn6ZXsIV9meKNjrDQxzSKAzlqLthv+TzCSt2za5xijl8xU5c1VtSYGz78hIIlUal7KwEnChoGYY3l8yOWmOMu3nCFgRwH2KdRfCln1PXUnSiePcSAR4spoW5ovCZ/0BkgQCFLlPiCfZxiQxZbQlGn+EKuKL4it6BuThSKN/6ALR5DU7PNmr/RYp8p1qzz5E8M7oRimSis3b8CgSXOKTjXieyp3UjKtM0CK85ptAODB+GwnKjxAVM8hhuZkmdB7UzSP2ixzxJL6q/IvRg8Cg4rxI3rv2e0pVG8oQV5NNQbE5WkTF2+Y2jc6QgMngQHTxQPHmKKE8+p+eBg9heK71ehLmsMFzHXCRg8GZqwRLlxgClO8ae3UQJ7MsWfxEJd3rAOsseTJ3HWAC00ZYlK2/8RBubiG8HAC060zQzDrXvyLAxeDINk4gbxEVM8BiymfMOSxhtdyFUGaGGQQtyotn+xWpYYbtzpShi8OgwyImocYmCN4cZfyati8NNgkExA440+iU8d4P/gPsCtuQ9wa+4D3Jr7ALfmlx/gX9HoV/pO0LRBAAAAAElFTkSuQmCC'  # white icon for dark mode
+    favicon_element = Element(f'''
+        <link rel="icon" type="image/png" href="data:image/png;base64,{favicon_light_b64}" media="(prefers-color-scheme: light)">
+        <link rel="icon" type="image/png" href="data:image/png;base64,{favicon_dark_b64}" media="(prefers-color-scheme: dark)">
+    ''')
+    m.get_root().header.add_child(favicon_element)
 
     logger.info("  ✓ Map created successfully\n")
 
