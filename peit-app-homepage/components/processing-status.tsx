@@ -199,7 +199,7 @@ export function ProcessingStatus({
                       variant="ghost"
                       size="sm"
                       onClick={copyMapUrl}
-                      className="gap-1 h-8 hover:bg-accent active:bg-accent/80 transition-colors duration-250"
+                      className="gap-1 h-8 hover:bg-muted-foreground/10 active:bg-muted-foreground/20 transition-colors duration-200"
                     >
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       {copied ? 'Copied!' : 'Copy'}
@@ -247,7 +247,7 @@ export function ProcessingStatus({
                   onClick={onProcessAnother}
                   variant="ghost"
                   size="sm"
-                  className="gap-2 mx-auto hover:bg-accent active:bg-accent/80 transition-colors duration-250"
+                  className="gap-2 mx-auto hover:bg-muted-foreground/10 active:bg-muted-foreground/20 transition-colors duration-200"
                   disabled={isDownloading}
                 >
                   <RotateCcw className="h-4 w-4" />
