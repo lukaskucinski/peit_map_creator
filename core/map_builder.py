@@ -1261,11 +1261,11 @@ def create_web_map(
     title = f"PEIT Map - {project_name}" if project_name else "PEIT Map"
     m.get_root().title = title
 
-    # Add inline SVG favicon (purple map layers icon matching app branding)
-    # URL-encoded SVG for data URI compatibility
-    favicon_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect fill="%237C3AED" width="48" height="48" rx="8"/><path fill="white" d="M12 16h24l-12 8zm0 8h24l-12 8z" opacity="0.9"/></svg>'
+    # Add inline PNG favicon (black map layers icon for light browser tabs)
+    # Base64-encoded icon-light-48x48.png for data URI compatibility
+    favicon_b64 = 'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAADLUlEQVR4nO3VjXHiRhiH8f9WwHaAOohSgdWBSQWQCixX4KWCkys4U0HuKoioILoO5A7kDvJsXsisxIf5HMYzPDM/mMFG2neRwOmLdx/g1t0HuHX3AW7dfYBbdx/g1l1rAI8nFLJqSa/ocNGuMcAUFTzSOpRY4GI5XKoJviHT/lpJz/iBs3M4t0LSCwr1+0CJWIUR0mpJc9Q6I4dTy2Q7PkFaXHi10iHmUa6MkPYmG6TVCTkcm0fc8RLDFgjavZj4vqDtVZijw8E5HJrHE0p4pC0x0+6F5/iO+LyvDhVe0eHTHA5piiApU78lgvZfxzPZ4te9o0IDjyDpN6S1stcX2JvDvgrZdZ5jWCu7fjs0iP1Ch3UT/IXYB0q8abOZbMFjpDV4Rq0d7RogxzcUOq0GHXJ4dPgdrfYXZEOOkFbLBmnQazhAJrvRZtrsFZlsQesecEy1zE802JZHiRcMe5Pd6K1WOcQ8nhC02QJByZt2VMjK4VFIyrR5WaxrZT9mCzQYlsnOO8WwINvQzvFQyK5Tj7QlgmzHzq2QyfGIYbVsZ2ttVsjW8YC0Dn84Hio8Ia1DiQWOKccI8dkjVst6Rytrkoj/v67BM2r1m6KCR9rc8RCbyaYcI62V9CdqbS+T7egEhT6vlR2rlm2OxwRB/XNXmCPHd2Tq944g7gnHQ1qJoP6uxGrZAWvZSR9RIse2PtAglmOEYa1YgFbXMmayc48Ri695pH0gyAb8L4dhHiVeMKyWLchjXTxoLbshm5Vt5ShkO/6AdR2CbJAcf8Nj2BwVOvyfw64y2YGn2NYSbzLHlmnz2K3s9WELBNnfN3L4rBwVHpDWocIcp5ZJ+gcew5Yo0WBnDodWyHZ7jLRWtkMLHNMUQVKmfr9QotYBORzbTHbiMdJq2adRa3+F7P4q1O8dQbZJB+dwSh7lyghpteyrt1W/TPaVWKjfB6qVDkflcE4eQZs/hLE32ScSe8FMm70i6ISFr3O4RJlsBx+R1iHmkfYTJVqdmcMlK2Q7+oBtLRFkl9lFcrhGE1QYI/aOEj9w0RyuWSar1ZVy+NLdB7h19wFu3X2AW3cf4NZ9+QH+BRgjuPGfw6IsAAAAAElFTkSuQmCC'
     favicon_element = Element(f'''
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{favicon_svg}">
+        <link rel="icon" type="image/png" href="data:image/png;base64,{favicon_b64}">
     ''')
     m.get_root().header.add_child(favicon_element)
 
