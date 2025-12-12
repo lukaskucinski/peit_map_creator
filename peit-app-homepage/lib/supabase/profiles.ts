@@ -78,7 +78,7 @@ export async function ensureProfile(userId: string): Promise<void> {
 
 /**
  * Update the user's custom display name in the profiles table
- * Uses upsert to handle both existing and new profiles
+ * Uses update to preserve other columns (like custom_avatar_url)
  *
  * Display name values:
  * - string: Custom name set by user
@@ -91,16 +91,34 @@ export async function updateCustomDisplayName(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient()
 
-  const { error } = await supabase
+  // Check if profile exists
+  const { data: existing } = await supabase
     .from("profiles")
-    .upsert(
-      { id: userId, custom_display_name: displayName },
-      { onConflict: "id" }
-    )
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle()
 
-  if (error) {
-    console.error("Error updating custom display name:", error)
-    return { success: false, error: error.message }
+  if (existing) {
+    // Update existing profile (preserves other columns like custom_avatar_url)
+    const { error } = await supabase
+      .from("profiles")
+      .update({ custom_display_name: displayName })
+      .eq("id", userId)
+
+    if (error) {
+      console.error("Error updating custom display name:", error)
+      return { success: false, error: error.message }
+    }
+  } else {
+    // Insert new profile
+    const { error } = await supabase
+      .from("profiles")
+      .insert({ id: userId, custom_display_name: displayName })
+
+    if (error) {
+      console.error("Error inserting profile with display name:", error)
+      return { success: false, error: error.message }
+    }
   }
 
   return { success: true }
