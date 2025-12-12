@@ -1,16 +1,14 @@
 /**
  * Account Settings Page
  *
- * Allows users to manage their profile (avatar) and delete their account.
+ * Displays account information and allows users to delete their account.
  * Requires authentication - redirects to home if not logged in.
  */
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
-import { AvatarUpload } from "@/components/account/avatar-upload"
 import { DeleteAccount } from "@/components/account/delete-account"
-import type { Profile } from "@/lib/supabase/profiles"
 import {
   Card,
   CardContent,
@@ -18,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 
@@ -33,12 +32,28 @@ export default async function AccountPage() {
     redirect("/")
   }
 
-  // Fetch custom avatar from profiles table
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>()
+  // Get display name from OAuth provider
+  const displayName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split("@")[0] ||
+    "User"
+
+  // Get avatar from OAuth provider
+  const avatarUrl = user.user_metadata?.avatar_url
+
+  // Get initials for fallback
+  const getInitials = () => {
+    if (displayName && displayName !== "User") {
+      return displayName
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    }
+    return user.email?.slice(0, 2).toUpperCase() || "U"
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,11 +75,20 @@ export default async function AccountPage() {
             <CardHeader>
               <CardTitle>Profile</CardTitle>
               <CardDescription>
-                Manage your profile picture and display name
+                Your profile information from your sign-in provider
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AvatarUpload user={user} customAvatarUrl={profile?.custom_avatar_url} customDisplayName={profile?.custom_display_name} />
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+                  <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{displayName}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

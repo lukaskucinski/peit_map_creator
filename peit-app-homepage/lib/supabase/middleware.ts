@@ -2,7 +2,7 @@
  * Supabase Middleware Client
  *
  * Creates a Supabase client for use in Next.js middleware.
- * Handles session refresh to keep auth tokens valid.
+ * Handles session refresh and profile caching via cookies.
  */
 
 import { createServerClient } from "@supabase/ssr"
@@ -38,6 +38,8 @@ export async function updateSession(request: NextRequest) {
 
   // Refresh auth token if needed - this keeps the session alive
   // IMPORTANT: Do not use getSession() here as it doesn't validate the token
+  // NOTE: Removed profile caching from middleware - it was causing requests to hang
+  // Profile data is now fetched client-side only
   await supabase.auth.getUser()
 
   return supabaseResponse

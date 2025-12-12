@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,10 +10,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
-import { getProfile } from "@/lib/supabase/profiles"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { UserMenu } from "@/components/auth/user-menu"
 import type { User } from "@supabase/supabase-js"
+
 
 // Landcover icon component (from layer-landcover.svg)
 function LandcoverIcon({ className }: { className?: string }) {
@@ -49,70 +49,28 @@ function GitHubIcon({ className }: { className?: string }) {
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null)
-  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
-  const [customDisplayName, setCustomDisplayName] = useState<string | null>(null)
-  const [profileLoaded, setProfileLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
-  // Memoize supabase client to prevent useEffect from re-running on every render
   const [supabase] = useState(() => createClient())
-
-  // Track current user ID to avoid unnecessary re-fetches
-  const currentUserIdRef = useRef<string | null>(null)
-
-  // Fetch custom profile data (avatar and display name) from profiles table
-  const fetchProfile = async (userId: string) => {
-    try {
-      const profile = await getProfile(userId)
-      setCustomAvatarUrl(profile?.custom_avatar_url ?? null)
-      setCustomDisplayName(profile?.custom_display_name ?? null)
-    } catch (error) {
-      console.error("Error fetching profile:", error)
-      setCustomAvatarUrl(null)
-      setCustomDisplayName(null)
-    } finally {
-      setProfileLoaded(true)
-    }
-  }
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const newUser = session?.user ?? null
-      setUser(newUser)
-      currentUserIdRef.current = newUser?.id ?? null
-      if (newUser) {
-        await fetchProfile(newUser.id)
-      } else {
-        setProfileLoaded(true)
-      }
+    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+      setUser(authUser)
+      setLoading(false)
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const newUser = session?.user ?? null
-      const previousUserId = currentUserIdRef.current
-      const newUserId = newUser?.id ?? null
-
-      // Only update if user actually changed
-      if (previousUserId !== newUserId) {
-        setUser(newUser)
-        currentUserIdRef.current = newUserId
-        if (newUser) {
-          setProfileLoaded(false)
-          await fetchProfile(newUser.id)
-        } else {
-          setCustomAvatarUrl(null)
-          setCustomDisplayName(null)
-          setProfileLoaded(true)
-        }
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase]) // supabase is stable (memoized via useState)
+  }, [supabase])
 
   const openAuthModal = (tab: "signin" | "signup") => {
     setAuthModalTab(tab)
@@ -181,14 +139,11 @@ export function Header() {
               </TooltipContent>
             </Tooltip>
 
-            {user && profileLoaded ? (
-              // Logged in and profile loaded: Show user menu
-              <UserMenu user={user} customAvatarUrl={customAvatarUrl} customDisplayName={customDisplayName} />
-            ) : user && !profileLoaded ? (
-              // Logged in but loading profile: Show placeholder
+            {user ? (
+              <UserMenu user={user} />
+            ) : loading ? (
               <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
             ) : (
-              // Logged out: Show Sign In / Sign Up buttons
               <>
                 <Button
                   variant="ghost"

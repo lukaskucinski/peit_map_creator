@@ -23,11 +23,9 @@ import type { User } from "@supabase/supabase-js"
 
 interface UserMenuProps {
   user: User
-  customAvatarUrl?: string | null // From profiles table
-  customDisplayName?: string | null // From profiles table
 }
 
-export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuProps) {
+export function UserMenu({ user }: UserMenuProps) {
   const [loading, setLoading] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const router = useRouter()
@@ -47,16 +45,12 @@ export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuP
     router.push("/account")
   }
 
-  // Display name priority:
-  // - customDisplayName is a string: Use it (user set custom name)
-  // - customDisplayName is "" (empty string): User explicitly cleared name, fallback to email
-  // - customDisplayName is null/undefined: Never set, fallback to OAuth provider name
-  const displayName = (() => {
-    if (customDisplayName !== null && customDisplayName !== undefined) {
-      return customDisplayName || user.email?.split("@")[0] || "User" // empty string = use email
-    }
-    return user.user_metadata?.full_name || user.user_metadata?.name || "User"
-  })()
+  // Get display name from OAuth provider
+  const displayName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split("@")[0] ||
+    "User"
 
   // Get user initials for avatar fallback
   const getInitials = () => {
@@ -71,14 +65,8 @@ export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuP
     return user.email?.slice(0, 2).toUpperCase() || "U"
   }
 
-  // Avatar priority logic:
-  // - customAvatarUrl is a URL string: Use it (user uploaded custom avatar)
-  // - customAvatarUrl is "" (empty string): User explicitly removed avatar, show initials only
-  // - customAvatarUrl is null/undefined: Never set, fallback to OAuth avatar
-  const avatarUrl =
-    customAvatarUrl !== null && customAvatarUrl !== undefined
-      ? customAvatarUrl || undefined // empty string becomes undefined (no avatar)
-      : user.user_metadata?.avatar_url // null = fallback to OAuth
+  // Get avatar from OAuth provider
+  const avatarUrl = user.user_metadata?.avatar_url
 
   return (
     <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
