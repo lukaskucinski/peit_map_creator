@@ -166,176 +166,144 @@ export function AuthModal({
         onOpenChange(isOpen)
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader className="h-[60px]">
+      <DialogContent className="sm:max-w-md h-[580px]">
+        <DialogHeader>
           <DialogTitle>PEIT Map Creator</DialogTitle>
           <DialogDescription>
             Sign in or create an account to access your maps
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab} className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger
               value="signin"
-              className="transition-colors hover:bg-muted/80"
+              className="data-[state=inactive]:hover:bg-muted-foreground/10"
             >
               Sign In
             </TabsTrigger>
             <TabsTrigger
               value="signup"
-              className="transition-colors hover:bg-muted/80"
+              className="data-[state=inactive]:hover:bg-muted-foreground/10"
             >
               Sign Up
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="signin" className="space-y-4 h-[400px]">
-            {/* OAuth Buttons */}
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => handleOAuthSignIn("google")}
-                disabled={loading}
-              >
-                <GoogleIcon className="h-5 w-5" />
-                Continue with Google
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => handleOAuthSignIn("github")}
-                disabled={loading}
-              >
-                <GitHubIcon className="h-5 w-5" />
-                Continue with GitHub
-              </Button>
+          {/* Shared OAuth Buttons - outside TabsContent so they don't shift */}
+          <div className="space-y-2 mt-4">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => handleOAuthSignIn("google")}
+              disabled={loading}
+            >
+              <GoogleIcon className="h-5 w-5" />
+              Continue with Google
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => handleOAuthSignIn("github")}
+              disabled={loading}
+            >
+              <GitHubIcon className="h-5 w-5" />
+              Continue with GitHub
+            </Button>
+          </div>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
             </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with email
+              </span>
             </div>
+          </div>
 
-            {/* Email Sign In Form */}
-            <form onSubmit={handleEmailSignIn} className="space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="signin-email">Email</Label>
-                <Input
-                  id="signin-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="signin-password">Password</Label>
-                <Input
-                  id="signin-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign In
-              </Button>
-            </form>
-          </TabsContent>
+          {/* Form section with fixed height to prevent jumping */}
+          <div className="h-[280px]">
+            <TabsContent value="signin" className="mt-0 h-full">
+              <form onSubmit={handleEmailSignIn} className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <Input
+                    id="signin-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="signin-password">Password</Label>
+                  <Input
+                    id="signin-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign In
+                </Button>
+              </form>
+            </TabsContent>
 
-          <TabsContent value="signup" className="space-y-4 h-[400px]">
-            {/* OAuth Buttons */}
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => handleOAuthSignIn("google")}
-                disabled={loading}
-              >
-                <GoogleIcon className="h-5 w-5" />
-                Sign up with Google
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => handleOAuthSignIn("github")}
-                disabled={loading}
-              >
-                <GitHubIcon className="h-5 w-5" />
-                Sign up with GitHub
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or sign up with email
-                </span>
-              </div>
-            </div>
-
-            {/* Email Sign Up Form */}
-            <form onSubmit={handleEmailSignUp} className="space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="signup-email">Email</Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={6}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              {message && <p className="text-sm text-green-600">{message}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign Up
-              </Button>
-            </form>
-          </TabsContent>
+            <TabsContent value="signup" className="mt-0 h-full">
+              <form onSubmit={handleEmailSignUp} className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+                {message && <p className="text-sm text-green-600">{message}</p>}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign Up
+                </Button>
+              </form>
+            </TabsContent>
+          </div>
         </Tabs>
       </DialogContent>
     </Dialog>

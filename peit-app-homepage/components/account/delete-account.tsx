@@ -61,8 +61,13 @@ export function DeleteAccount({ userEmail, userId }: DeleteAccountProps) {
         throw new Error(data.detail || "Failed to delete account")
       }
 
-      // Sign out locally
-      await supabase.auth.signOut()
+      // Sign out locally - may fail with 403 since user is already deleted on server
+      // That's OK, we just need to clear the local session
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // Ignore signOut errors - user is already deleted
+      }
 
       // Redirect to home with success message
       router.push("/?deleted=true")
@@ -149,7 +154,7 @@ export function DeleteAccount({ userEmail, userId }: DeleteAccountProps) {
                 handleDelete()
               }}
               disabled={!isEmailMatch || deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90"
             >
               {deleting ? (
                 <>
