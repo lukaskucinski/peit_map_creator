@@ -1639,6 +1639,7 @@ User authentication via Supabase with OAuth and email/password options.
 - `client.ts`: Browser client for client components
 - `server.ts`: Server client for server components
 - `middleware.ts`: Middleware client for session refresh
+- `profiles.ts`: Profile CRUD for custom avatar persistence
 
 **Proxy (`proxy.ts`):**
 - Next.js 16 renamed `middleware.ts` → `proxy.ts` convention
@@ -1647,7 +1648,11 @@ User authentication via Supabase with OAuth and email/password options.
 
 **Database:**
 - `jobs` table with RLS policies filtering by `user_id`
+- `profiles` table for custom avatar persistence
 - `avatars` storage bucket for user avatars
+
+**Avatar Persistence:**
+Custom avatars stored in `profiles` table to survive OAuth re-logins (OAuth overwrites `user_metadata.avatar_url`). Uses empty string `""` for explicit removal (show initials), `null` for never set (fallback to OAuth).
 
 **Dependencies:**
 - `@supabase/supabase-js` - Supabase client

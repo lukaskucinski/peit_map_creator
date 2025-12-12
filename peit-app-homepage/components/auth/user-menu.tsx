@@ -11,6 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { History, LogOut, Loader2, Settings } from "lucide-react"
@@ -18,10 +23,13 @@ import type { User } from "@supabase/supabase-js"
 
 interface UserMenuProps {
   user: User
+  customAvatarUrl?: string | null // From profiles table
+  customDisplayName?: string | null // From profiles table
 }
 
-export function UserMenu({ user }: UserMenuProps) {
+export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuProps) {
   const [loading, setLoading] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -39,11 +47,21 @@ export function UserMenu({ user }: UserMenuProps) {
     router.push("/account")
   }
 
+  // Display name priority:
+  // - customDisplayName is a string: Use it (user set custom name)
+  // - customDisplayName is "" (empty string): User explicitly cleared name, fallback to email
+  // - customDisplayName is null/undefined: Never set, fallback to OAuth provider name
+  const displayName = (() => {
+    if (customDisplayName !== null && customDisplayName !== undefined) {
+      return customDisplayName || user.email?.split("@")[0] || "User" // empty string = use email
+    }
+    return user.user_metadata?.full_name || user.user_metadata?.name || "User"
+  })()
+
   // Get user initials for avatar fallback
   const getInitials = () => {
-    const name = user.user_metadata?.full_name || user.user_metadata?.name
-    if (name) {
-      return name
+    if (displayName && displayName !== "User") {
+      return displayName
         .split(" ")
         .map((n: string) => n[0])
         .join("")
@@ -53,26 +71,38 @@ export function UserMenu({ user }: UserMenuProps) {
     return user.email?.slice(0, 2).toUpperCase() || "U"
   }
 
-  // Get display name
-  const displayName =
-    user.user_metadata?.full_name || user.user_metadata?.name || "User"
+  // Avatar priority logic:
+  // - customAvatarUrl is a URL string: Use it (user uploaded custom avatar)
+  // - customAvatarUrl is "" (empty string): User explicitly removed avatar, show initials only
+  // - customAvatarUrl is null/undefined: Never set, fallback to OAuth avatar
+  const avatarUrl =
+    customAvatarUrl !== null && customAvatarUrl !== undefined
+      ? customAvatarUrl || undefined // empty string becomes undefined (no avatar)
+      : user.user_metadata?.avatar_url // null = fallback to OAuth
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="relative h-9 w-9 rounded-full transition-all hover:ring-2 hover:ring-primary/20 hover:bg-accent"
-        >
-          <Avatar className="h-9 w-9">
-            <AvatarImage
-              src={user.user_metadata?.avatar_url}
-              alt={displayName}
-            />
-            <AvatarFallback>{getInitials()}</AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
+    <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+      <Tooltip open={dropdownOpen ? false : undefined}>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="relative h-9 w-9 rounded-full transition-all hover:ring-2 hover:ring-primary/20 hover:bg-accent"
+            >
+              <Avatar className="h-9 w-9">
+                <AvatarImage
+                  src={avatarUrl || undefined}
+                  alt={displayName}
+                />
+                <AvatarFallback>{getInitials()}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{displayName}</p>
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
