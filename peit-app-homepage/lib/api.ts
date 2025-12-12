@@ -101,12 +101,14 @@ function parseSSEEvent(data: string): ProgressUpdate | null {
  *
  * @param file - The file to process
  * @param config - Processing configuration options
+ * @param userId - Optional user ID for authenticated users (associates job with user)
  * @param onProgress - Callback for progress updates
  * @returns Processing result with download URL on success
  */
 export async function processFile(
   file: File,
   config: ProcessingConfig,
+  userId: string | null,
   onProgress: (update: ProgressUpdate) => void
 ): Promise<ProcessingResult> {
   if (!API_URL) {
@@ -123,6 +125,11 @@ export async function processFile(
   formData.append("project_id", config.projectId)
   formData.append("buffer_distance_feet", config.bufferDistanceFeet.toString())
   formData.append("clip_buffer_miles", config.clipBufferMiles.toString())
+
+  // Include user_id if authenticated (for job history tracking)
+  if (userId) {
+    formData.append("user_id", userId)
+  }
 
   try {
     const response = await fetch(`${API_URL}/api/process`, {

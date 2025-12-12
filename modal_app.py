@@ -23,6 +23,9 @@ app = modal.App("peit-processor")
 # Vercel Blob secret for uploading maps
 vercel_blob_secret = modal.Secret.from_name("vercel-blob", required_keys=["BLOB_READ_WRITE_TOKEN"])
 
+# Supabase secret for job tracking (optional - jobs work without it)
+supabase_secret = modal.Secret.from_name("supabase-service", required_keys=["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
+
 # Modal Dict for rate limiting
 rate_limit_dict = modal.Dict.from_name("peit-rate-limits", create_if_missing=True)
 MAX_RUNS_PER_DAY = 20
@@ -44,6 +47,7 @@ results_volume = modal.Volume.from_name("peit-results", create_if_missing=True)
 # Define the container image with geospatial dependencies
 peit_image = (
     modal.Image.micromamba()
+    .apt_install("ca-certificates")  # System SSL certificates
     .micromamba_install(
         "gdal>=3.8",
         "geos>=3.12",
@@ -52,6 +56,7 @@ peit_image = (
         "pyproj>=3.6",
         "shapely>=2.0",
         "geopandas>=0.14",
+        "ca-certificates",  # Conda SSL certificates
         channels=["conda-forge"]
     )
     .pip_install(
@@ -64,7 +69,10 @@ peit_image = (
         "openpyxl>=3.1.0",
         "fastapi[standard]",
         "vercel-blob>=0.1.0",
+        "supabase>=2.10.0",
+        "certifi",  # Python SSL certificates for httpx
     )
+    .run_commands("update-ca-certificates || true")  # Update system CA store
     # Add local directories to the container
     .add_local_dir("config", remote_path="/root/peit/config")
     .add_local_dir("core", remote_path="/root/peit/core")
@@ -106,16 +114,49 @@ def upload_to_vercel_blob(content: bytes, pathname: str, content_type: str) -> s
     return blob["url"]
 
 
+def get_supabase_client():
+    """Create Supabase client with service role key (bypasses RLS).
+
+    Returns None if credentials are not configured.
+    Configures SSL certificates for containerized environments.
+    """
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+    if not url or not key:
+        return None
+
+    try:
+        import certifi
+
+        # Set all SSL-related environment variables BEFORE importing supabase
+        # httpx respects SSL_CERT_FILE when creating default SSL context
+        cert_path = certifi.where()
+        os.environ["SSL_CERT_FILE"] = cert_path
+        os.environ["REQUESTS_CA_BUNDLE"] = cert_path
+        os.environ["CURL_CA_BUNDLE"] = cert_path
+
+        # Also configure httpx directly via its environment variable
+        os.environ["HTTPX_SSL_CERT_FILE"] = cert_path
+
+        from supabase import create_client
+        return create_client(url, key)
+    except Exception as e:
+        print(f"Warning: Failed to create Supabase client: {e}")
+        return None
+
+
 @app.function(
     image=peit_image,
     timeout=600,
     volumes={"/results": results_volume},
-    secrets=[vercel_blob_secret]
+    secrets=[vercel_blob_secret, supabase_secret]
 )
 def process_file_task(
     file_content: bytes,
     filename: str,
     job_id: str,
+    user_id: str = None,
     project_name: str = "",
     project_id: str = "",
     buffer_distance_feet: int = 500,
@@ -148,6 +189,24 @@ def process_file_task(
     input_file = temp_dir / filename
     output_base = Path("/results") / job_id
     output_base.mkdir(parents=True, exist_ok=True)
+
+    # Initialize Supabase client for job tracking
+    supabase = get_supabase_client()
+
+    # Insert job record (before processing starts)
+    if supabase:
+        try:
+            supabase.table('jobs').insert({
+                'id': job_id,
+                'user_id': user_id if user_id else None,
+                'filename': filename,
+                'project_name': project_name if project_name else None,
+                'project_id': project_id if project_id else None,
+                'status': 'processing',
+            }).execute()
+        except Exception as db_error:
+            # Log but don't fail - processing continues without job tracking
+            print(f"Warning: Failed to insert job record: {db_error}")
 
     try:
         # Save uploaded file
@@ -313,6 +372,22 @@ def process_file_task(
 
         logger.info(f"Job {job_id} completed successfully")
 
+        # Update job record with completion status
+        if supabase:
+            try:
+                supabase.table('jobs').update({
+                    'status': 'complete',
+                    'completed_at': datetime.now().isoformat(),
+                    'total_features': summary["total_features"],
+                    'layers_with_data': summary["layers_with_data"],
+                    'map_url': f'https://peit-map-creator.vercel.app/maps/{job_id}',
+                    'pdf_url': pdf_blob_url,
+                    'xlsx_url': xlsx_blob_url,
+                    'zip_download_path': f'/api/download/{job_id}',
+                }).eq('id', job_id).execute()
+            except Exception as db_error:
+                logger.warning(f"Failed to update job record: {db_error}")
+
         return {
             "success": True,
             "job_id": job_id,
@@ -327,6 +402,18 @@ def process_file_task(
     except Exception as e:
         import traceback
         error_msg = f"{str(e)}\n{traceback.format_exc()}"
+
+        # Update job record with error status
+        if supabase:
+            try:
+                supabase.table('jobs').update({
+                    'status': 'failed',
+                    'completed_at': datetime.now().isoformat(),
+                    'error_message': str(e)[:500],  # Truncate long errors
+                }).eq('id', job_id).execute()
+            except Exception as db_error:
+                print(f"Warning: Failed to update job error: {db_error}")
+
         return {
             "success": False,
             "job_id": job_id,
@@ -346,6 +433,7 @@ def process_file_task(
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
+    secrets=[supabase_secret],  # For account deletion endpoint
 )
 @modal.concurrent(max_inputs=10)
 @modal.asgi_app()
@@ -487,6 +575,7 @@ def fastapi_app():
     async def process_endpoint(
         request: Request,
         file: UploadFile = File(...),
+        user_id: str = Form(None),
         project_name: str = Form(""),
         project_id: str = Form(""),
         buffer_distance_feet: int = Form(500),
@@ -585,6 +674,7 @@ def fastapi_app():
                     file_content=file_content,
                     filename=file.filename,
                     job_id=job_id,
+                    user_id=user_id,
                     project_name=project_name,
                     project_id=project_id,
                     buffer_distance_feet=buffer_distance_feet,
@@ -660,6 +750,48 @@ def fastapi_app():
             filename=zip_filename,
             media_type="application/zip"
         )
+
+    @web_app.delete("/api/account")
+    async def delete_account(request: Request):
+        """Delete a user account and all associated data.
+
+        Requires user_id in JSON body. This endpoint:
+        1. Deletes all jobs associated with the user from Supabase
+        2. Deletes the user account from Supabase Auth
+        """
+        try:
+            body = await request.json()
+            user_id = body.get("user_id")
+
+            if not user_id:
+                raise HTTPException(status_code=400, detail="user_id is required")
+
+            supabase = get_supabase_client()
+            if not supabase:
+                raise HTTPException(status_code=500, detail="Database not configured")
+
+            # Delete user's jobs from database
+            try:
+                supabase.table('jobs').delete().eq('user_id', user_id).execute()
+            except Exception as e:
+                # Log but continue - user deletion is more important
+                print(f"Warning: Failed to delete jobs for user {user_id}: {e}")
+
+            # Delete user account using Supabase Admin API
+            try:
+                supabase.auth.admin.delete_user(user_id)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to delete user account: {str(e)}"
+                )
+
+            return {"success": True, "message": "Account deleted successfully"}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     return web_app
 

@@ -11,6 +11,8 @@ import { MapDrawer } from "@/components/map-drawer-dynamic"
 import { runMockProcessing } from "@/lib/mock-processing"
 import { processFile, downloadResults, isUsingMockMode } from "@/lib/api"
 import { parseGeospatialFile } from "@/lib/file-parsers"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
 
 // Application state types
 type AppState =
@@ -25,6 +27,25 @@ export default function HomePage() {
   const [appState, setAppState] = useState<AppState>({ step: 'upload' })
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
   const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
+
+  // Track authentication state for job history
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
 
   // Handle file selection
   const handleFileSelected = useCallback((file: File) => {
@@ -103,8 +124,8 @@ export default function HomePage() {
         })
       }
     } else {
-      // Real API processing
-      const result = await processFile(file, config, (update) => {
+      // Real API processing - pass user ID for job history tracking
+      const result = await processFile(file, config, user?.id ?? null, (update) => {
         setProgressUpdates(prev => [...prev, update])
       })
 
@@ -127,7 +148,7 @@ export default function HomePage() {
         })
       }
     }
-  }, [appState])
+  }, [appState, user])
 
   // Handle download
   const handleDownload = useCallback(async () => {
