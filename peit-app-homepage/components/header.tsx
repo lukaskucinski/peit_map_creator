@@ -49,6 +49,7 @@ function GitHubIcon({ className }: { className?: string }) {
 export function Header() {
   const [user, setUser] = useState<User | null>(null)
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
+  const [avatarLoaded, setAvatarLoaded] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
   const supabase = createClient()
@@ -57,26 +58,31 @@ export function Header() {
   const fetchCustomAvatar = async (userId: string) => {
     const profile = await getProfile(userId)
     setCustomAvatarUrl(profile?.custom_avatar_url ?? null)
+    setAvatarLoaded(true)
   }
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchCustomAvatar(session.user.id)
+        await fetchCustomAvatar(session.user.id)
+      } else {
+        setAvatarLoaded(true)
       }
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchCustomAvatar(session.user.id)
+        setAvatarLoaded(false)
+        await fetchCustomAvatar(session.user.id)
       } else {
         setCustomAvatarUrl(null)
+        setAvatarLoaded(true)
       }
     })
 
@@ -150,9 +156,12 @@ export function Header() {
               </TooltipContent>
             </Tooltip>
 
-            {user ? (
-              // Logged in: Show user menu
+            {user && avatarLoaded ? (
+              // Logged in and avatar checked: Show user menu
               <UserMenu user={user} customAvatarUrl={customAvatarUrl} />
+            ) : user && !avatarLoaded ? (
+              // Logged in but still loading avatar: Show placeholder
+              <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
             ) : (
               // Logged out: Show Sign In / Sign Up buttons
               <>
