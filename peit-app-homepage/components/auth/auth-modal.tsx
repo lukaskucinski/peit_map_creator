@@ -190,7 +190,7 @@ export function AuthModal({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="signin" className="space-y-4">
+          <TabsContent value="signin" className="space-y-4 min-h-[340px]">
             {/* OAuth Buttons */}
             <div className="space-y-2">
               <Button
@@ -249,8 +249,6 @@ export function AuthModal({
                   disabled={loading}
                 />
               </div>
-              {/* Spacer to match sign-up form height (Confirm Password field) */}
-              <div className="h-[62px]" />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -259,7 +257,7 @@ export function AuthModal({
             </form>
           </TabsContent>
 
-          <TabsContent value="signup" className="space-y-4">
+          <TabsContent value="signup" className="space-y-4 min-h-[340px]">
             {/* OAuth Buttons */}
             <div className="space-y-2">
               <Button

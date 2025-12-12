@@ -54,7 +54,7 @@ export function JobHistoryList({ jobs }: JobHistoryListProps) {
           <div className="flex flex-col items-center gap-2">
             <Clock className="h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">
-              No jobs yet. Process a file to get started!
+              No maps yet. Process a file to get started!
             </p>
             <Button variant="outline" className="mt-4" asChild>
               <a href="/">Create New Map</a>
@@ -93,7 +93,7 @@ export function JobHistoryList({ jobs }: JobHistoryListProps) {
       <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
         <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <div>
-          <strong>Data Retention:</strong> Jobs are automatically deleted after 7
+          <strong>Data Retention:</strong> Maps are automatically deleted after 7
           days. Download the ZIP file for long-term data preservation.
         </div>
       </div>

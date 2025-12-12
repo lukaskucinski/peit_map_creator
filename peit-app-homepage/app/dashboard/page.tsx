@@ -1,7 +1,7 @@
 /**
  * Dashboard Page
  *
- * Displays user's job history. Requires authentication.
+ * Displays user's map history. Requires authentication.
  * Fetches jobs from Supabase with RLS filtering by user_id.
  */
 
@@ -43,9 +43,9 @@ export default async function DashboardPage() {
           {/* Header section */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold">Job History</h1>
+              <h1 className="text-3xl font-bold">Map History</h1>
               <p className="text-muted-foreground mt-1">
-                View your recent processing jobs (last 7 days)
+                View your recent maps (last 7 days)
               </p>
             </div>
             <Button asChild>

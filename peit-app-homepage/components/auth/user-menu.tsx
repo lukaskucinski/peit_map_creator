@@ -85,7 +85,7 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleViewDashboard}>
           <History className="mr-2 h-4 w-4" />
-          <span>Job History</span>
+          <span>Map History</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleViewAccount}>
           <Settings className="mr-2 h-4 w-4" />
