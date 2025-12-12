@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
+import { getProfile } from "@/lib/supabase/profiles"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { UserMenu } from "@/components/auth/user-menu"
 import type { User } from "@supabase/supabase-js"
@@ -47,14 +48,24 @@ function GitHubIcon({ className }: { className?: string }) {
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null)
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
   const supabase = createClient()
+
+  // Fetch custom avatar from profiles table
+  const fetchCustomAvatar = async (userId: string) => {
+    const profile = await getProfile(userId)
+    setCustomAvatarUrl(profile?.custom_avatar_url ?? null)
+  }
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchCustomAvatar(session.user.id)
+      }
     })
 
     // Listen for auth changes
@@ -62,6 +73,11 @@ export function Header() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchCustomAvatar(session.user.id)
+      } else {
+        setCustomAvatarUrl(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -136,7 +152,7 @@ export function Header() {
 
             {user ? (
               // Logged in: Show user menu
-              <UserMenu user={user} />
+              <UserMenu user={user} customAvatarUrl={customAvatarUrl} />
             ) : (
               // Logged out: Show Sign In / Sign Up buttons
               <>

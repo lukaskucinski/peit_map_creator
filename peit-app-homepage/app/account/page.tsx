@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { AvatarUpload } from "@/components/account/avatar-upload"
 import { DeleteAccount } from "@/components/account/delete-account"
+import type { Profile } from "@/lib/supabase/profiles"
 import {
   Card,
   CardContent,
@@ -31,6 +32,13 @@ export default async function AccountPage() {
   if (!user) {
     redirect("/")
   }
+
+  // Fetch custom avatar from profiles table
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>()
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,7 +64,7 @@ export default async function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AvatarUpload user={user} />
+              <AvatarUpload user={user} customAvatarUrl={profile?.custom_avatar_url} />
             </CardContent>
           </Card>
 

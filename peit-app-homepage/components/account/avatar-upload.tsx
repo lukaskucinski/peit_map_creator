@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { updateCustomAvatar } from "@/lib/supabase/profiles"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -12,9 +13,10 @@ import type { User } from "@supabase/supabase-js"
 
 interface AvatarUploadProps {
   user: User
+  customAvatarUrl?: string | null // From profiles table
 }
 
-export function AvatarUpload({ user }: AvatarUploadProps) {
+export function AvatarUpload({ user, customAvatarUrl }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [savingName, setSavingName] = useState(false)
@@ -23,8 +25,9 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
   const [displayName, setDisplayName] = useState(
     user.user_metadata?.full_name || user.user_metadata?.name || ""
   )
+  // Priority: custom avatar (profiles table) > OAuth avatar (user_metadata)
   const [avatarUrl, setAvatarUrl] = useState(
-    user.user_metadata?.avatar_url || ""
+    customAvatarUrl || user.user_metadata?.avatar_url || ""
   )
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -93,12 +96,18 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath)
 
-      // Update user metadata
-      const { error: updateError } = await supabase.auth.updateUser({
+      // Save to profiles table (persists across OAuth re-logins)
+      const { success: profileSuccess, error: profileError } =
+        await updateCustomAvatar(user.id, publicUrl)
+
+      if (!profileSuccess) {
+        throw new Error(profileError || "Failed to save avatar")
+      }
+
+      // Also update user metadata for immediate session update
+      await supabase.auth.updateUser({
         data: { avatar_url: publicUrl },
       })
-
-      if (updateError) throw updateError
 
       setAvatarUrl(publicUrl)
       setSuccess("Avatar updated successfully!")
@@ -121,12 +130,18 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
     setSuccess(null)
 
     try {
-      // Update user metadata to remove avatar
-      const { error: updateError } = await supabase.auth.updateUser({
+      // Remove from profiles table
+      const { success: profileSuccess, error: profileError } =
+        await updateCustomAvatar(user.id, null)
+
+      if (!profileSuccess) {
+        throw new Error(profileError || "Failed to remove avatar")
+      }
+
+      // Also update user metadata
+      await supabase.auth.updateUser({
         data: { avatar_url: null },
       })
-
-      if (updateError) throw updateError
 
       setAvatarUrl("")
       setSuccess("Avatar removed successfully!")

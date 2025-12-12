@@ -18,9 +18,10 @@ import type { User } from "@supabase/supabase-js"
 
 interface UserMenuProps {
   user: User
+  customAvatarUrl?: string | null // From profiles table
 }
 
-export function UserMenu({ user }: UserMenuProps) {
+export function UserMenu({ user, customAvatarUrl }: UserMenuProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -57,6 +58,9 @@ export function UserMenu({ user }: UserMenuProps) {
   const displayName =
     user.user_metadata?.full_name || user.user_metadata?.name || "User"
 
+  // Priority: custom avatar (profiles table) > OAuth avatar (user_metadata)
+  const avatarUrl = customAvatarUrl || user.user_metadata?.avatar_url
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -66,7 +70,7 @@ export function UserMenu({ user }: UserMenuProps) {
         >
           <Avatar className="h-9 w-9">
             <AvatarImage
-              src={user.user_metadata?.avatar_url}
+              src={avatarUrl || undefined}
               alt={displayName}
             />
             <AvatarFallback>{getInitials()}</AvatarFallback>
