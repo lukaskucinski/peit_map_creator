@@ -1616,6 +1616,37 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Site navigation and branding
 - GitHub and Donations links
 - Responsive mobile layout
+- Shows Sign In/Sign Up buttons or UserMenu based on auth state
+
+### Authentication (Supabase)
+
+User authentication via Supabase with OAuth and email/password options.
+
+**Auth Components:**
+- `components/auth/auth-modal.tsx`: Sign in/sign up dialog with Google, GitHub OAuth and email/password
+- `components/auth/user-menu.tsx`: Avatar dropdown with Map History, Account Settings, Sign Out
+
+**Account Components:**
+- `components/account/avatar-upload.tsx`: Upload custom avatar to Supabase Storage
+- `components/account/delete-account.tsx`: Account deletion with email confirmation
+
+**Routes:**
+- `app/auth/callback/route.ts`: OAuth callback handler
+- `app/dashboard/page.tsx`: Map History page (authenticated users only)
+- `app/account/page.tsx`: Account settings page
+
+**Supabase Client Files (`lib/supabase/`):**
+- `client.ts`: Browser client for client components
+- `server.ts`: Server client for server components
+- `middleware.ts`: Middleware client for session refresh
+
+**Database:**
+- `jobs` table with RLS policies filtering by `user_id`
+- `avatars` storage bucket for user avatars
+
+**Dependencies:**
+- `@supabase/supabase-js` - Supabase client
+- `@supabase/ssr` - Server-side rendering support
 
 ### Draw Your Own Feature
 
