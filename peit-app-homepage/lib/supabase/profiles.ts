@@ -9,6 +9,7 @@ export interface Profile {
 
 /**
  * Get the user's profile from the profiles table
+ * Uses maybeSingle() to handle case where profile doesn't exist (returns null, no error)
  */
 export async function getProfile(userId: string): Promise<Profile | null> {
   const supabase = createClient()
@@ -17,13 +18,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single()
+    .maybeSingle()
 
   if (error) {
-    // Profile might not exist yet for older users
-    if (error.code === "PGRST116") {
-      return null
-    }
     console.error("Error fetching profile:", error)
     return null
   }
@@ -33,6 +30,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 /**
  * Update the user's custom avatar URL in the profiles table
+ * Uses upsert to handle both existing and new profiles
  */
 export async function updateCustomAvatar(
   userId: string,
@@ -40,28 +38,17 @@ export async function updateCustomAvatar(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient()
 
-  // First try to update existing profile
-  const { error: updateError } = await supabase
+  // Use upsert to create profile if it doesn't exist, or update if it does
+  const { error } = await supabase
     .from("profiles")
-    .update({ custom_avatar_url: avatarUrl })
-    .eq("id", userId)
+    .upsert(
+      { id: userId, custom_avatar_url: avatarUrl },
+      { onConflict: "id" }
+    )
 
-  if (updateError) {
-    // If profile doesn't exist, create it (for users created before this migration)
-    if (updateError.code === "PGRST116") {
-      const { error: insertError } = await supabase
-        .from("profiles")
-        .insert({ id: userId, custom_avatar_url: avatarUrl })
-
-      if (insertError) {
-        console.error("Error creating profile:", insertError)
-        return { success: false, error: insertError.message }
-      }
-      return { success: true }
-    }
-
-    console.error("Error updating custom avatar:", updateError)
-    return { success: false, error: updateError.message }
+  if (error) {
+    console.error("Error updating custom avatar:", error)
+    return { success: false, error: error.message }
   }
 
   return { success: true }
