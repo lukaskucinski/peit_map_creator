@@ -169,7 +169,7 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
       <div className="flex items-center gap-6">
         <div className="relative">
           <Avatar className="h-24 w-24">
-            <AvatarImage src={avatarUrl} alt={displayName || "User avatar"} />
+            <AvatarImage src={avatarUrl || undefined} alt={displayName || "User avatar"} />
             <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
           </Avatar>
           <Button

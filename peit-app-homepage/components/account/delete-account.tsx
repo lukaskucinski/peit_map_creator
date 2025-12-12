@@ -91,9 +91,9 @@ export function DeleteAccount({ userEmail, userId }: DeleteAccountProps) {
 
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogTrigger asChild>
-          <Button variant="destructive" className="gap-2">
-            <Trash2 className="h-4 w-4" />
-            Delete Account
+          <Button variant="destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Delete Account</span>
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
