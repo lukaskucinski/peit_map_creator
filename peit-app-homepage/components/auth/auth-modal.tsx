@@ -68,6 +68,7 @@ export function AuthModal({
   onOpenChange,
   defaultTab = "signin",
 }: AuthModalProps) {
+  const [activeTab, setActiveTab] = useState<"signin" | "signup">(defaultTab)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -166,18 +167,36 @@ export function AuthModal({
         onOpenChange(isOpen)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md min-h-[520px]">
         <DialogHeader>
-          <DialogTitle>Sign in to PEIT Map Creator</DialogTitle>
+          <DialogTitle>
+            {activeTab === "signin" ? "Sign in to" : "Sign up for"} PEIT Map Creator
+          </DialogTitle>
           <DialogDescription>
-            Create an account to access your job history
+            {activeTab === "signin"
+              ? "Sign in to access your maps"
+              : "Create an account to access your maps"}
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab} className="w-full">
+        <Tabs
+          defaultValue={defaultTab}
+          className="w-full"
+          onValueChange={(value) => setActiveTab(value as "signin" | "signup")}
+        >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger
+              value="signin"
+              className="transition-colors hover:bg-muted/80"
+            >
+              Sign In
+            </TabsTrigger>
+            <TabsTrigger
+              value="signup"
+              className="transition-colors hover:bg-muted/80"
+            >
+              Sign Up
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="signin" className="space-y-4">
