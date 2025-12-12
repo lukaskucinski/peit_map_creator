@@ -84,20 +84,22 @@ export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuP
     <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
       <Tooltip open={dropdownOpen ? false : undefined}>
         <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="relative h-9 w-9 rounded-full transition-all hover:ring-2 hover:ring-primary/20 hover:bg-accent"
-            >
-              <Avatar className="h-9 w-9">
-                <AvatarImage
-                  src={avatarUrl || undefined}
-                  alt={displayName}
-                />
-                <AvatarFallback>{getInitials()}</AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
+          <span>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="relative h-9 w-9 rounded-full transition-all hover:ring-2 hover:ring-primary/20 hover:bg-accent"
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarImage
+                    src={avatarUrl || undefined}
+                    alt={displayName}
+                  />
+                  <AvatarFallback>{getInitials()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+          </span>
         </TooltipTrigger>
         <TooltipContent side="bottom">
           <p>{displayName}</p>
