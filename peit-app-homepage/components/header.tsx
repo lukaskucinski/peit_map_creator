@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -5,6 +8,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { createClient } from "@/lib/supabase/client"
+import { AuthModal } from "@/components/auth/auth-modal"
+import { UserMenu } from "@/components/auth/user-menu"
+import type { User } from "@supabase/supabase-js"
 
 // Landcover icon component (from layer-landcover.svg)
 function LandcoverIcon({ className }: { className?: string }) {
@@ -39,87 +46,127 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 export function Header() {
+  const [user, setUser] = useState<User | null>(null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  const openAuthModal = (tab: "signin" | "signup") => {
+    setAuthModalTab(tab)
+    setAuthModalOpen(true)
+  }
+
   return (
-    <header className="border-b border-border bg-card">
-      <div className="flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <LandcoverIcon className="h-6 w-6 text-primary-foreground" />
+    <>
+      <header className="border-b border-border bg-card">
+        <div className="flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <LandcoverIcon className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-semibold text-foreground">
+              <span className="hidden sm:inline">PEIT Map Creator - Permitting and Environmental Information Tool</span>
+              <span className="sm:hidden">PEIT Map Creator</span>
+            </span>
           </div>
-          <span className="text-lg font-semibold text-foreground">
-            <span className="hidden sm:inline">PEIT Map Creator - Permitting and Environmental Information Tool</span>
-            <span className="sm:hidden">PEIT Map Creator</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* GitHub Button - Functional */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                asChild
-              >
-                <a
-                  href="https://github.com/lukaskucinski/peit_map_creator"
-                  target="_blank"
-                  rel="noopener noreferrer"
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* GitHub Button - Functional */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  asChild
                 >
-                  <GitHubIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">GitHub</span>
-                </a>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>PEIT is still under development. Follow our progress here</p>
-            </TooltipContent>
-          </Tooltip>
+                  <a
+                    href="https://github.com/lukaskucinski/peit_map_creator"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <GitHubIcon className="h-4 w-4" />
+                    <span className="hidden sm:inline">GitHub</span>
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>PEIT is still under development. Follow our progress here</p>
+              </TooltipContent>
+            </Tooltip>
 
-          {/* Donations Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                asChild
-              >
-                <a
-                  href="https://buymeacoffee.com/kucimaps"
-                  target="_blank"
-                  rel="noopener noreferrer"
+            {/* Donations Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  asChild
                 >
-                  <Star className="h-4 w-4" />
-                  <span className="hidden sm:inline">Donations</span>
-                </a>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>Help keep our servers running - every contribution counts!</p>
-            </TooltipContent>
-          </Tooltip>
+                  <a
+                    href="https://buymeacoffee.com/kucimaps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Star className="h-4 w-4" />
+                    <span className="hidden sm:inline">Donations</span>
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Help keep our servers running - every contribution counts!</p>
+              </TooltipContent>
+            </Tooltip>
 
-          {/* Sign In - Disabled, hidden on mobile */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden sm:inline-flex text-muted-foreground opacity-50 cursor-not-allowed"
-            disabled
-          >
-            Sign In
-          </Button>
-
-          {/* Sign Up - Disabled, hidden on mobile */}
-          <Button
-            size="sm"
-            className="hidden sm:inline-flex bg-primary text-primary-foreground opacity-50 cursor-not-allowed"
-            disabled
-          >
-            Sign Up
-          </Button>
+            {user ? (
+              // Logged in: Show user menu
+              <UserMenu user={user} />
+            ) : (
+              // Logged out: Show Sign In / Sign Up buttons
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                  onClick={() => openAuthModal("signin")}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                  onClick={() => openAuthModal("signup")}
+                >
+                  Sign Up
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Auth Modal */}
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        defaultTab={authModalTab}
+      />
+    </>
   )
 }
