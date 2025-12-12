@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -54,6 +54,9 @@ export function Header() {
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
   const supabase = createClient()
 
+  // Track current user ID to avoid unnecessary re-fetches
+  const currentUserIdRef = useRef<string | null>(null)
+
   // Fetch custom avatar from profiles table
   const fetchCustomAvatar = async (userId: string) => {
     const profile = await getProfile(userId)
@@ -64,9 +67,11 @@ export function Header() {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchCustomAvatar(session.user.id)
+      const newUser = session?.user ?? null
+      setUser(newUser)
+      currentUserIdRef.current = newUser?.id ?? null
+      if (newUser) {
+        await fetchCustomAvatar(newUser.id)
       } else {
         setAvatarLoaded(true)
       }
@@ -76,13 +81,21 @@ export function Header() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        setAvatarLoaded(false)
-        await fetchCustomAvatar(session.user.id)
-      } else {
-        setCustomAvatarUrl(null)
-        setAvatarLoaded(true)
+      const newUser = session?.user ?? null
+      const previousUserId = currentUserIdRef.current
+      const newUserId = newUser?.id ?? null
+
+      // Only reset avatar if user actually changed
+      if (previousUserId !== newUserId) {
+        setUser(newUser)
+        currentUserIdRef.current = newUserId
+        if (newUser) {
+          setAvatarLoaded(false)
+          await fetchCustomAvatar(newUser.id)
+        } else {
+          setCustomAvatarUrl(null)
+          setAvatarLoaded(true)
+        }
       }
     })
 
