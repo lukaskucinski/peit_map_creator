@@ -64,7 +64,7 @@ export default async function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AvatarUpload user={user} customAvatarUrl={profile?.custom_avatar_url} />
+              <AvatarUpload user={user} customAvatarUrl={profile?.custom_avatar_url} customDisplayName={profile?.custom_display_name} />
             </CardContent>
           </Card>
 

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { updateCustomAvatar } from "@/lib/supabase/profiles"
+import { updateCustomAvatar, updateCustomDisplayName } from "@/lib/supabase/profiles"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -14,17 +14,22 @@ import type { User } from "@supabase/supabase-js"
 interface AvatarUploadProps {
   user: User
   customAvatarUrl?: string | null // From profiles table
+  customDisplayName?: string | null // From profiles table
 }
 
-export function AvatarUpload({ user, customAvatarUrl }: AvatarUploadProps) {
+export function AvatarUpload({ user, customAvatarUrl, customDisplayName }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [savingName, setSavingName] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState(
-    user.user_metadata?.full_name || user.user_metadata?.name || ""
-  )
+  // Display name priority: custom (from profiles) > OAuth provider > empty
+  const [displayName, setDisplayName] = useState(() => {
+    if (customDisplayName !== null && customDisplayName !== undefined) {
+      return customDisplayName // Could be name or empty string (explicit clear)
+    }
+    return user.user_metadata?.full_name || user.user_metadata?.name || ""
+  })
   // Avatar priority logic:
   // - customAvatarUrl is a URL string: Use it (user uploaded custom avatar)
   // - customAvatarUrl is "" (empty string): User explicitly removed avatar, show initials only
@@ -167,6 +172,15 @@ export function AvatarUpload({ user, customAvatarUrl }: AvatarUploadProps) {
     setSuccess(null)
 
     try {
+      // Save to profiles table (persists across OAuth re-logins)
+      const { success: profileSuccess, error: profileError } =
+        await updateCustomDisplayName(user.id, displayName)
+
+      if (!profileSuccess) {
+        throw new Error(profileError || "Failed to save display name")
+      }
+
+      // Also update user metadata for immediate session update
       const { error: updateError } = await supabase.auth.updateUser({
         data: { full_name: displayName },
       })
@@ -174,7 +188,7 @@ export function AvatarUpload({ user, customAvatarUrl }: AvatarUploadProps) {
       if (updateError) throw updateError
 
       setSuccess("Display name updated successfully!")
-      router.refresh()
+      // Note: Not calling router.refresh() here to avoid Header re-initialization issues
     } catch (err) {
       console.error("Update error:", err)
       setError(

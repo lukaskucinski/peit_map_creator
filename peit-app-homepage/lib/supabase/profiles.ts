@@ -3,6 +3,7 @@ import { createClient } from "./client"
 export interface Profile {
   id: string
   custom_avatar_url: string | null
+  custom_display_name: string | null
   created_at: string
   updated_at: string
 }
@@ -73,4 +74,34 @@ export async function ensureProfile(userId: string): Promise<void> {
   if (error) {
     console.error("Error ensuring profile exists:", error)
   }
+}
+
+/**
+ * Update the user's custom display name in the profiles table
+ * Uses upsert to handle both existing and new profiles
+ *
+ * Display name values:
+ * - string: Custom name set by user
+ * - "" (empty string): User explicitly cleared their name (fallback to email)
+ * - null: Never set a custom name (fallback to OAuth provider name)
+ */
+export async function updateCustomDisplayName(
+  userId: string,
+  displayName: string | null
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(
+      { id: userId, custom_display_name: displayName },
+      { onConflict: "id" }
+    )
+
+  if (error) {
+    console.error("Error updating custom display name:", error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
 }

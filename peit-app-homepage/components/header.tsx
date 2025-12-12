@@ -49,19 +49,29 @@ function GitHubIcon({ className }: { className?: string }) {
 export function Header() {
   const [user, setUser] = useState<User | null>(null)
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
-  const [avatarLoaded, setAvatarLoaded] = useState(false)
+  const [customDisplayName, setCustomDisplayName] = useState<string | null>(null)
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
-  const supabase = createClient()
+  // Memoize supabase client to prevent useEffect from re-running on every render
+  const [supabase] = useState(() => createClient())
 
   // Track current user ID to avoid unnecessary re-fetches
   const currentUserIdRef = useRef<string | null>(null)
 
-  // Fetch custom avatar from profiles table
-  const fetchCustomAvatar = async (userId: string) => {
-    const profile = await getProfile(userId)
-    setCustomAvatarUrl(profile?.custom_avatar_url ?? null)
-    setAvatarLoaded(true)
+  // Fetch custom profile data (avatar and display name) from profiles table
+  const fetchProfile = async (userId: string) => {
+    try {
+      const profile = await getProfile(userId)
+      setCustomAvatarUrl(profile?.custom_avatar_url ?? null)
+      setCustomDisplayName(profile?.custom_display_name ?? null)
+    } catch (error) {
+      console.error("Error fetching profile:", error)
+      setCustomAvatarUrl(null)
+      setCustomDisplayName(null)
+    } finally {
+      setProfileLoaded(true)
+    }
   }
 
   useEffect(() => {
@@ -71,9 +81,9 @@ export function Header() {
       setUser(newUser)
       currentUserIdRef.current = newUser?.id ?? null
       if (newUser) {
-        await fetchCustomAvatar(newUser.id)
+        await fetchProfile(newUser.id)
       } else {
-        setAvatarLoaded(true)
+        setProfileLoaded(true)
       }
     })
 
@@ -85,22 +95,23 @@ export function Header() {
       const previousUserId = currentUserIdRef.current
       const newUserId = newUser?.id ?? null
 
-      // Only reset avatar if user actually changed
+      // Only update if user actually changed
       if (previousUserId !== newUserId) {
         setUser(newUser)
         currentUserIdRef.current = newUserId
         if (newUser) {
-          setAvatarLoaded(false)
-          await fetchCustomAvatar(newUser.id)
+          setProfileLoaded(false)
+          await fetchProfile(newUser.id)
         } else {
           setCustomAvatarUrl(null)
-          setAvatarLoaded(true)
+          setCustomDisplayName(null)
+          setProfileLoaded(true)
         }
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase]) // supabase is stable (memoized via useState)
 
   const openAuthModal = (tab: "signin" | "signup") => {
     setAuthModalTab(tab)
@@ -169,11 +180,11 @@ export function Header() {
               </TooltipContent>
             </Tooltip>
 
-            {user && avatarLoaded ? (
-              // Logged in and avatar checked: Show user menu
-              <UserMenu user={user} customAvatarUrl={customAvatarUrl} />
-            ) : user && !avatarLoaded ? (
-              // Logged in but still loading avatar: Show placeholder
+            {user && profileLoaded ? (
+              // Logged in and profile loaded: Show user menu
+              <UserMenu user={user} customAvatarUrl={customAvatarUrl} customDisplayName={customDisplayName} />
+            ) : user && !profileLoaded ? (
+              // Logged in but loading profile: Show placeholder
               <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
             ) : (
               // Logged out: Show Sign In / Sign Up buttons
