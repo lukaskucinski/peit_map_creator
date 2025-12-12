@@ -415,6 +415,7 @@ def process_file_task(
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
+    secrets=[supabase_secret],  # For account deletion endpoint
 )
 @modal.concurrent(max_inputs=10)
 @modal.asgi_app()
@@ -731,6 +732,48 @@ def fastapi_app():
             filename=zip_filename,
             media_type="application/zip"
         )
+
+    @web_app.delete("/api/account")
+    async def delete_account(request: Request):
+        """Delete a user account and all associated data.
+
+        Requires user_id in JSON body. This endpoint:
+        1. Deletes all jobs associated with the user from Supabase
+        2. Deletes the user account from Supabase Auth
+        """
+        try:
+            body = await request.json()
+            user_id = body.get("user_id")
+
+            if not user_id:
+                raise HTTPException(status_code=400, detail="user_id is required")
+
+            supabase = get_supabase_client()
+            if not supabase:
+                raise HTTPException(status_code=500, detail="Database not configured")
+
+            # Delete user's jobs from database
+            try:
+                supabase.table('jobs').delete().eq('user_id', user_id).execute()
+            except Exception as e:
+                # Log but continue - user deletion is more important
+                print(f"Warning: Failed to delete jobs for user {user_id}: {e}")
+
+            # Delete user account using Supabase Admin API
+            try:
+                supabase.auth.admin.delete_user(user_id)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to delete user account: {str(e)}"
+                )
+
+            return {"success": True, "message": "Account deleted successfully"}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     return web_app
 

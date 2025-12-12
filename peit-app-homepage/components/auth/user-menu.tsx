@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { History, LogOut, Loader2 } from "lucide-react"
+import { History, LogOut, Loader2, Settings } from "lucide-react"
 import type { User } from "@supabase/supabase-js"
 
 interface UserMenuProps {
@@ -33,6 +33,10 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const handleViewDashboard = () => {
     router.push("/dashboard")
+  }
+
+  const handleViewAccount = () => {
+    router.push("/account")
   }
 
   // Get user initials for avatar fallback
@@ -82,6 +86,10 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuItem onClick={handleViewDashboard}>
           <History className="mr-2 h-4 w-4" />
           <span>Job History</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleViewAccount}>
+          <Settings className="mr-2 h-4 w-4" />
+          <span>Account Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} disabled={loading}>

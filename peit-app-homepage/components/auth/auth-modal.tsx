@@ -68,7 +68,6 @@ export function AuthModal({
   onOpenChange,
   defaultTab = "signin",
 }: AuthModalProps) {
-  const [activeTab, setActiveTab] = useState<"signin" | "signup">(defaultTab)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -167,23 +166,15 @@ export function AuthModal({
         onOpenChange(isOpen)
       }}
     >
-      <DialogContent className="sm:max-w-md min-h-[520px]">
-        <DialogHeader>
-          <DialogTitle>
-            {activeTab === "signin" ? "Sign in to" : "Sign up for"} PEIT Map Creator
-          </DialogTitle>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="h-[60px]">
+          <DialogTitle>PEIT Map Creator</DialogTitle>
           <DialogDescription>
-            {activeTab === "signin"
-              ? "Sign in to access your maps"
-              : "Create an account to access your maps"}
+            Sign in or create an account to access your maps
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs
-          defaultValue={defaultTab}
-          className="w-full"
-          onValueChange={(value) => setActiveTab(value as "signin" | "signup")}
-        >
+        <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger
               value="signin"
@@ -258,6 +249,8 @@ export function AuthModal({
                   disabled={loading}
                 />
               </div>
+              {/* Spacer to match sign-up form height (Confirm Password field) */}
+              <div className="h-[62px]" />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
