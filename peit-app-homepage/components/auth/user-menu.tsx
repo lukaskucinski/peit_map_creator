@@ -11,6 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { History, LogOut, Loader2, Settings } from "lucide-react"
@@ -24,6 +29,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuProps) {
   const [loading, setLoading] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -75,21 +81,28 @@ export function UserMenu({ user, customAvatarUrl, customDisplayName }: UserMenuP
       : user.user_metadata?.avatar_url // null = fallback to OAuth
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="relative h-9 w-9 rounded-full transition-all hover:ring-2 hover:ring-primary/20 hover:bg-accent"
-        >
-          <Avatar className="h-9 w-9">
-            <AvatarImage
-              src={avatarUrl || undefined}
-              alt={displayName}
-            />
-            <AvatarFallback>{getInitials()}</AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
+    <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+      <Tooltip open={dropdownOpen ? false : undefined}>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="relative h-9 w-9 rounded-full transition-all hover:ring-2 hover:ring-primary/20 hover:bg-accent"
+            >
+              <Avatar className="h-9 w-9">
+                <AvatarImage
+                  src={avatarUrl || undefined}
+                  alt={displayName}
+                />
+                <AvatarFallback>{getInitials()}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{displayName}</p>
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
