@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -122,7 +123,7 @@ export function Header() {
     <>
       <header className="border-b border-border bg-card">
         <div className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <LandcoverIcon className="h-6 w-6 text-primary-foreground" />
             </div>
@@ -130,7 +131,7 @@ export function Header() {
               <span className="hidden sm:inline">PEIT Map Creator - Permitting and Environmental Information Tool</span>
               <span className="sm:hidden">PEIT Map Creator</span>
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             {/* GitHub Button - Functional */}
             <Tooltip>
