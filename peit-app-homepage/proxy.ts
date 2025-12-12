@@ -1,5 +1,5 @@
 /**
- * Next.js Middleware for Supabase Auth
+ * Next.js Proxy for Supabase Auth
  *
  * Refreshes auth sessions on each request to keep tokens valid.
  * Runs on all routes except static assets.
@@ -8,7 +8,7 @@
 import { type NextRequest } from "next/server"
 import { updateSession } from "@/lib/supabase/middleware"
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   return await updateSession(request)
 }
 
