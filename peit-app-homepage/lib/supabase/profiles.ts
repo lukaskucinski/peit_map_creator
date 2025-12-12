@@ -31,6 +31,11 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 /**
  * Update the user's custom avatar URL in the profiles table
  * Uses upsert to handle both existing and new profiles
+ *
+ * Avatar values:
+ * - string URL: Custom avatar uploaded by user
+ * - "" (empty string): User explicitly removed their avatar (don't fallback to OAuth)
+ * - null: Never set a custom avatar (fallback to OAuth avatar allowed)
  */
 export async function updateCustomAvatar(
   userId: string,

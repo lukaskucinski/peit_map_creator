@@ -58,8 +58,14 @@ export function UserMenu({ user, customAvatarUrl }: UserMenuProps) {
   const displayName =
     user.user_metadata?.full_name || user.user_metadata?.name || "User"
 
-  // Priority: custom avatar (profiles table) > OAuth avatar (user_metadata)
-  const avatarUrl = customAvatarUrl || user.user_metadata?.avatar_url
+  // Avatar priority logic:
+  // - customAvatarUrl is a URL string: Use it (user uploaded custom avatar)
+  // - customAvatarUrl is "" (empty string): User explicitly removed avatar, show initials only
+  // - customAvatarUrl is null/undefined: Never set, fallback to OAuth avatar
+  const avatarUrl =
+    customAvatarUrl !== null && customAvatarUrl !== undefined
+      ? customAvatarUrl || undefined // empty string becomes undefined (no avatar)
+      : user.user_metadata?.avatar_url // null = fallback to OAuth
 
   return (
     <DropdownMenu>

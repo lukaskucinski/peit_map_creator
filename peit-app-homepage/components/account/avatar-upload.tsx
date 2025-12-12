@@ -25,10 +25,16 @@ export function AvatarUpload({ user, customAvatarUrl }: AvatarUploadProps) {
   const [displayName, setDisplayName] = useState(
     user.user_metadata?.full_name || user.user_metadata?.name || ""
   )
-  // Priority: custom avatar (profiles table) > OAuth avatar (user_metadata)
-  const [avatarUrl, setAvatarUrl] = useState(
-    customAvatarUrl || user.user_metadata?.avatar_url || ""
-  )
+  // Avatar priority logic:
+  // - customAvatarUrl is a URL string: Use it (user uploaded custom avatar)
+  // - customAvatarUrl is "" (empty string): User explicitly removed avatar, show initials only
+  // - customAvatarUrl is null/undefined: Never set, fallback to OAuth avatar
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    if (customAvatarUrl !== null && customAvatarUrl !== undefined) {
+      return customAvatarUrl // Could be URL or empty string (explicit removal)
+    }
+    return user.user_metadata?.avatar_url || "" // Fallback to OAuth
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -130,9 +136,10 @@ export function AvatarUpload({ user, customAvatarUrl }: AvatarUploadProps) {
     setSuccess(null)
 
     try {
-      // Remove from profiles table
+      // Remove from profiles table - use empty string to indicate explicit removal
+      // (empty string = user removed avatar, null = never set, fallback to OAuth)
       const { success: profileSuccess, error: profileError } =
-        await updateCustomAvatar(user.id, null)
+        await updateCustomAvatar(user.id, "")
 
       if (!profileSuccess) {
         throw new Error(profileError || "Failed to remove avatar")
