@@ -47,6 +47,7 @@ results_volume = modal.Volume.from_name("peit-results", create_if_missing=True)
 # Define the container image with geospatial dependencies
 peit_image = (
     modal.Image.micromamba()
+    .apt_install("ca-certificates")  # System SSL certificates
     .micromamba_install(
         "gdal>=3.8",
         "geos>=3.12",
@@ -55,6 +56,7 @@ peit_image = (
         "pyproj>=3.6",
         "shapely>=2.0",
         "geopandas>=0.14",
+        "ca-certificates",  # Conda SSL certificates
         channels=["conda-forge"]
     )
     .pip_install(
@@ -68,8 +70,9 @@ peit_image = (
         "fastapi[standard]",
         "vercel-blob>=0.1.0",
         "supabase>=2.10.0",
-        "certifi",  # SSL certificates for Supabase connection
+        "certifi",  # Python SSL certificates for httpx
     )
+    .run_commands("update-ca-certificates || true")  # Update system CA store
     # Add local directories to the container
     .add_local_dir("config", remote_path="/root/peit/config")
     .add_local_dir("core", remote_path="/root/peit/core")
@@ -115,7 +118,7 @@ def get_supabase_client():
     """Create Supabase client with service role key (bypasses RLS).
 
     Returns None if credentials are not configured.
-    Sets SSL_CERT_FILE for proper certificate verification in containers.
+    Configures SSL certificates for containerized environments.
     """
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -124,10 +127,17 @@ def get_supabase_client():
         return None
 
     try:
-        # Set SSL certificate path for httpx (used by supabase-py)
         import certifi
-        os.environ.setdefault("SSL_CERT_FILE", certifi.where())
-        os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+
+        # Set all SSL-related environment variables BEFORE importing supabase
+        # httpx respects SSL_CERT_FILE when creating default SSL context
+        cert_path = certifi.where()
+        os.environ["SSL_CERT_FILE"] = cert_path
+        os.environ["REQUESTS_CA_BUNDLE"] = cert_path
+        os.environ["CURL_CA_BUNDLE"] = cert_path
+
+        # Also configure httpx directly via its environment variable
+        os.environ["HTTPX_SSL_CERT_FILE"] = cert_path
 
         from supabase import create_client
         return create_client(url, key)

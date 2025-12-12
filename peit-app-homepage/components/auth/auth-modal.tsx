@@ -190,7 +190,7 @@ export function AuthModal({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="signin" className="space-y-4 min-h-[340px]">
+          <TabsContent value="signin" className="space-y-4 h-[400px]">
             {/* OAuth Buttons */}
             <div className="space-y-2">
               <Button
@@ -257,7 +257,7 @@ export function AuthModal({
             </form>
           </TabsContent>
 
-          <TabsContent value="signup" className="space-y-4 min-h-[340px]">
+          <TabsContent value="signup" className="space-y-4 h-[400px]">
             {/* OAuth Buttons */}
             <div className="space-y-2">
               <Button
