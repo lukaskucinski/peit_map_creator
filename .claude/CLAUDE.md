@@ -1640,6 +1640,11 @@ User authentication via Supabase with OAuth and email/password options.
 - `server.ts`: Server client for server components
 - `middleware.ts`: Middleware client for session refresh
 
+**Proxy (`proxy.ts`):**
+- Next.js 16 renamed `middleware.ts` → `proxy.ts` convention
+- Refreshes Supabase auth sessions on each request
+- Runs on all routes except static assets
+
 **Database:**
 - `jobs` table with RLS policies filtering by `user_id`
 - `avatars` storage bucket for user avatars
