@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Star } from "lucide-react"
+import { Star, User as UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -145,6 +145,24 @@ export function Header() {
               <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
             ) : (
               <>
+                {/* Mobile: Icon-only sign in button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="sm:hidden"
+                      onClick={() => openAuthModal("signin")}
+                    >
+                      <UserIcon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Sign in to your account</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Desktop: Text buttons */}
                 <Button
                   variant="ghost"
                   size="sm"

@@ -1648,7 +1648,19 @@ User authentication via Supabase with OAuth and email/password options.
 - `jobs` table with RLS policies filtering by `user_id`
 
 **Profile Display:**
-Avatar and display name come directly from OAuth provider (`user.user_metadata.avatar_url` and `user.user_metadata.full_name`). No custom profile editing - users see their Google/GitHub profile automatically.
+Avatar and display name come directly from OAuth provider (`user.user_metadata`). No custom profile editing - users see their Google/GitHub profile automatically.
+
+Avatar URL lookup order (different providers use different field names):
+- `user.user_metadata.avatar_url` (GitHub)
+- `user.user_metadata.picture` (Google)
+
+Display name lookup order:
+- `user.user_metadata.full_name`
+- `user.user_metadata.name`
+- Email prefix as fallback
+
+**Mobile Authentication:**
+Sign in/sign up buttons are hidden on mobile to save space. A User icon button (`sm:hidden`) opens the auth modal, matching the icon-only pattern used by GitHub and Donations buttons on mobile.
 
 **Dependencies:**
 - `@supabase/supabase-js` - Supabase client

@@ -39,8 +39,8 @@ export default async function AccountPage() {
     user.email?.split("@")[0] ||
     "User"
 
-  // Get avatar from OAuth provider
-  const avatarUrl = user.user_metadata?.avatar_url
+  // Get avatar from OAuth provider (Google uses 'picture', GitHub uses 'avatar_url')
+  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture
 
   // Get initials for fallback
   const getInitials = () => {
