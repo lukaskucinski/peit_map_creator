@@ -1650,6 +1650,13 @@ User authentication via Supabase with OAuth and email/password options.
 **Profile Display:**
 Avatar and display name come directly from OAuth provider (`user.user_metadata`). No custom profile editing - users see their Google/GitHub profile automatically.
 
+**Supabase URL Configuration:**
+The following redirect URLs are configured in Supabase Dashboard → Authentication → URL Configuration:
+- `https://peit-map-creator.vercel.app/**` (production)
+- `http://localhost:3000/**` (local development)
+
+Both URLs use wildcard patterns to allow OAuth callbacks to work correctly in each environment.
+
 Avatar URL lookup order (different providers use different field names):
 - `user.user_metadata.avatar_url` (GitHub)
 - `user.user_metadata.picture` (Google)
@@ -1661,6 +1668,20 @@ Display name lookup order:
 
 **Mobile Authentication:**
 Sign in/sign up buttons are hidden on mobile to save space. A User icon button (`sm:hidden`) opens the auth modal, matching the icon-only pattern used by GitHub and Donations buttons on mobile.
+
+**Anonymous Job Claiming:**
+Anonymous users can process files and later claim jobs by signing up:
+- Jobs created without auth have `user_id=NULL`
+- On completion, job ID stored in localStorage (`lib/pending-jobs.ts`)
+- Complete screen state preserved in sessionStorage (survives OAuth redirect)
+- `ClaimJobPrompt` dialog appears on mouse move/touch after job completion
+- On sign-in, `POST /api/claim-jobs` associates pending jobs with user
+- Toast confirms "Map saved to your history!"
+
+Key files:
+- `lib/pending-jobs.ts`: localStorage/sessionStorage utilities
+- `components/claim-job-prompt.tsx`: Sign-up prompt dialog
+- `modal_app.py`: `/api/claim-jobs` endpoint
 
 **Dependencies:**
 - `@supabase/supabase-js` - Supabase client
@@ -1822,6 +1843,32 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 
 **`GET /api/rate-limit`**
 - Returns remaining runs for current IP
+
+**`POST /api/claim-jobs`**
+- Claims unclaimed jobs for a newly authenticated user
+- Body: `{ user_id: string, job_ids: string[] }`
+- Updates jobs where `user_id IS NULL` to associate with the new user
+- Returns: `{ success: true, claimed_count: int }`
+- Used by frontend after anonymous user signs up to save their maps to history
+
+### Anonymous Job Claiming
+
+When anonymous users create maps, the jobs are stored with `user_id = NULL`. If they later sign up or log in, they can claim these jobs.
+
+**Frontend Flow:**
+1. Anonymous user processes file → job created with `user_id = NULL`
+2. Job ID stored in localStorage (`peit_pending_jobs`)
+3. Complete state shows "Save to History" prompt with Sign Up/Sign In buttons
+4. User authenticates → `onAuthStateChange` detects sign-in
+5. Frontend calls `POST /api/claim-jobs` with user ID and pending job IDs
+6. Backend updates job records to set `user_id`
+7. Jobs now appear in user's Map History dashboard
+
+**Key Files:**
+- `lib/pending-jobs.ts`: localStorage management for pending job IDs
+- `components/claim-job-prompt.tsx`: Sign up CTA shown after job completion
+- `components/processing-status.tsx`: Displays the claim prompt for anonymous users
+- `app/page.tsx`: Orchestrates auth state changes and job claiming
 
 ### Security & Rate Limiting
 

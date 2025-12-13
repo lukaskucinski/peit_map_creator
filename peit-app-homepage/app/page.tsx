@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import type { FeatureCollection } from "geojson"
 import { Header } from "@/components/header"
 import { UploadCard } from "@/components/upload-card"
@@ -8,10 +8,22 @@ import { HowItWorks } from "@/components/how-it-works"
 import { ConfigPanel, type ProcessingConfig } from "@/components/config-panel"
 import { ProcessingStatus, type ProgressUpdate } from "@/components/processing-status"
 import { MapDrawer } from "@/components/map-drawer-dynamic"
+import { AuthModal } from "@/components/auth/auth-modal"
 import { runMockProcessing } from "@/lib/mock-processing"
-import { processFile, downloadResults, isUsingMockMode } from "@/lib/api"
+import { processFile, downloadResults, isUsingMockMode, claimJobs } from "@/lib/api"
 import { parseGeospatialFile } from "@/lib/file-parsers"
 import { createClient } from "@/lib/supabase/client"
+import {
+  addPendingJob,
+  getPendingJobs,
+  clearPendingJobs,
+  saveCompleteState,
+  getCompleteState,
+  clearCompleteState,
+  type StoredCompleteState,
+} from "@/lib/pending-jobs"
+import { ClaimJobPrompt } from "@/components/claim-job-prompt"
+import { useToast } from "@/hooks/use-toast"
 import type { User } from "@supabase/supabase-js"
 
 // Application state types
@@ -20,7 +32,7 @@ type AppState =
   | { step: 'draw' }
   | { step: 'configure'; file: File; geojsonData?: FeatureCollection | null }
   | { step: 'processing'; file: File; config: ProcessingConfig }
-  | { step: 'complete'; file: File; config: ProcessingConfig; downloadUrl?: string; mapUrl?: string; pdfUrl?: string; xlsxUrl?: string }
+  | { step: 'complete'; file: File; config: ProcessingConfig; jobId?: string; downloadUrl?: string; mapUrl?: string; pdfUrl?: string; xlsxUrl?: string }
   | { step: 'error'; file: File; config: ProcessingConfig; message: string }
 
 export default function HomePage() {
@@ -28,24 +40,163 @@ export default function HomePage() {
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
   const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
+  const [isRestoringState, setIsRestoringState] = useState(true) // Track if we're restoring state
+  const [wasRestoredFromStorage, setWasRestoredFromStorage] = useState(false) // Track if complete state was restored
+  const [claimPromptOpen, setClaimPromptOpen] = useState(false) // Track claim prompt dialog visibility
+  const [claimPromptReady, setClaimPromptReady] = useState(false) // Track if claim prompt is ready to show (waiting for trigger)
   const supabase = createClient()
+  const { toast } = useToast()
+
+  // Track the previous user state for detecting sign-in events
+  const prevUserRef = useRef<User | null>(null)
+
+  // Restore complete state from sessionStorage on mount (survives OAuth redirect)
+  useEffect(() => {
+    const storedState = getCompleteState()
+    if (storedState) {
+      // Create a dummy File object for display purposes
+      // The actual file isn't needed since processing is complete
+      const dummyFile = new File([], storedState.filename, { type: 'application/octet-stream' })
+
+      setAppState({
+        step: 'complete',
+        file: dummyFile,
+        config: { projectName: '', projectId: '', bufferDistanceFeet: 500, clipBufferMiles: 1 }, // Dummy config
+        jobId: storedState.jobId,
+        downloadUrl: storedState.downloadUrl,
+        mapUrl: storedState.mapUrl,
+        pdfUrl: storedState.pdfUrl,
+        xlsxUrl: storedState.xlsxUrl,
+      })
+      setWasRestoredFromStorage(true)
+    }
+    setIsRestoringState(false)
+  }, [])
+
+  // Claim pending jobs for a newly authenticated user
+  // Note: This function doesn't depend on appState to avoid closure issues
+  // It gets job IDs from localStorage and sessionStorage instead
+  const claimPendingJobs = useCallback(async (userId: string) => {
+    // Get job ID from sessionStorage (current complete state)
+    const storedState = getCompleteState()
+    const currentJobId = storedState?.jobId
+
+    // Get stored pending jobs from localStorage
+    const storedJobs = getPendingJobs()
+
+    // Combine current job with stored jobs (deduplicate)
+    const jobsToClaim = [...new Set([currentJobId, ...storedJobs].filter(Boolean))] as string[]
+
+    if (jobsToClaim.length === 0) {
+      return
+    }
+
+    const result = await claimJobs(userId, jobsToClaim)
+
+    if (result.success && result.claimedCount && result.claimedCount > 0) {
+      // Clear localStorage after successful claim (but NOT sessionStorage - keep the complete state visible)
+      clearPendingJobs()
+
+      // Show success toast
+      toast({
+        title: result.claimedCount === 1
+          ? "Map saved to your history!"
+          : `${result.claimedCount} maps saved to your history!`,
+        description: "View your maps anytime from the dashboard.",
+      })
+    }
+  }, [toast])
 
   // Track authentication state for job history
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      prevUserRef.current = currentUser
+
+      // If user is already logged in on page load AND we have pending jobs,
+      // this might be returning from an OAuth redirect - claim the jobs
+      if (currentUser && !isRestoringState) {
+        const storedState = getCompleteState()
+        const storedJobs = getPendingJobs()
+        if (storedState?.jobId || storedJobs.length > 0) {
+          await claimPendingJobs(currentUser.id)
+        }
+      }
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const newUser = session?.user ?? null
+      const prevUser = prevUserRef.current
+
+      setUser(newUser)
+
+      // Detect sign-in event (was not logged in, now logged in)
+      if (!prevUser && newUser) {
+        // Close auth modal and claim prompt if open
+        setAuthModalOpen(false)
+        setClaimPromptReady(false)
+        setClaimPromptOpen(false)
+
+        // Claim any pending jobs
+        await claimPendingJobs(newUser.id)
+      }
+
+      // Update ref for next comparison
+      prevUserRef.current = newUser
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, claimPendingJobs, isRestoringState])
+
+  // Show claim prompt with delay - triggered by mouse movement (desktop) or timeout (mobile)
+  useEffect(() => {
+    if (!claimPromptReady || claimPromptOpen) return
+
+    let timeoutId: NodeJS.Timeout | null = null
+    let hasTriggered = false
+
+    const showPrompt = () => {
+      if (hasTriggered) return
+      hasTriggered = true
+      setClaimPromptOpen(true)
+      setClaimPromptReady(false)
+      // Clean up
+      if (timeoutId) clearTimeout(timeoutId)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchstart', handleTouch)
+    }
+
+    const handleMouseMove = () => {
+      // Small delay after mouse move for smoother feel
+      setTimeout(showPrompt, 200)
+    }
+
+    const handleTouch = () => {
+      // For touch devices, show after a brief delay
+      setTimeout(showPrompt, 500)
+    }
+
+    // Listen for mouse movement (desktop)
+    window.addEventListener('mousemove', handleMouseMove, { once: true })
+    // Listen for touch (mobile)
+    window.addEventListener('touchstart', handleTouch, { once: true })
+
+    // Fallback timeout for mobile devices that don't trigger events (3 seconds)
+    timeoutId = setTimeout(showPrompt, 3000)
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchstart', handleTouch)
+    }
+  }, [claimPromptReady, claimPromptOpen])
 
   // Handle file selection
   const handleFileSelected = useCallback((file: File) => {
@@ -130,10 +281,32 @@ export default function HomePage() {
       })
 
       if (result.success) {
+        // Store job ID to localStorage if user is not authenticated
+        // This allows claiming the job if they sign up later
+        if (!user && result.jobId) {
+          addPendingJob(result.jobId)
+          // Queue claim prompt to show on next user interaction (mouse move or touch)
+          setClaimPromptReady(true)
+        }
+
+        // Save complete state to sessionStorage (survives OAuth redirect)
+        saveCompleteState({
+          filename: file.name,
+          jobId: result.jobId,
+          downloadUrl: result.downloadUrl,
+          mapUrl: result.mapUrl,
+          pdfUrl: result.pdfUrl,
+          xlsxUrl: result.xlsxUrl,
+        })
+
+        // Reset the restored flag since this is a fresh completion
+        setWasRestoredFromStorage(false)
+
         setAppState({
           step: 'complete',
           file,
           config,
+          jobId: result.jobId,
           downloadUrl: result.downloadUrl,
           mapUrl: result.mapUrl,
           pdfUrl: result.pdfUrl,
@@ -167,8 +340,13 @@ export default function HomePage() {
 
   // Handle process another
   const handleProcessAnother = useCallback(() => {
+    // Clear the stored complete state
+    clearCompleteState()
     setAppState({ step: 'upload' })
     setProgressUpdates([])
+    setWasRestoredFromStorage(false)
+    setClaimPromptReady(false)
+    setClaimPromptOpen(false)
   }, [])
 
   // Determine what to show based on state
@@ -227,6 +405,7 @@ export default function HomePage() {
             mapUrl={appState.step === 'complete' ? appState.mapUrl : undefined}
             pdfUrl={appState.step === 'complete' ? appState.pdfUrl : undefined}
             xlsxUrl={appState.step === 'complete' ? appState.xlsxUrl : undefined}
+            showCompletionTime={!wasRestoredFromStorage}
             onDownload={handleDownload}
             onProcessAnother={handleProcessAnother}
           />
@@ -235,6 +414,29 @@ export default function HomePage() {
         {/* How It Works section - hidden during processing/complete */}
         {showHowItWorks && <HowItWorks />}
       </main>
+
+      {/* Auth Modal - for sign up/sign in from ProcessingStatus */}
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        defaultTab={authModalTab}
+      />
+
+      {/* Claim Job Prompt - for anonymous users after completing a job */}
+      <ClaimJobPrompt
+        open={claimPromptOpen}
+        onOpenChange={setClaimPromptOpen}
+        onSignUp={() => {
+          setClaimPromptOpen(false)
+          setAuthModalTab("signup")
+          setAuthModalOpen(true)
+        }}
+        onSignIn={() => {
+          setClaimPromptOpen(false)
+          setAuthModalTab("signin")
+          setAuthModalOpen(true)
+        }}
+      />
     </div>
   )
 }

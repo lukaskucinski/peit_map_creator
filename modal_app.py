@@ -751,6 +751,73 @@ def fastapi_app():
             media_type="application/zip"
         )
 
+    @web_app.post("/api/claim-jobs")
+    async def claim_jobs(request: Request):
+        """Claim unclaimed jobs for a newly authenticated user.
+
+        This allows anonymous users who just signed up to associate
+        their previously created jobs with their new account.
+
+        Body:
+            user_id: str - The authenticated user's ID
+            job_ids: list[str] - Array of job IDs to claim
+
+        Returns:
+            claimed_count: int - Number of jobs successfully claimed
+        """
+        try:
+            body = await request.json()
+            user_id = body.get("user_id")
+            job_ids = body.get("job_ids", [])
+
+            if not user_id:
+                raise HTTPException(status_code=400, detail="user_id is required")
+
+            if not job_ids or not isinstance(job_ids, list):
+                raise HTTPException(status_code=400, detail="job_ids must be a non-empty array")
+
+            # Validate job_ids are valid format (16 hex chars)
+            import re
+            valid_job_ids = [
+                jid for jid in job_ids
+                if isinstance(jid, str) and re.match(r'^[a-f0-9]{16}$', jid)
+            ]
+
+            if not valid_job_ids:
+                return {"claimed_count": 0, "message": "No valid job IDs provided"}
+
+            supabase = get_supabase_client()
+            if not supabase:
+                raise HTTPException(status_code=500, detail="Database not configured")
+
+            # Update jobs where id is in the list AND user_id is NULL
+            # This prevents claiming jobs that already belong to another user
+            claimed_count = 0
+            for job_id in valid_job_ids:
+                try:
+                    # Check if job exists and is unclaimed
+                    result = supabase.table('jobs').update({
+                        'user_id': user_id
+                    }).eq('id', job_id).is_('user_id', 'null').execute()
+
+                    # Count successful updates
+                    if result.data and len(result.data) > 0:
+                        claimed_count += 1
+                except Exception as e:
+                    # Log but continue with other jobs
+                    print(f"Warning: Failed to claim job {job_id}: {e}")
+
+            return {
+                "success": True,
+                "claimed_count": claimed_count,
+                "message": f"Successfully claimed {claimed_count} job(s)"
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     @web_app.delete("/api/account")
     async def delete_account(request: Request):
         """Delete a user account and all associated data.

@@ -25,6 +25,7 @@ interface ProcessingStatusProps {
   mapUrl?: string
   pdfUrl?: string
   xlsxUrl?: string
+  showCompletionTime?: boolean
   onDownload?: () => void
   onProcessAnother?: () => void
 }
@@ -39,6 +40,7 @@ export function ProcessingStatus({
   mapUrl,
   pdfUrl,
   xlsxUrl,
+  showCompletionTime = true,
   onDownload,
   onProcessAnother,
 }: ProcessingStatusProps) {
@@ -150,9 +152,12 @@ export function ProcessingStatus({
                 Your geospatial data has been processed successfully.
               </p>
 
-              <p className="mb-6 text-xs text-muted-foreground">
-                Completed in {formatTime(elapsedTime)}
-              </p>
+              {showCompletionTime && (
+                <p className="mb-6 text-xs text-muted-foreground">
+                  Completed in {formatTime(elapsedTime)}
+                </p>
+              )}
+              {!showCompletionTime && <div className="mb-6" />}
 
               <div className="flex flex-col gap-4 w-full max-w-md">
                 {/* Primary actions */}
@@ -241,6 +246,7 @@ export function ProcessingStatus({
                     Live links expire in 7 days
                   </p>
                 )}
+
 
                 {/* Process another */}
                 <Button
