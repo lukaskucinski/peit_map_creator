@@ -2,6 +2,10 @@
 
 A Python tool that replicates the NTIA's APPEIT (ArcGIS Pro Permitting and Environmental Information Tool) functionality by querying ArcGIS FeatureServers and generating interactive Leaflet web maps showing environmental layer intersections.
 
+## Live Demo
+
+Try the web version: **[PEIT Map Creator](https://peit-map-creator.vercel.app)**
+
 ## Overview
 
 This tool eliminates the need for an ArcGIS Pro license by directly querying ESRI-hosted FeatureServer REST APIs and creating dynamic, interactive web maps that display environmental features intersecting with a user-provided polygon.
