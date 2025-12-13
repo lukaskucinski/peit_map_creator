@@ -65,8 +65,8 @@ export function UserMenu({ user }: UserMenuProps) {
     return user.email?.slice(0, 2).toUpperCase() || "U"
   }
 
-  // Get avatar from OAuth provider
-  const avatarUrl = user.user_metadata?.avatar_url
+  // Get avatar from OAuth provider (Google uses 'picture', GitHub uses 'avatar_url')
+  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture
 
   return (
     <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
