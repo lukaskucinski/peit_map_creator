@@ -1650,6 +1650,13 @@ User authentication via Supabase with OAuth and email/password options.
 **Profile Display:**
 Avatar and display name come directly from OAuth provider (`user.user_metadata`). No custom profile editing - users see their Google/GitHub profile automatically.
 
+**Supabase URL Configuration:**
+The following redirect URLs are configured in Supabase Dashboard → Authentication → URL Configuration:
+- `https://peit-map-creator.vercel.app/**` (production)
+- `http://localhost:3000/**` (local development)
+
+Both URLs use wildcard patterns to allow OAuth callbacks to work correctly in each environment.
+
 Avatar URL lookup order (different providers use different field names):
 - `user.user_metadata.avatar_url` (GitHub)
 - `user.user_metadata.picture` (Google)
