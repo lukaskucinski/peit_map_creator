@@ -44,6 +44,15 @@ export interface ProcessingResult {
 }
 
 /**
+ * Result of claiming jobs
+ */
+export interface ClaimJobsResult {
+  success: boolean
+  claimedCount?: number
+  error?: string
+}
+
+/**
  * Check API health status
  */
 export async function checkHealth(): Promise<boolean> {
@@ -294,5 +303,64 @@ export async function downloadResults(downloadUrl: string): Promise<void> {
   } catch (error) {
     console.error("Download error:", error)
     throw error
+  }
+}
+
+/**
+ * Claim unclaimed jobs for a newly authenticated user
+ *
+ * @param userId - The authenticated user's ID
+ * @param jobIds - Array of job IDs to claim
+ * @returns Result with number of jobs claimed
+ */
+export async function claimJobs(
+  userId: string,
+  jobIds: string[]
+): Promise<ClaimJobsResult> {
+  if (!API_URL) {
+    return {
+      success: false,
+      error: "API URL not configured",
+    }
+  }
+
+  if (!jobIds || jobIds.length === 0) {
+    return {
+      success: true,
+      claimedCount: 0,
+    }
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/claim-jobs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        job_ids: jobIds,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      return {
+        success: false,
+        error: errorData.detail || `Server error: ${response.status}`,
+      }
+    }
+
+    const data = await response.json()
+    return {
+      success: true,
+      claimedCount: data.claimed_count || 0,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error occurred"
+    return {
+      success: false,
+      error: `Network error: ${message}`,
+    }
   }
 }

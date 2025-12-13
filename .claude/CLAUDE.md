@@ -1823,6 +1823,32 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 **`GET /api/rate-limit`**
 - Returns remaining runs for current IP
 
+**`POST /api/claim-jobs`**
+- Claims unclaimed jobs for a newly authenticated user
+- Body: `{ user_id: string, job_ids: string[] }`
+- Updates jobs where `user_id IS NULL` to associate with the new user
+- Returns: `{ success: true, claimed_count: int }`
+- Used by frontend after anonymous user signs up to save their maps to history
+
+### Anonymous Job Claiming
+
+When anonymous users create maps, the jobs are stored with `user_id = NULL`. If they later sign up or log in, they can claim these jobs.
+
+**Frontend Flow:**
+1. Anonymous user processes file → job created with `user_id = NULL`
+2. Job ID stored in localStorage (`peit_pending_jobs`)
+3. Complete state shows "Save to History" prompt with Sign Up/Sign In buttons
+4. User authenticates → `onAuthStateChange` detects sign-in
+5. Frontend calls `POST /api/claim-jobs` with user ID and pending job IDs
+6. Backend updates job records to set `user_id`
+7. Jobs now appear in user's Map History dashboard
+
+**Key Files:**
+- `lib/pending-jobs.ts`: localStorage management for pending job IDs
+- `components/claim-job-prompt.tsx`: Sign up CTA shown after job completion
+- `components/processing-status.tsx`: Displays the claim prompt for anonymous users
+- `app/page.tsx`: Orchestrates auth state changes and job claiming
+
 ### Security & Rate Limiting
 
 **Protection Layers:**

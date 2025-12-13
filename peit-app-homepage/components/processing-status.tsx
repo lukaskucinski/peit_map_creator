@@ -5,6 +5,7 @@ import { Loader2, CheckCircle, Download, RotateCcw, XCircle, ExternalLink, Copy,
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
+import { ClaimJobPrompt } from "@/components/claim-job-prompt"
 
 export interface ProgressUpdate {
   stage: 'upload' | 'geometry' | 'query' | 'map' | 'report' | 'complete' | 'error'
@@ -25,8 +26,12 @@ interface ProcessingStatusProps {
   mapUrl?: string
   pdfUrl?: string
   xlsxUrl?: string
+  jobId?: string
+  isAuthenticated: boolean
   onDownload?: () => void
   onProcessAnother?: () => void
+  onSignUp?: () => void
+  onSignIn?: () => void
 }
 
 export function ProcessingStatus({
@@ -39,8 +44,12 @@ export function ProcessingStatus({
   mapUrl,
   pdfUrl,
   xlsxUrl,
+  jobId,
+  isAuthenticated,
   onDownload,
   onProcessAnother,
+  onSignUp,
+  onSignIn,
 }: ProcessingStatusProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [startTime] = useState(Date.now())
@@ -240,6 +249,11 @@ export function ProcessingStatus({
                   <p className="text-xs text-muted-foreground text-center">
                     Live links expire in 7 days
                   </p>
+                )}
+
+                {/* Sign up prompt for anonymous users */}
+                {!isAuthenticated && jobId && onSignUp && onSignIn && (
+                  <ClaimJobPrompt onSignUp={onSignUp} onSignIn={onSignIn} />
                 )}
 
                 {/* Process another */}
