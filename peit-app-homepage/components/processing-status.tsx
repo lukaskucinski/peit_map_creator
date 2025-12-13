@@ -5,7 +5,6 @@ import { Loader2, CheckCircle, Download, RotateCcw, XCircle, ExternalLink, Copy,
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { ClaimJobPrompt } from "@/components/claim-job-prompt"
 
 export interface ProgressUpdate {
   stage: 'upload' | 'geometry' | 'query' | 'map' | 'report' | 'complete' | 'error'
@@ -26,12 +25,9 @@ interface ProcessingStatusProps {
   mapUrl?: string
   pdfUrl?: string
   xlsxUrl?: string
-  jobId?: string
-  isAuthenticated: boolean
+  showCompletionTime?: boolean
   onDownload?: () => void
   onProcessAnother?: () => void
-  onSignUp?: () => void
-  onSignIn?: () => void
 }
 
 export function ProcessingStatus({
@@ -44,12 +40,9 @@ export function ProcessingStatus({
   mapUrl,
   pdfUrl,
   xlsxUrl,
-  jobId,
-  isAuthenticated,
+  showCompletionTime = true,
   onDownload,
   onProcessAnother,
-  onSignUp,
-  onSignIn,
 }: ProcessingStatusProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [startTime] = useState(Date.now())
@@ -159,9 +152,12 @@ export function ProcessingStatus({
                 Your geospatial data has been processed successfully.
               </p>
 
-              <p className="mb-6 text-xs text-muted-foreground">
-                Completed in {formatTime(elapsedTime)}
-              </p>
+              {showCompletionTime && (
+                <p className="mb-6 text-xs text-muted-foreground">
+                  Completed in {formatTime(elapsedTime)}
+                </p>
+              )}
+              {!showCompletionTime && <div className="mb-6" />}
 
               <div className="flex flex-col gap-4 w-full max-w-md">
                 {/* Primary actions */}
@@ -251,10 +247,6 @@ export function ProcessingStatus({
                   </p>
                 )}
 
-                {/* Sign up prompt for anonymous users */}
-                {!isAuthenticated && jobId && onSignUp && onSignIn && (
-                  <ClaimJobPrompt onSignUp={onSignUp} onSignIn={onSignIn} />
-                )}
 
                 {/* Process another */}
                 <Button

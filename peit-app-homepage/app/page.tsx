@@ -22,6 +22,7 @@ import {
   clearCompleteState,
   type StoredCompleteState,
 } from "@/lib/pending-jobs"
+import { ClaimJobPrompt } from "@/components/claim-job-prompt"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@supabase/supabase-js"
 
@@ -42,6 +43,9 @@ export default function HomePage() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
   const [isRestoringState, setIsRestoringState] = useState(true) // Track if we're restoring state
+  const [wasRestoredFromStorage, setWasRestoredFromStorage] = useState(false) // Track if complete state was restored
+  const [claimPromptOpen, setClaimPromptOpen] = useState(false) // Track claim prompt dialog visibility
+  const [claimPromptReady, setClaimPromptReady] = useState(false) // Track if claim prompt is ready to show (waiting for trigger)
   const supabase = createClient()
   const { toast } = useToast()
 
@@ -66,6 +70,7 @@ export default function HomePage() {
         pdfUrl: storedState.pdfUrl,
         xlsxUrl: storedState.xlsxUrl,
       })
+      setWasRestoredFromStorage(true)
     }
     setIsRestoringState(false)
   }, [])
@@ -134,8 +139,10 @@ export default function HomePage() {
 
       // Detect sign-in event (was not logged in, now logged in)
       if (!prevUser && newUser) {
-        // Close auth modal if open
+        // Close auth modal and claim prompt if open
         setAuthModalOpen(false)
+        setClaimPromptReady(false)
+        setClaimPromptOpen(false)
 
         // Claim any pending jobs
         await claimPendingJobs(newUser.id)
@@ -147,6 +154,49 @@ export default function HomePage() {
 
     return () => subscription.unsubscribe()
   }, [supabase, claimPendingJobs, isRestoringState])
+
+  // Show claim prompt with delay - triggered by mouse movement (desktop) or timeout (mobile)
+  useEffect(() => {
+    if (!claimPromptReady || claimPromptOpen) return
+
+    let timeoutId: NodeJS.Timeout | null = null
+    let hasTriggered = false
+
+    const showPrompt = () => {
+      if (hasTriggered) return
+      hasTriggered = true
+      setClaimPromptOpen(true)
+      setClaimPromptReady(false)
+      // Clean up
+      if (timeoutId) clearTimeout(timeoutId)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchstart', handleTouch)
+    }
+
+    const handleMouseMove = () => {
+      // Small delay after mouse move for smoother feel
+      setTimeout(showPrompt, 200)
+    }
+
+    const handleTouch = () => {
+      // For touch devices, show after a brief delay
+      setTimeout(showPrompt, 500)
+    }
+
+    // Listen for mouse movement (desktop)
+    window.addEventListener('mousemove', handleMouseMove, { once: true })
+    // Listen for touch (mobile)
+    window.addEventListener('touchstart', handleTouch, { once: true })
+
+    // Fallback timeout for mobile devices that don't trigger events (3 seconds)
+    timeoutId = setTimeout(showPrompt, 3000)
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchstart', handleTouch)
+    }
+  }, [claimPromptReady, claimPromptOpen])
 
   // Handle file selection
   const handleFileSelected = useCallback((file: File) => {
@@ -235,6 +285,8 @@ export default function HomePage() {
         // This allows claiming the job if they sign up later
         if (!user && result.jobId) {
           addPendingJob(result.jobId)
+          // Queue claim prompt to show on next user interaction (mouse move or touch)
+          setClaimPromptReady(true)
         }
 
         // Save complete state to sessionStorage (survives OAuth redirect)
@@ -246,6 +298,9 @@ export default function HomePage() {
           pdfUrl: result.pdfUrl,
           xlsxUrl: result.xlsxUrl,
         })
+
+        // Reset the restored flag since this is a fresh completion
+        setWasRestoredFromStorage(false)
 
         setAppState({
           step: 'complete',
@@ -289,6 +344,9 @@ export default function HomePage() {
     clearCompleteState()
     setAppState({ step: 'upload' })
     setProgressUpdates([])
+    setWasRestoredFromStorage(false)
+    setClaimPromptReady(false)
+    setClaimPromptOpen(false)
   }, [])
 
   // Determine what to show based on state
@@ -347,18 +405,9 @@ export default function HomePage() {
             mapUrl={appState.step === 'complete' ? appState.mapUrl : undefined}
             pdfUrl={appState.step === 'complete' ? appState.pdfUrl : undefined}
             xlsxUrl={appState.step === 'complete' ? appState.xlsxUrl : undefined}
-            jobId={appState.step === 'complete' ? appState.jobId : undefined}
-            isAuthenticated={!!user}
+            showCompletionTime={!wasRestoredFromStorage}
             onDownload={handleDownload}
             onProcessAnother={handleProcessAnother}
-            onSignUp={() => {
-              setAuthModalTab("signup")
-              setAuthModalOpen(true)
-            }}
-            onSignIn={() => {
-              setAuthModalTab("signin")
-              setAuthModalOpen(true)
-            }}
           />
         )}
 
@@ -371,6 +420,22 @@ export default function HomePage() {
         open={authModalOpen}
         onOpenChange={setAuthModalOpen}
         defaultTab={authModalTab}
+      />
+
+      {/* Claim Job Prompt - for anonymous users after completing a job */}
+      <ClaimJobPrompt
+        open={claimPromptOpen}
+        onOpenChange={setClaimPromptOpen}
+        onSignUp={() => {
+          setClaimPromptOpen(false)
+          setAuthModalTab("signup")
+          setAuthModalOpen(true)
+        }}
+        onSignIn={() => {
+          setClaimPromptOpen(false)
+          setAuthModalTab("signin")
+          setAuthModalOpen(true)
+        }}
       />
     </div>
   )
