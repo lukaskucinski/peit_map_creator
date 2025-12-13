@@ -130,3 +130,99 @@ export function removePendingJob(jobId: string): void {
   const jobs = getStoredJobs().filter((job) => job.jobId !== jobId)
   saveStoredJobs(jobs)
 }
+
+// ============================================================================
+// Complete State Storage (sessionStorage)
+// Used to preserve the "complete" screen across OAuth redirects
+// ============================================================================
+
+const COMPLETE_STATE_KEY = "peit_complete_state"
+
+/**
+ * Serializable complete state for storage
+ */
+export interface StoredCompleteState {
+  filename: string
+  jobId?: string
+  downloadUrl?: string
+  mapUrl?: string
+  pdfUrl?: string
+  xlsxUrl?: string
+  timestamp: number
+}
+
+/**
+ * Check if sessionStorage is available
+ */
+function isSessionStorageAvailable(): boolean {
+  try {
+    const testKey = "__session_test__"
+    window.sessionStorage.setItem(testKey, testKey)
+    window.sessionStorage.removeItem(testKey)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Save the complete state to sessionStorage
+ * This preserves the completion screen across OAuth redirects
+ */
+export function saveCompleteState(state: Omit<StoredCompleteState, "timestamp">): void {
+  if (!isSessionStorageAvailable()) return
+
+  try {
+    const stored: StoredCompleteState = {
+      ...state,
+      timestamp: Date.now(),
+    }
+    window.sessionStorage.setItem(COMPLETE_STATE_KEY, JSON.stringify(stored))
+  } catch {
+    // Silently fail
+  }
+}
+
+/**
+ * Get the stored complete state from sessionStorage
+ * Returns null if not found or expired (older than 1 hour)
+ */
+export function getCompleteState(): StoredCompleteState | null {
+  if (!isSessionStorageAvailable()) return null
+
+  try {
+    const stored = window.sessionStorage.getItem(COMPLETE_STATE_KEY)
+    if (!stored) return null
+
+    const parsed = JSON.parse(stored) as StoredCompleteState
+
+    // Validate required fields
+    if (!parsed.filename || typeof parsed.timestamp !== "number") {
+      return null
+    }
+
+    // Expire after 1 hour (to prevent stale state)
+    const oneHour = 60 * 60 * 1000
+    if (Date.now() - parsed.timestamp > oneHour) {
+      clearCompleteState()
+      return null
+    }
+
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Clear the stored complete state
+ */
+export function clearCompleteState(): void {
+  if (!isSessionStorageAvailable()) return
+
+  try {
+    window.sessionStorage.removeItem(COMPLETE_STATE_KEY)
+  } catch {
+    // Silently fail
+  }
+}

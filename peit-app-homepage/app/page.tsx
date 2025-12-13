@@ -13,7 +13,15 @@ import { runMockProcessing } from "@/lib/mock-processing"
 import { processFile, downloadResults, isUsingMockMode, claimJobs } from "@/lib/api"
 import { parseGeospatialFile } from "@/lib/file-parsers"
 import { createClient } from "@/lib/supabase/client"
-import { addPendingJob, getPendingJobs, clearPendingJobs } from "@/lib/pending-jobs"
+import {
+  addPendingJob,
+  getPendingJobs,
+  clearPendingJobs,
+  saveCompleteState,
+  getCompleteState,
+  clearCompleteState,
+  type StoredCompleteState,
+} from "@/lib/pending-jobs"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@supabase/supabase-js"
 
@@ -33,31 +41,57 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
+  const [isRestoringState, setIsRestoringState] = useState(true) // Track if we're restoring state
   const supabase = createClient()
   const { toast } = useToast()
 
   // Track the previous user state for detecting sign-in events
   const prevUserRef = useRef<User | null>(null)
 
+  // Restore complete state from sessionStorage on mount (survives OAuth redirect)
+  useEffect(() => {
+    const storedState = getCompleteState()
+    if (storedState) {
+      // Create a dummy File object for display purposes
+      // The actual file isn't needed since processing is complete
+      const dummyFile = new File([], storedState.filename, { type: 'application/octet-stream' })
+
+      setAppState({
+        step: 'complete',
+        file: dummyFile,
+        config: { projectName: '', projectId: '', bufferDistanceFeet: 500, clipBufferMiles: 1 }, // Dummy config
+        jobId: storedState.jobId,
+        downloadUrl: storedState.downloadUrl,
+        mapUrl: storedState.mapUrl,
+        pdfUrl: storedState.pdfUrl,
+        xlsxUrl: storedState.xlsxUrl,
+      })
+    }
+    setIsRestoringState(false)
+  }, [])
+
   // Claim pending jobs for a newly authenticated user
+  // Note: This function doesn't depend on appState to avoid closure issues
+  // It gets job IDs from localStorage and sessionStorage instead
   const claimPendingJobs = useCallback(async (userId: string) => {
-    // Get current job ID from app state (if in complete state)
-    const currentJobId = appState.step === 'complete' ? appState.jobId : undefined
+    // Get job ID from sessionStorage (current complete state)
+    const storedState = getCompleteState()
+    const currentJobId = storedState?.jobId
 
     // Get stored pending jobs from localStorage
     const storedJobs = getPendingJobs()
 
     // Combine current job with stored jobs (deduplicate)
-    const jobsTolaim = [...new Set([currentJobId, ...storedJobs].filter(Boolean))] as string[]
+    const jobsToClaim = [...new Set([currentJobId, ...storedJobs].filter(Boolean))] as string[]
 
-    if (jobsTolaim.length === 0) {
+    if (jobsToClaim.length === 0) {
       return
     }
 
-    const result = await claimJobs(userId, jobsTolaim)
+    const result = await claimJobs(userId, jobsToClaim)
 
     if (result.success && result.claimedCount && result.claimedCount > 0) {
-      // Clear localStorage after successful claim
+      // Clear localStorage after successful claim (but NOT sessionStorage - keep the complete state visible)
       clearPendingJobs()
 
       // Show success toast
@@ -68,14 +102,25 @@ export default function HomePage() {
         description: "View your maps anytime from the dashboard.",
       })
     }
-  }, [appState, toast])
+  }, [toast])
 
   // Track authentication state for job history
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      prevUserRef.current = session?.user ?? null
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      prevUserRef.current = currentUser
+
+      // If user is already logged in on page load AND we have pending jobs,
+      // this might be returning from an OAuth redirect - claim the jobs
+      if (currentUser && !isRestoringState) {
+        const storedState = getCompleteState()
+        const storedJobs = getPendingJobs()
+        if (storedState?.jobId || storedJobs.length > 0) {
+          await claimPendingJobs(currentUser.id)
+        }
+      }
     })
 
     // Listen for auth changes
@@ -101,7 +146,7 @@ export default function HomePage() {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase, claimPendingJobs])
+  }, [supabase, claimPendingJobs, isRestoringState])
 
   // Handle file selection
   const handleFileSelected = useCallback((file: File) => {
@@ -192,6 +237,16 @@ export default function HomePage() {
           addPendingJob(result.jobId)
         }
 
+        // Save complete state to sessionStorage (survives OAuth redirect)
+        saveCompleteState({
+          filename: file.name,
+          jobId: result.jobId,
+          downloadUrl: result.downloadUrl,
+          mapUrl: result.mapUrl,
+          pdfUrl: result.pdfUrl,
+          xlsxUrl: result.xlsxUrl,
+        })
+
         setAppState({
           step: 'complete',
           file,
@@ -230,6 +285,8 @@ export default function HomePage() {
 
   // Handle process another
   const handleProcessAnother = useCallback(() => {
+    // Clear the stored complete state
+    clearCompleteState()
     setAppState({ step: 'upload' })
     setProgressUpdates([])
   }, [])
