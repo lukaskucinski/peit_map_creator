@@ -1669,6 +1669,20 @@ Display name lookup order:
 **Mobile Authentication:**
 Sign in/sign up buttons are hidden on mobile to save space. A User icon button (`sm:hidden`) opens the auth modal, matching the icon-only pattern used by GitHub and Donations buttons on mobile.
 
+**Anonymous Job Claiming:**
+Anonymous users can process files and later claim jobs by signing up:
+- Jobs created without auth have `user_id=NULL`
+- On completion, job ID stored in localStorage (`lib/pending-jobs.ts`)
+- Complete screen state preserved in sessionStorage (survives OAuth redirect)
+- `ClaimJobPrompt` dialog appears on mouse move/touch after job completion
+- On sign-in, `POST /api/claim-jobs` associates pending jobs with user
+- Toast confirms "Map saved to your history!"
+
+Key files:
+- `lib/pending-jobs.ts`: localStorage/sessionStorage utilities
+- `components/claim-job-prompt.tsx`: Sign-up prompt dialog
+- `modal_app.py`: `/api/claim-jobs` endpoint
+
 **Dependencies:**
 - `@supabase/supabase-js` - Supabase client
 - `@supabase/ssr` - Server-side rendering support
