@@ -6,6 +6,7 @@ import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css"
 import "@geoman-io/leaflet-geoman-free"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { X, Check, Trash2, Search, Layers, AlertCircle } from "lucide-react"
 import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary } from "@/lib/geojson-utils"
@@ -202,7 +203,7 @@ function SearchControl() {
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Search address or coordinates..."
-          className="w-64 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="w-64 px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           disabled={isSearching}
         />
         <Button
@@ -240,7 +241,7 @@ function BaseMapSelector({
           size="sm"
           variant="secondary"
           onClick={() => setIsOpen(!isOpen)}
-          className="shadow-md bg-white hover:bg-gray-100"
+          className="shadow-md bg-white hover:bg-gray-100 text-gray-900"
         >
           <Layers className="h-4 w-4 mr-1" />
           {BASE_MAPS[currentBaseMap].name}
@@ -255,7 +256,7 @@ function BaseMapSelector({
                   onBaseMapChange(key as keyof typeof BASE_MAPS)
                   setIsOpen(false)
                 }}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                className={`w-full px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-100 ${
                   currentBaseMap === key ? "bg-gray-100 font-medium" : ""
                 }`}
               >
@@ -270,10 +271,22 @@ function BaseMapSelector({
 }
 
 export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
+  const { resolvedTheme } = useTheme()
   const [baseMap, setBaseMap] = useState<keyof typeof BASE_MAPS>("street")
   const [featureCount, setFeatureCount] = useState(0)
   const [validationError, setValidationError] = useState<string | null>(null)
   const featureGroupRef = useRef<LeafletFeatureGroup | null>(null)
+  const initialBasemapSet = useRef(false)
+
+  // Set default basemap based on theme (only once on initial mount)
+  useEffect(() => {
+    if (!initialBasemapSet.current && resolvedTheme) {
+      initialBasemapSet.current = true
+      if (resolvedTheme === "dark") {
+        setBaseMap("dark")
+      }
+    }
+  }, [resolvedTheme])
 
   // Update feature count when shapes are drawn or removed
   const updateFeatureCount = useCallback(() => {
