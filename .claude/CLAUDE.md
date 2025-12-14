@@ -1306,12 +1306,13 @@ The HTML map includes these external libraries:
 - Only push commits to the GitHub remote when explicitly requested
 - Only create a commit and push to remote if explicitly requested
 
-## Commit Message Format
+## Commit Message and PR Format
 
-- Do NOT include "Generated with Claude Code" attribution
+- Do NOT include "Generated with Claude Code" attribution in commits or PRs
 - Do NOT include "Co-Authored-By: Claude" lines
-- Keep commit messages clean and professional
-- Use clear, descriptive commit messages that explain what changed and why
+- Do NOT include emoji robot icons (🤖) with Claude attribution
+- Keep commit messages and PR descriptions clean and professional
+- Use clear, descriptive messages that explain what changed and why
 
 ## Best Practices for Development
 
