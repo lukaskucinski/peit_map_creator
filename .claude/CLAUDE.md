@@ -2020,6 +2020,11 @@ Uses Micromamba for geospatial dependencies:
 - Fiona >= 1.9
 - PyProj >= 3.6
 
+**Python Dependencies:**
+- `vercel>=0.4.0` - Official Vercel Python SDK for Blob storage operations
+  - Uses `BlobClient` for put, list_objects, and delete operations
+  - Properly supports `prefix` parameter for filtering blob listings
+
 ### Deployment
 ```bash
 # Development (hot reload)
