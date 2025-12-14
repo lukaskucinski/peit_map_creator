@@ -502,6 +502,7 @@ Configuration file: `config/layers_config.json`
 ```json
 {
   "name": "Layer Name",
+  "enabled": true,
   "url": "https://services.arcgis.com/.../FeatureServer",
   "layer_id": 0,
   "color": "#HEX_COLOR",
@@ -518,6 +519,7 @@ Configuration file: `config/layers_config.json`
 
 **Field descriptions**:
 - `name`: Display name for the layer (required)
+- `enabled`: Whether to process this layer (optional, defaults to `true`). Set to `false` to temporarily disable a layer without removing it from config.
 - `url`: ArcGIS FeatureServer REST API endpoint (required)
 - `layer_id`: Layer ID within the FeatureServer (required, typically 0)
 - `color`: Border/stroke color for lines and polygons (required, hex format)
