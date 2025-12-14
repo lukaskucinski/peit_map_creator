@@ -84,6 +84,9 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
   const [isEditingBuffer, setIsEditingBuffer] = useState(false)
   const [bufferInputValue, setBufferInputValue] = useState("")
   const bufferInputRef = useRef<HTMLInputElement>(null)
+  const [isEditingClipBuffer, setIsEditingClipBuffer] = useState(false)
+  const [clipBufferInputValue, setClipBufferInputValue] = useState("")
+  const clipBufferInputRef = useRef<HTMLInputElement>(null)
 
   // Get filename without extension for default project name
   const defaultProjectName = filename.replace(/\.[^/.]+$/, "")
@@ -185,6 +188,35 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
     }
   }
 
+  // Handle starting clip buffer edit mode
+  const startClipBufferEdit = () => {
+    if (disabled) return
+    setClipBufferInputValue(clipBufferMiles.toString())
+    setIsEditingClipBuffer(true)
+    setTimeout(() => clipBufferInputRef.current?.select(), 0)
+  }
+
+  // Handle clip buffer input validation and save
+  const saveClipBufferInput = () => {
+    const parsed = parseFloat(clipBufferInputValue)
+    if (!isNaN(parsed)) {
+      // Clamp to valid range (0.1-5.0, cannot be 0)
+      const clamped = Math.max(MIN_CLIP_MILES, Math.min(MAX_CLIP_MILES, parsed))
+      // Round to 1 decimal place
+      setClipBufferMiles(Math.round(clamped * 10) / 10)
+    }
+    setIsEditingClipBuffer(false)
+  }
+
+  // Handle clip buffer input key events
+  const handleClipBufferKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveClipBufferInput()
+    } else if (e.key === 'Escape') {
+      setIsEditingClipBuffer(false)
+    }
+  }
+
   return (
     <Card className="mx-auto max-w-2xl mt-6">
       <CardHeader className="pb-4">
@@ -283,9 +315,30 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <LabelWithTooltip label="Clip Buffer Distance" tooltip={TOOLTIPS.clipBuffer} />
-            <span className="text-sm font-medium text-foreground">
-              {clipBufferMiles.toFixed(1)} mi
-            </span>
+            {isEditingClipBuffer ? (
+              <input
+                ref={clipBufferInputRef}
+                type="number"
+                value={clipBufferInputValue}
+                onChange={(e) => setClipBufferInputValue(e.target.value)}
+                onBlur={saveClipBufferInput}
+                onKeyDown={handleClipBufferKeyDown}
+                min={MIN_CLIP_MILES}
+                max={MAX_CLIP_MILES}
+                step={0.1}
+                className="w-20 h-7 px-2 text-sm font-medium text-right border rounded focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={startClipBufferEdit}
+                disabled={disabled}
+                className="text-sm font-medium text-foreground hover:text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                title="Click to edit"
+              >
+                {clipBufferMiles.toFixed(1)} mi
+              </button>
+            )}
           </div>
           <Slider
             value={[clipBufferMiles]}

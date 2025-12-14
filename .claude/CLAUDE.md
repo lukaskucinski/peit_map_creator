@@ -1604,6 +1604,10 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
   - Slider step: 100ft increments (0, 100, 200... but clamped to minimum 1ft)
   - Clickable value: Click the ft value to manually enter exact buffer distance
 - Clip buffer distance slider with tooltip
+  - Minimum: 0.1 mi (cannot be 0)
+  - Maximum: 5.0 mi
+  - Default: 1.0 mi
+  - Clickable value: Click the mi value to manually enter exact clip distance
 - Real-time area estimation based on geometry and buffer settings
 - Area validation against 5,000 sq mi limit with warning at 2,500 sq mi
 - Uses `LabelWithTooltip` helper component for consistent tooltip UI
