@@ -1734,6 +1734,11 @@ Theme colors defined in `app/globals.css`:
 - `:root` - Light mode colors (oklch format)
 - `.dark` - Dark mode colors (oklch format)
 
+**Map Drawer Integration:**
+- Map controls (search input, basemap selector) use fixed light styling (`bg-white text-gray-900`) to ensure readability on map tiles
+- Default basemap automatically switches to "Dark Theme" when app is in dark mode
+- User can still manually change basemap; theme-based default only applies on initial load
+
 **Dependencies:**
 - `next-themes@0.4.6` - Theme management with SSR support
 
