@@ -1598,7 +1598,16 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 **`components/config-panel.tsx`**
 - Project name and ID inputs with tooltips explaining their purpose
 - Buffer distance configuration (hidden for polygon inputs since polygons don't get buffered)
+  - Minimum: 1ft (prevents empty geometries from 0ft buffer on points/lines)
+  - Maximum: 26,400ft (5 miles)
+  - Default: 500ft
+  - Slider step: 100ft increments (0, 100, 200... but clamped to minimum 1ft)
+  - Clickable value: Click the ft value to manually enter exact buffer distance
 - Clip buffer distance slider with tooltip
+  - Minimum: 0.1 mi (cannot be 0)
+  - Maximum: 5.0 mi
+  - Default: 1.0 mi
+  - Clickable value: Click the mi value to manually enter exact clip distance
 - Real-time area estimation based on geometry and buffer settings
 - Area validation against 5,000 sq mi limit with warning at 2,500 sq mi
 - Uses `LabelWithTooltip` helper component for consistent tooltip UI
@@ -1743,6 +1752,8 @@ TypeScript client for the Modal backend:
 - `checkHealth()`: Verify backend availability
 - `getRateLimitStatus()`: Check daily run limits
 - `processFile()`: Upload and process file with SSE progress streaming
+- `claimJobs()`: Claim unclaimed jobs for authenticated user
+- `deleteJob()`: Delete a job and all associated storage (requires ownership)
 
 ### File Validation (`lib/validation.ts`)
 - **Allowed Extensions**: `.geojson`, `.json`, `.gpkg`, `.kml`, `.kmz`, `.zip`
@@ -1850,6 +1861,13 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 - Updates jobs where `user_id IS NULL` to associate with the new user
 - Returns: `{ success: true, claimed_count: int }`
 - Used by frontend after anonymous user signs up to save their maps to history
+
+**`DELETE /api/jobs/{job_id}`**
+- Deletes a job and all associated storage (Supabase record, Modal Volume files, Vercel Blob files)
+- Body: `{ user_id: string }`
+- Requires job to belong to the requesting user (ownership verified before deletion)
+- Returns: `{ success: true, deleted: { database: bool, volume: bool, blobs: [...] } }`
+- Error codes: 400 (invalid format), 403 (not authorized), 404 (not found), 500 (server error)
 
 ### Anonymous Job Claiming
 

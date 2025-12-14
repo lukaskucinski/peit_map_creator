@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import {
   Card,
@@ -11,6 +12,19 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { deleteJob } from "@/lib/api"
+import {
   ExternalLink,
   Download,
   FileText,
@@ -20,6 +34,7 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
+  Trash2,
 } from "lucide-react"
 
 export interface Job {
@@ -42,12 +57,36 @@ export interface Job {
 
 interface JobHistoryListProps {
   jobs: Job[]
+  userId: string
 }
 
-export function JobHistoryList({ jobs }: JobHistoryListProps) {
+export function JobHistoryList({ jobs, userId }: JobHistoryListProps) {
   const apiUrl = process.env.NEXT_PUBLIC_MODAL_API_URL || ""
+  const [localJobs, setLocalJobs] = useState<Job[]>(jobs)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { toast } = useToast()
 
-  if (jobs.length === 0) {
+  const handleDelete = async (jobId: string) => {
+    setDeletingId(jobId)
+    const result = await deleteJob(jobId, userId)
+    setDeletingId(null)
+
+    if (result.success) {
+      setLocalJobs((prev) => prev.filter((j) => j.id !== jobId))
+      toast({
+        title: "Map deleted",
+        description: "The map and all associated data have been removed.",
+      })
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: result.error || "Could not delete the map.",
+      })
+    }
+  }
+
+  if (localJobs.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6 text-center">
@@ -98,7 +137,7 @@ export function JobHistoryList({ jobs }: JobHistoryListProps) {
         </div>
       </div>
 
-      {jobs.map((job) => (
+      {localJobs.map((job) => (
         <Card key={job.id}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-4">
@@ -115,13 +154,49 @@ export function JobHistoryList({ jobs }: JobHistoryListProps) {
                   )}
                 </CardDescription>
               </div>
-              <Badge
-                variant={getStatusBadgeVariant(job.status)}
-                className="gap-1 flex-shrink-0"
-              >
-                {getStatusIcon(job.status)}
-                {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-              </Badge>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      disabled={deletingId === job.id}
+                    >
+                      {deletingId === job.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this map?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the map, reports, and all
+                        associated data. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(job.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Badge
+                  variant={getStatusBadgeVariant(job.status)}
+                  className="gap-1"
+                >
+                  {getStatusIcon(job.status)}
+                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

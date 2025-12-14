@@ -57,7 +57,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Job list */}
-          <JobHistoryList jobs={(jobs as Job[]) || []} />
+          <JobHistoryList jobs={(jobs as Job[]) || []} userId={user.id} />
         </div>
       </main>
     </div>
