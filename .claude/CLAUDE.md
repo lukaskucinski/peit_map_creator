@@ -1638,10 +1638,14 @@ User authentication via Supabase with OAuth and email/password options.
 **Account Components:**
 - `components/account/delete-account.tsx`: Account deletion with email confirmation
 
+**Theme Components:**
+- `components/theme-provider.tsx`: Wraps next-themes ThemeProvider for dark mode support
+- `components/theme-toggle.tsx`: Theme toggle button (dropdown) and ThemeSelector (button group for Account Settings)
+
 **Routes:**
 - `app/auth/callback/route.ts`: OAuth callback handler
 - `app/dashboard/page.tsx`: Map History page (authenticated users only)
-- `app/account/page.tsx`: Account settings page (displays OAuth profile info, read-only)
+- `app/account/page.tsx`: Account settings page (profile info, theme settings, account deletion)
 
 **Supabase Client Files (`lib/supabase/`):**
 - `client.ts`: Browser client for client components
@@ -1695,6 +1699,40 @@ Key files:
 **Dependencies:**
 - `@supabase/supabase-js` - Supabase client
 - `@supabase/ssr` - Server-side rendering support
+
+### Dark Mode
+
+The app supports light, dark, and system themes using `next-themes`.
+
+**How it works:**
+- Theme preference stored in `localStorage` (persists across sessions, even when logged out)
+- First visit: Uses system/OS preference
+- After explicit selection: User's choice overrides system preference
+- Different device: Falls back to system preference (localStorage is per-browser)
+
+**Components:**
+- `ThemeProvider` in `app/layout.tsx`: Wraps app with next-themes provider
+- `ThemeSelector` in Account Settings: Button group to choose System/Light/Dark
+- `ThemeToggle`: Dropdown button component (available for use elsewhere if needed)
+
+**Configuration:**
+```typescript
+// app/layout.tsx
+<ThemeProvider
+  attribute="class"
+  defaultTheme="system"
+  enableSystem
+  disableTransitionOnChange
+>
+```
+
+**CSS Variables:**
+Theme colors defined in `app/globals.css`:
+- `:root` - Light mode colors (oklch format)
+- `.dark` - Dark mode colors (oklch format)
+
+**Dependencies:**
+- `next-themes@0.4.6` - Theme management with SSR support
 
 ### Draw Your Own Feature
 
@@ -2022,9 +2060,10 @@ Uses Micromamba for geospatial dependencies:
 - PyProj >= 3.6
 
 **Python Dependencies:**
-- `vercel>=0.4.0` - Official Vercel Python SDK for Blob storage operations
+- `vercel>=0.3.5` - Official Vercel Python SDK for Blob storage operations
   - Uses `BlobClient` for put, list_objects, and delete operations
   - Properly supports `prefix` parameter for filtering blob listings
+  - **API Note:** `put()` uses positional args, not options dict: `client.put(pathname, content, access="public", content_type="...")`
 
 ### Deployment
 ```bash
