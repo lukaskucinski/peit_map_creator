@@ -104,12 +104,10 @@ def upload_to_vercel_blob(content: bytes, pathname: str, content_type: str) -> s
 
     client = BlobClient(token=token)
     blob = client.put(
-        pathname=pathname,
-        body=content,
-        options={
-            "access": "public",
-            "content_type": content_type,
-        }
+        pathname,
+        content,
+        access="public",
+        content_type=content_type,
     )
     return blob.url
 

@@ -104,6 +104,12 @@ def process_all_layers(
 
     for layer_config in layers_to_process:
         layer_name = layer_config['name']
+
+        # Skip disabled layers
+        if not layer_config.get('enabled', True):
+            logger.info(f"Skipping {layer_name} (disabled)")
+            continue
+
         geometry_type = layer_config.get('geometry_type', None)
 
         gdf, meta = query_arcgis_layer(

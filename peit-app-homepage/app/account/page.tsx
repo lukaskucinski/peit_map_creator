@@ -9,6 +9,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { DeleteAccount } from "@/components/account/delete-account"
+import { ThemeSelector } from "@/components/theme-toggle"
 import {
   Card,
   CardContent,
@@ -123,6 +124,27 @@ export default async function AccountPage() {
                 </label>
                 <p className="text-sm capitalize">
                   {user.app_metadata?.provider || "Email"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Appearance Section */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Appearance</CardTitle>
+              <CardDescription>
+                Customize how the app looks on your device
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-3 block">
+                  Theme
+                </label>
+                <ThemeSelector />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Your preference is saved to this browser and will persist across sessions.
                 </p>
               </div>
             </CardContent>
