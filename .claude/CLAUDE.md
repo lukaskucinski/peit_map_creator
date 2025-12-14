@@ -1734,10 +1734,11 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 
 ### Map Viewer Routes
 
-**`app/maps/[jobId]/page.tsx`**
-- Server-side route that redirects to Vercel Blob URL
+**`app/maps/[jobId]/route.ts`**
+- Server-side route that fetches and serves map HTML from Vercel Blob
 - Validates job ID format (16 hex chars)
-- Uses `@vercel/blob` `head()` to check if blob exists
+- Uses `@vercel/blob` `list()` to find blob by prefix
+- Returns HTML with `Cache-Control: private, no-store` to ensure deletions take effect immediately
 - Redirects to `/maps/expired` if blob not found
 
 **`app/maps/expired/page.tsx`**
@@ -2019,6 +2020,11 @@ Uses Micromamba for geospatial dependencies:
 - Shapely >= 2.0
 - Fiona >= 1.9
 - PyProj >= 3.6
+
+**Python Dependencies:**
+- `vercel>=0.4.0` - Official Vercel Python SDK for Blob storage operations
+  - Uses `BlobClient` for put, list_objects, and delete operations
+  - Properly supports `prefix` parameter for filtering blob listings
 
 ### Deployment
 ```bash

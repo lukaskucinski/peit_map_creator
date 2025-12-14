@@ -52,11 +52,13 @@ export async function GET(
     const html = await response.text()
 
     // Return the HTML with correct content-type (displays in browser, not downloads)
+    // Use no-store to ensure deletion takes effect immediately
+    // (Vercel Blob already handles caching at the storage layer)
     return new NextResponse(html, {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'private, no-store',
       },
     })
   } catch (error) {

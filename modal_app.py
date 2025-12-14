@@ -68,7 +68,7 @@ peit_image = (
         "fpdf2>=2.8.0",
         "openpyxl>=3.1.0",
         "fastapi[standard]",
-        "vercel-blob>=0.1.0",
+        "vercel>=0.3.5",
         "supabase>=2.10.0",
         "certifi",  # Python SSL certificates for httpx
     )
@@ -96,22 +96,22 @@ def upload_to_vercel_blob(content: bytes, pathname: str, content_type: str) -> s
     Returns:
         Public URL of the uploaded blob
     """
-    from vercel_blob import put
+    from vercel.blob import BlobClient
 
     token = os.environ.get("BLOB_READ_WRITE_TOKEN")
     if not token:
         raise ValueError("BLOB_READ_WRITE_TOKEN not configured")
 
-    blob = put(
-        pathname,
-        content,
-        {
+    client = BlobClient(token=token)
+    blob = client.put(
+        pathname=pathname,
+        body=content,
+        options={
             "access": "public",
-            "contentType": content_type,
-            "token": token
+            "content_type": content_type,
         }
     )
-    return blob["url"]
+    return blob.url
 
 
 def get_supabase_client():
@@ -868,7 +868,7 @@ def fastapi_app():
         """
         import re
         import shutil
-        from vercel_blob import list as list_blobs, delete as delete_blob
+        from vercel.blob import BlobClient
 
         # Validate job_id format (16 hex chars)
         if not re.match(r'^[a-f0-9]{16}$', job_id):
@@ -905,14 +905,17 @@ def fastapi_app():
             except Exception as e:
                 print(f"Warning: Failed to delete volume files for job {job_id}: {e}")
 
-            # Delete from Vercel Blob
+            # Delete from Vercel Blob using official SDK
             token = os.environ.get("BLOB_READ_WRITE_TOKEN")
             if token:
                 try:
-                    response = list_blobs({"token": token, "prefix": f"maps/{job_id}/"})
-                    for blob in response.get("blobs", []):
-                        delete_blob(blob["url"], {"token": token})
-                        deleted_items["blobs"].append(blob.get("pathname", "unknown"))
+                    client = BlobClient(token=token)
+                    # List all blobs with job prefix
+                    listing = client.list_objects(prefix=f"maps/{job_id}/")
+                    blob_urls = [blob.url for blob in listing.blobs]
+                    if blob_urls:
+                        client.delete(blob_urls)
+                        deleted_items["blobs"] = [blob.pathname for blob in listing.blobs]
                 except Exception as e:
                     print(f"Warning: Failed to delete blobs for job {job_id}: {e}")
 
@@ -968,28 +971,30 @@ def cleanup_old_results():
     results_volume.commit()
     print(f"Volume cleanup: deleted {deleted_count} expired job folders")
 
-    # Clean up Vercel Blob
+    # Clean up Vercel Blob using official SDK
     token = os.environ.get("BLOB_READ_WRITE_TOKEN")
     if token:
         try:
-            from vercel_blob import list as list_blobs, delete as delete_blob
+            from vercel.blob import BlobClient
 
+            client = BlobClient(token=token)
             # List all blobs with "maps/" prefix
-            response = list_blobs({"token": token, "prefix": "maps/"})
-            blobs = response.get("blobs", [])
+            listing = client.list_objects(prefix="maps/")
+            urls_to_delete = []
 
-            for blob in blobs:
+            for blob in listing.blobs:
                 try:
                     # Check blob upload date
-                    uploaded_at = blob.get("uploadedAt")
-                    if uploaded_at:
-                        # Parse ISO format date
-                        uploaded = datetime.fromisoformat(uploaded_at.replace("Z", "+00:00"))
-                        if uploaded < cutoff_utc:
-                            delete_blob(blob["url"], {"token": token})
+                    if blob.uploaded_at:
+                        if blob.uploaded_at < cutoff_utc:
+                            urls_to_delete.append(blob.url)
                             blob_deleted_count += 1
                 except Exception as e:
-                    print(f"Error deleting blob {blob.get('pathname', 'unknown')}: {e}")
+                    print(f"Error checking blob {blob.pathname}: {e}")
+
+            # Batch delete expired blobs
+            if urls_to_delete:
+                client.delete(urls_to_delete)
 
             print(f"Blob cleanup: deleted {blob_deleted_count} expired blobs")
         except Exception as e:
