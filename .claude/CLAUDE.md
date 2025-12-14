@@ -1598,6 +1598,11 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 **`components/config-panel.tsx`**
 - Project name and ID inputs with tooltips explaining their purpose
 - Buffer distance configuration (hidden for polygon inputs since polygons don't get buffered)
+  - Minimum: 1ft (prevents empty geometries from 0ft buffer on points/lines)
+  - Maximum: 26,400ft (5 miles)
+  - Default: 500ft
+  - Slider step: 100ft increments (0, 100, 200... but clamped to minimum 1ft)
+  - Clickable value: Click the ft value to manually enter exact buffer distance
 - Clip buffer distance slider with tooltip
 - Real-time area estimation based on geometry and buffer settings
 - Area validation against 5,000 sq mi limit with warning at 2,500 sq mi

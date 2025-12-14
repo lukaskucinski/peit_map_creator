@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Play, Settings, AlertTriangle, AlertCircle, MapPin, HelpCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,7 +33,8 @@ interface ConfigPanelProps {
 
 // Constants
 const DEFAULT_BUFFER_FEET = 500
-const MIN_BUFFER_FEET = 0
+const MIN_BUFFER_FEET = 1
+const SLIDER_MIN_BUFFER_FEET = 0 // Slider uses 0 for round increments, but value is clamped to MIN_BUFFER_FEET
 const MAX_BUFFER_FEET = 26400 // 5 miles in feet
 
 const DEFAULT_CLIP_MILES = 1.0
@@ -80,6 +81,9 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
   const [areaValidation, setAreaValidation] = useState<AreaValidation | null>(null)
   const [detectedGeomType, setDetectedGeomType] = useState<DetectedGeometryType | null>(null)
   const [hasAutoSetBuffer, setHasAutoSetBuffer] = useState(false)
+  const [isEditingBuffer, setIsEditingBuffer] = useState(false)
+  const [bufferInputValue, setBufferInputValue] = useState("")
+  const bufferInputRef = useRef<HTMLInputElement>(null)
 
   // Get filename without extension for default project name
   const defaultProjectName = filename.replace(/\.[^/.]+$/, "")
@@ -152,6 +156,35 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
     return `${feet.toLocaleString()} ft`
   }
 
+  // Handle starting buffer edit mode
+  const startBufferEdit = () => {
+    if (disabled) return
+    setBufferInputValue(bufferDistanceFeet.toString())
+    setIsEditingBuffer(true)
+    // Focus input after state update
+    setTimeout(() => bufferInputRef.current?.select(), 0)
+  }
+
+  // Handle buffer input validation and save
+  const saveBufferInput = () => {
+    const parsed = parseInt(bufferInputValue, 10)
+    if (!isNaN(parsed)) {
+      // Clamp to valid range
+      const clamped = Math.max(MIN_BUFFER_FEET, Math.min(MAX_BUFFER_FEET, parsed))
+      setBufferDistanceFeet(clamped)
+    }
+    setIsEditingBuffer(false)
+  }
+
+  // Handle buffer input key events
+  const handleBufferKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveBufferInput()
+    } else if (e.key === 'Escape') {
+      setIsEditingBuffer(false)
+    }
+  }
+
   return (
     <Card className="mx-auto max-w-2xl mt-6">
       <CardHeader className="pb-4">
@@ -199,14 +232,34 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <LabelWithTooltip label="Input Buffer Distance" tooltip={TOOLTIPS.inputBuffer} />
-              <span className="text-sm font-medium text-foreground">
-                {formatBufferFeet(bufferDistanceFeet)}
-              </span>
+              {isEditingBuffer ? (
+                <input
+                  ref={bufferInputRef}
+                  type="number"
+                  value={bufferInputValue}
+                  onChange={(e) => setBufferInputValue(e.target.value)}
+                  onBlur={saveBufferInput}
+                  onKeyDown={handleBufferKeyDown}
+                  min={MIN_BUFFER_FEET}
+                  max={MAX_BUFFER_FEET}
+                  className="w-24 h-7 px-2 text-sm font-medium text-right border rounded focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={startBufferEdit}
+                  disabled={disabled}
+                  className="text-sm font-medium text-foreground hover:text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                  title="Click to edit"
+                >
+                  {formatBufferFeet(bufferDistanceFeet)}
+                </button>
+              )}
             </div>
             <Slider
               value={[bufferDistanceFeet]}
-              onValueChange={(value) => setBufferDistanceFeet(value[0])}
-              min={MIN_BUFFER_FEET}
+              onValueChange={(value) => setBufferDistanceFeet(Math.max(MIN_BUFFER_FEET, value[0]))}
+              min={SLIDER_MIN_BUFFER_FEET}
               max={MAX_BUFFER_FEET}
               step={100}
               disabled={disabled}
