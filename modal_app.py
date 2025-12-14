@@ -433,7 +433,7 @@ def process_file_task(
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
-    secrets=[supabase_secret],  # For account deletion endpoint
+    secrets=[supabase_secret, vercel_blob_secret],  # For account/job deletion endpoints
 )
 @modal.concurrent(max_inputs=10)
 @modal.asgi_app()
@@ -854,6 +854,76 @@ def fastapi_app():
                 )
 
             return {"success": True, "message": "Account deleted successfully"}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @web_app.delete("/api/jobs/{job_id}")
+    async def delete_job(job_id: str, request: Request):
+        """Delete a job and all associated storage (Supabase, Modal Volume, Vercel Blob).
+
+        Requires user_id in JSON body. Only the job owner can delete their job.
+        """
+        import re
+        import shutil
+        from vercel_blob import list as list_blobs, delete as delete_blob
+
+        # Validate job_id format (16 hex chars)
+        if not re.match(r'^[a-f0-9]{16}$', job_id):
+            raise HTTPException(status_code=400, detail="Invalid job ID format")
+
+        try:
+            body = await request.json()
+            user_id = body.get("user_id")
+
+            if not user_id:
+                raise HTTPException(status_code=400, detail="user_id is required")
+
+            supabase = get_supabase_client()
+            if not supabase:
+                raise HTTPException(status_code=500, detail="Database not configured")
+
+            # Verify job exists and belongs to user
+            result = supabase.table('jobs').select('*').eq('id', job_id).single().execute()
+            if not result.data:
+                raise HTTPException(status_code=404, detail="Job not found")
+            if result.data.get('user_id') != user_id:
+                raise HTTPException(status_code=403, detail="Not authorized to delete this job")
+
+            deleted_items = {"database": False, "volume": False, "blobs": []}
+
+            # Delete from Modal Volume
+            try:
+                results_volume.reload()
+                job_dir = Path("/results") / job_id
+                if job_dir.exists():
+                    shutil.rmtree(job_dir)
+                    results_volume.commit()
+                    deleted_items["volume"] = True
+            except Exception as e:
+                print(f"Warning: Failed to delete volume files for job {job_id}: {e}")
+
+            # Delete from Vercel Blob
+            token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+            if token:
+                try:
+                    response = list_blobs({"token": token, "prefix": f"maps/{job_id}/"})
+                    for blob in response.get("blobs", []):
+                        delete_blob(blob["url"], {"token": token})
+                        deleted_items["blobs"].append(blob.get("pathname", "unknown"))
+                except Exception as e:
+                    print(f"Warning: Failed to delete blobs for job {job_id}: {e}")
+
+            # Delete from Supabase
+            try:
+                supabase.table('jobs').delete().eq('id', job_id).execute()
+                deleted_items["database"] = True
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to delete job record: {e}")
+
+            return {"success": True, "message": "Job deleted successfully", "deleted": deleted_items}
 
         except HTTPException:
             raise

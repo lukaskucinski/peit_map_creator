@@ -1743,6 +1743,8 @@ TypeScript client for the Modal backend:
 - `checkHealth()`: Verify backend availability
 - `getRateLimitStatus()`: Check daily run limits
 - `processFile()`: Upload and process file with SSE progress streaming
+- `claimJobs()`: Claim unclaimed jobs for authenticated user
+- `deleteJob()`: Delete a job and all associated storage (requires ownership)
 
 ### File Validation (`lib/validation.ts`)
 - **Allowed Extensions**: `.geojson`, `.json`, `.gpkg`, `.kml`, `.kmz`, `.zip`
@@ -1850,6 +1852,13 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 - Updates jobs where `user_id IS NULL` to associate with the new user
 - Returns: `{ success: true, claimed_count: int }`
 - Used by frontend after anonymous user signs up to save their maps to history
+
+**`DELETE /api/jobs/{job_id}`**
+- Deletes a job and all associated storage (Supabase record, Modal Volume files, Vercel Blob files)
+- Body: `{ user_id: string }`
+- Requires job to belong to the requesting user (ownership verified before deletion)
+- Returns: `{ success: true, deleted: { database: bool, volume: bool, blobs: [...] } }`
+- Error codes: 400 (invalid format), 403 (not authorized), 404 (not found), 500 (server error)
 
 ### Anonymous Job Claiming
 

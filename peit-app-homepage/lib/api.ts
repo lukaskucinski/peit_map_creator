@@ -53,6 +53,14 @@ export interface ClaimJobsResult {
 }
 
 /**
+ * Result of deleting a job
+ */
+export interface DeleteJobResult {
+  success: boolean
+  error?: string
+}
+
+/**
  * Check API health status
  */
 export async function checkHealth(): Promise<boolean> {
@@ -356,6 +364,51 @@ export async function claimJobs(
       success: true,
       claimedCount: data.claimed_count || 0,
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error occurred"
+    return {
+      success: false,
+      error: `Network error: ${message}`,
+    }
+  }
+}
+
+/**
+ * Delete a job and all associated data (map, reports, storage)
+ *
+ * @param jobId - The job ID to delete
+ * @param userId - The authenticated user's ID (must own the job)
+ * @returns Result with success status
+ */
+export async function deleteJob(
+  jobId: string,
+  userId: string
+): Promise<DeleteJobResult> {
+  if (!API_URL) {
+    return {
+      success: false,
+      error: "API URL not configured",
+    }
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/jobs/${jobId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user_id: userId }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      return {
+        success: false,
+        error: errorData.detail || `Error: ${response.status}`,
+      }
+    }
+
+    return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error occurred"
     return {
