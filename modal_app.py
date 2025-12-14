@@ -28,7 +28,7 @@ supabase_secret = modal.Secret.from_name("supabase-service", required_keys=["SUP
 
 # Modal Dict for rate limiting
 rate_limit_dict = modal.Dict.from_name("peit-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY = 20
+MAX_RUNS_PER_DAY = 10
 
 # Modal Dict for tracking active jobs per IP
 active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
@@ -36,7 +36,7 @@ MAX_CONCURRENT_JOBS_PER_IP = 3
 
 # Modal Dict for global rate limit (across all users)
 global_rate_limit_dict = modal.Dict.from_name("peit-global-rate-limit", create_if_missing=True)
-MAX_GLOBAL_RUNS_PER_DAY = 200
+MAX_GLOBAL_RUNS_PER_DAY = 50
 
 # Maximum input geometry area in square miles
 MAX_INPUT_AREA_SQ_MILES = 5000
