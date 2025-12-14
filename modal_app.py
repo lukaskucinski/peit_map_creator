@@ -68,7 +68,7 @@ peit_image = (
         "fpdf2>=2.8.0",
         "openpyxl>=3.1.0",
         "fastapi[standard]",
-        "vercel>=0.4.0",
+        "vercel>=0.3.5",
         "supabase>=2.10.0",
         "certifi",  # Python SSL certificates for httpx
     )
