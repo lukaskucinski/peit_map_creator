@@ -155,7 +155,7 @@ export function UploadCard({
           </h1>
 
           <p className="mb-6 max-w-md text-muted-foreground text-pretty">
-            Upload a geospatial file to process and visualize your data in seconds.
+            Upload a geospatial file to create an environmental map in seconds.
           </p>
 
           {/* Validation Error */}
