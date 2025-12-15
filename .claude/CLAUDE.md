@@ -1625,6 +1625,14 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Direct PDF/XLSX report links
 - Expiration notice (7 days)
 
+**`components/dashboard/job-history-list.tsx`**
+- Renders job cards in Map History dashboard
+- Displays: project name, project ID, filename, status, timestamps, feature/layer counts
+- Run ID shown in monospace font with copy-to-clipboard button
+- Action buttons: View Map, Download ZIP, PDF, Excel (for completed jobs)
+- Delete button with confirmation dialog
+- Expiration countdown
+
 **`components/header.tsx`**
 - Site navigation and branding
 - GitHub and Donations links
