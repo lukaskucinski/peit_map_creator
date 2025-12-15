@@ -14,7 +14,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import geopandas as gpd
 from fpdf import FPDF
@@ -579,9 +579,14 @@ def generate_pdf_report(
         # Prepare resource links for end page
         resource_links = prepare_resource_links(url_mapping)
 
-        # Format timestamps
+        # Format report date in US Central timezone (UTC-6) to match map's "Created on" date
         dt = datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
-        report_date = dt.strftime("%m/%d/%Y %H:%M:%S")
+        # Assume timestamp is UTC (from Modal container), convert to US Central
+        dt_utc = dt.replace(tzinfo=timezone.utc)
+        us_central = timezone(timedelta(hours=-6))
+        dt_central = dt_utc.astimezone(us_central)
+        # Format with date and time (M/D/YYYY HH:MM:SS)
+        report_date = f"{dt_central.month}/{dt_central.day}/{dt_central.year} {dt_central.strftime('%H:%M:%S')}"
 
         # Create PDF
         pdf = ReportPDF()
