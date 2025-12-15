@@ -40,6 +40,7 @@ import {
   Clock,
   AlertTriangle,
   Trash2,
+  Copy,
 } from "lucide-react"
 
 export interface Job {
@@ -150,14 +151,35 @@ export function JobHistoryList({ jobs, userId }: JobHistoryListProps) {
                 <CardTitle className="text-lg truncate">
                   {job.project_name || job.filename}
                 </CardTitle>
-                <CardDescription className="truncate">
-                  {job.project_id && (
-                    <span className="mr-2">ID: {job.project_id}</span>
-                  )}
+                <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  {job.project_id && <span>{job.project_id}</span>}
                   {job.project_name && (
                     <span className="text-xs">({job.filename})</span>
                   )}
                 </CardDescription>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono mt-1">
+                  <span>{job.id}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-5 w-5"
+                        onClick={() => {
+                          navigator.clipboard.writeText(job.id)
+                          toast({
+                            title: "Run ID copied",
+                            description: job.id,
+                            duration: 3000,
+                          })
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy run ID</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <AlertDialog>
