@@ -322,6 +322,7 @@ The tool generates professional PDF reports using fpdf2 (pure Python PDF library
 - **Landscape Orientation**: Letter size in landscape mode for wider tables
 - **Optimized Margins**: Reduced vertical margins to fit 3-4 more rows per page
 - **Unicode Font Support**: Uses DejaVu Sans TrueType fonts to support full Unicode character range including en-dashes (–), em-dashes (—), smart quotes (""), and international characters
+- **Timezone Handling**: Report Date converted to US Central (UTC-6) and displayed with timestamp (e.g., "12/15/2025 01:49:13")
 
 **Unicode Character Support:**
 The PDF generator uses DejaVu Sans fonts (bundled in `fonts/` directory) to support:
