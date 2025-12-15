@@ -66,3 +66,8 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node.js (from npx supabase commands)
+node_modules/
+package-lock.json
+package.json
