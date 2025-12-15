@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { clearCompleteState } from "@/lib/pending-jobs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +34,10 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const handleSignOut = async () => {
     setLoading(true)
+    // Clear complete state before signing out to prevent stale state on homepage
+    clearCompleteState()
     await supabase.auth.signOut()
+    router.push("/")
     router.refresh()
   }
 

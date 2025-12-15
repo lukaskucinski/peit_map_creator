@@ -1704,6 +1704,15 @@ Anonymous users can process files and later claim jobs by signing up:
 - On sign-in, `POST /api/claim-jobs` associates pending jobs with user
 - Toast confirms "Map saved to your history!"
 
+**Navigation State Management:**
+SessionStorage preserves the "Processing Complete" screen across OAuth redirects, but must be cleared on intentional navigation to prevent stale state:
+- Header logo click (`components/header.tsx`): Calls `clearCompleteState()` before navigating home
+- Sign out (`components/auth/user-menu.tsx`): Calls `clearCompleteState()` before signing out and redirecting to home
+- Sign out event (`app/page.tsx`): `onAuthStateChange` listens for `SIGNED_OUT` event and resets `appState` to 'upload'
+- "Process Another" button (`app/page.tsx`): Calls `clearCompleteState()` when starting a new run
+
+This ensures users see the upload page (not stale complete state) when navigating home from any page.
+
 Key files:
 - `lib/pending-jobs.ts`: localStorage/sessionStorage utilities
 - `components/claim-job-prompt.tsx`: Sign-up prompt dialog

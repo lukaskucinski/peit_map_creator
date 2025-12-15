@@ -131,7 +131,7 @@ export default function HomePage() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       const newUser = session?.user ?? null
       const prevUser = prevUserRef.current
 
@@ -146,6 +146,15 @@ export default function HomePage() {
 
         // Claim any pending jobs
         await claimPendingJobs(newUser.id)
+      }
+
+      // Detect sign-out event - reset to upload state
+      if (event === 'SIGNED_OUT') {
+        setAppState({ step: 'upload' })
+        setProgressUpdates([])
+        setWasRestoredFromStorage(false)
+        setClaimPromptReady(false)
+        setClaimPromptOpen(false)
       }
 
       // Update ref for next comparison
