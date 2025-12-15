@@ -258,21 +258,56 @@ def process_file_task(
         xlsx_filename = f"PEIT_Report_{timestamp}.xlsx"
         pdf_filename = f"PEIT_Report_{timestamp}.pdf"
 
-        # Create web map
-        map_obj = create_web_map(
-            polygon_gdf, layer_results, metadata, config, input_layer_name,
-            project_name=project_name,
-            xlsx_relative_path=xlsx_filename,
-            pdf_relative_path=pdf_filename,
-            clip_boundary=clip_boundary
-        )
-
         # Generate output (temporarily to local temp)
         output_name = f"peit_map_{timestamp}"
         temp_output = temp_dir / output_name
         temp_output.mkdir(parents=True, exist_ok=True)
 
-        # Manually save outputs to temp location
+        # Generate reports BEFORE creating web map so we can get blob URLs
+        from utils.xlsx_generator import generate_xlsx_report
+        from utils.pdf_generator import generate_pdf_report
+
+        generate_xlsx_report(layer_results, config, temp_output, timestamp, project_name, project_id)
+        generate_pdf_report(layer_results, config, temp_output, timestamp, project_name, project_id)
+
+        # Upload reports to Vercel Blob BEFORE creating web map
+        # This way we can embed the actual blob URLs in the map HTML
+        pdf_blob_url = None
+        xlsx_blob_url = None
+
+        try:
+            pdf_path = temp_output / pdf_filename
+            if pdf_path.exists():
+                pdf_content = pdf_path.read_bytes()
+                pdf_blob_url = upload_to_vercel_blob(
+                    pdf_content,
+                    f"maps/{job_id}/{pdf_filename}",
+                    "application/pdf"
+                )
+                logger.info(f"Uploaded PDF to blob: {pdf_blob_url}")
+
+            xlsx_path = temp_output / xlsx_filename
+            if xlsx_path.exists():
+                xlsx_content = xlsx_path.read_bytes()
+                xlsx_blob_url = upload_to_vercel_blob(
+                    xlsx_content,
+                    f"maps/{job_id}/{xlsx_filename}",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                logger.info(f"Uploaded XLSX to blob: {xlsx_blob_url}")
+        except Exception as blob_error:
+            # Log but don't fail - map will work without report links
+            logger.warning(f"Report blob upload failed (non-fatal): {blob_error}")
+
+        # Create web map with blob URLs for PDF/XLSX links
+        map_obj = create_web_map(
+            polygon_gdf, layer_results, metadata, config, input_layer_name,
+            project_name=project_name,
+            xlsx_relative_path=xlsx_blob_url,  # Use blob URL instead of filename
+            pdf_relative_path=pdf_blob_url,    # Use blob URL instead of filename
+            clip_boundary=clip_boundary
+        )
+
         # Save map HTML
         map_file = temp_output / "index.html"
         map_obj.save(str(map_file))
@@ -288,13 +323,6 @@ def process_file_task(
             safe_name = layer_name.replace(" ", "_").replace("/", "_").lower()
             layer_file = data_path / f"{safe_name}.geojson"
             gdf.to_file(layer_file, driver="GeoJSON")
-
-        # Generate reports
-        from utils.xlsx_generator import generate_xlsx_report
-        from utils.pdf_generator import generate_pdf_report
-
-        generate_xlsx_report(layer_results, config, temp_output, timestamp, project_name, project_id)
-        generate_pdf_report(layer_results, config, temp_output, timestamp, project_name, project_id)
 
         # Save metadata
         summary = {
@@ -327,13 +355,11 @@ def process_file_task(
         # Commit volume changes
         results_volume.commit()
 
-        # Upload to Vercel Blob for live URL access
+        # Upload map HTML to Vercel Blob for live URL access
+        # (PDF/XLSX already uploaded earlier before map generation)
         map_blob_url = None
-        pdf_blob_url = None
-        xlsx_blob_url = None
 
         try:
-            # Upload index.html
             map_content = map_file.read_bytes()
             map_blob_url = upload_to_vercel_blob(
                 map_content,
@@ -341,32 +367,9 @@ def process_file_task(
                 "text/html"
             )
             logger.info(f"Uploaded map to blob: {map_blob_url}")
-
-            # Upload PDF report
-            pdf_path = temp_output / pdf_filename
-            if pdf_path.exists():
-                pdf_content = pdf_path.read_bytes()
-                pdf_blob_url = upload_to_vercel_blob(
-                    pdf_content,
-                    f"maps/{job_id}/{pdf_filename}",
-                    "application/pdf"
-                )
-                logger.info(f"Uploaded PDF to blob: {pdf_blob_url}")
-
-            # Upload XLSX report
-            xlsx_path = temp_output / xlsx_filename
-            if xlsx_path.exists():
-                xlsx_content = xlsx_path.read_bytes()
-                xlsx_blob_url = upload_to_vercel_blob(
-                    xlsx_content,
-                    f"maps/{job_id}/{xlsx_filename}",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                logger.info(f"Uploaded XLSX to blob: {xlsx_blob_url}")
-
         except Exception as blob_error:
             # Log but don't fail - ZIP download still works
-            logger.warning(f"Blob upload failed (non-fatal): {blob_error}")
+            logger.warning(f"Map blob upload failed (non-fatal): {blob_error}")
 
         logger.info(f"Job {job_id} completed successfully")
 

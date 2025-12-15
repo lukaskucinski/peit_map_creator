@@ -2001,7 +2001,7 @@ Generated maps are automatically uploaded to Vercel Blob storage, providing shar
 
 **Features:**
 - **Live URLs**: Maps accessible at `https://peit-map-creator.vercel.app/maps/{job_id}`
-- **Direct report links**: PDF and XLSX reports have direct download URLs
+- **Direct report links**: PDF and XLSX reports have direct download URLs embedded in map HTML
 - **7-day retention**: Matches ZIP download retention policy
 - **Zero additional cost**: Within Vercel Blob free tier (1GB storage, 10GB transfer/month)
 
@@ -2012,6 +2012,9 @@ Generated maps are automatically uploaded to Vercel Blob storage, providing shar
 
 **NOT Uploaded (ZIP only):**
 - `data/*.geojson` files - Not needed since map has embedded GeoJSON
+
+**Upload Order (Important):**
+Reports (PDF/XLSX) are uploaded to blob storage **before** the map HTML is generated. This allows the absolute blob URLs to be embedded in the map's About section, ensuring the download links work correctly when the map is accessed via the live URL.
 
 **SSE Completion Event:**
 ```python
