@@ -1627,6 +1627,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 
 **`components/dashboard/job-history-list.tsx`**
 - Renders job cards in Map History dashboard
+- Search bar filters by run ID, project name, project ID, or filename
 - Displays: project name, project ID, filename, status, timestamps, feature/layer counts
 - Run ID (16-char job ID) shown in monospace font with copy-to-clipboard button and auto-dismissing toast (3s)
 - Action buttons: View Map, Download ZIP, PDF, Excel (for completed jobs)

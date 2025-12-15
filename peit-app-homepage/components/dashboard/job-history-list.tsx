@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,7 @@ import {
   AlertTriangle,
   Trash2,
   Copy,
+  Search,
 } from "lucide-react"
 
 export interface Job {
@@ -70,7 +72,20 @@ export function JobHistoryList({ jobs, userId }: JobHistoryListProps) {
   const apiUrl = process.env.NEXT_PUBLIC_MODAL_API_URL || ""
   const [localJobs, setLocalJobs] = useState<Job[]>(jobs)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
   const { toast } = useToast()
+
+  // Filter jobs based on search query
+  const filteredJobs = localJobs.filter((job) => {
+    if (!searchQuery.trim()) return true
+    const query = searchQuery.toLowerCase()
+    return (
+      job.id.toLowerCase().includes(query) ||
+      (job.project_name?.toLowerCase().includes(query) ?? false) ||
+      (job.project_id?.toLowerCase().includes(query) ?? false) ||
+      job.filename.toLowerCase().includes(query)
+    )
+  })
 
   const handleDelete = async (jobId: string) => {
     setDeletingId(jobId)
@@ -143,7 +158,26 @@ export function JobHistoryList({ jobs, userId }: JobHistoryListProps) {
         </div>
       </div>
 
-      {localJobs.map((job) => (
+      {/* Search input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search by run ID, project name, or project ID..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* No results message */}
+      {filteredJobs.length === 0 && searchQuery.trim() && (
+        <div className="text-center text-muted-foreground py-8">
+          No maps found matching &quot;{searchQuery}&quot;
+        </div>
+      )}
+
+      {filteredJobs.map((job) => (
         <Card key={job.id}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-4">
