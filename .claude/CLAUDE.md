@@ -2016,8 +2016,9 @@ When anonymous users create maps, the jobs are stored with `user_id = NULL`. If 
 - **Per-IP Storage**: Modal Dict (`peit-rate-limits`) with key format `{ip}:{date}`
 - **Global Storage**: Modal Dict (`peit-global-rate-limit`) with key format `global:{date}`
 - **Concurrent Jobs**: Modal Dict (`peit-active-jobs`) with key format `active:{ip}`
-- **Reset**: All daily limits reset at midnight UTC
-- **Order of Checks**: Global limit → Per-IP limit → Concurrent limit
+- **Reset**: Daily limits reset at midnight UTC; concurrent slots reset when jobs complete
+- **Order of Checks**: Global limit → Per-IP limit → File validation → Concurrent limit
+- **Logging**: Slot acquire/release events logged with `[RATE LIMIT]` prefix for debugging
 
 **Global Rate Limit:**
 - Prevents service abuse regardless of IP address rotation
@@ -2044,7 +2045,10 @@ When anonymous users create maps, the jobs are stored with `user_id = NULL`. If 
 **Concurrent Job Limiting:**
 - Tracks active jobs per IP using Modal Dict
 - `check_concurrent_limit()` blocks new jobs if IP has ≥3 active
-- `release_job_slot()` frees slot on job completion or error
+- `release_job_slot()` frees slot on job completion, error, or client disconnection
+- **Slot Leak Prevention**: Concurrent check runs AFTER file validation to prevent slots being consumed when validation fails
+- **Client Disconnection Handling**: `asyncio.CancelledError` is caught to release slots when users close browser tabs during processing
+- **Debugging**: To clear stuck slots manually: `modal dict clear peit-active-jobs`
 
 **CORS Restrictions:**
 ```python
