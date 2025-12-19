@@ -1678,10 +1678,11 @@ Avatar and display name come directly from OAuth provider (`user.user_metadata`)
 
 **Supabase URL Configuration:**
 The following redirect URLs are configured in Supabase Dashboard → Authentication → URL Configuration:
-- `https://peit-map-creator.vercel.app/**` (production)
+- `https://peit-map-creator.com/**` (production)
+- `https://www.peit-map-creator.com/**` (www subdomain)
 - `http://localhost:3000/**` (local development)
 
-Both URLs use wildcard patterns to allow OAuth callbacks to work correctly in each environment.
+All URLs use wildcard patterns to allow OAuth callbacks to work correctly in each environment.
 
 Avatar URL lookup order (different providers use different field names):
 - `user.user_metadata.avatar_url` (GitHub)
@@ -1851,7 +1852,7 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 - Shows "Map Expired" message with Clock icon
 - Links back to homepage to create new map
 
-**URL Format:** `https://peit-map-creator.vercel.app/maps/{jobId}`
+**URL Format:** `https://peit-map-creator.com/maps/{jobId}`
 
 ### API Client (`lib/api.ts`)
 TypeScript client for the Modal backend:
@@ -1920,7 +1921,7 @@ NEXT_PUBLIC_MODAL_API_URL=https://lukaskucinski--peit-processor-fastapi-app.moda
 ```
 
 ### Deployment URLs
-- **Production**: https://peit-map-creator.vercel.app
+- **Production**: https://peit-map-creator.com
 - **GitHub**: https://github.com/lukaskucinski/peit_map_creator
 
 ### SEO Configuration
@@ -2059,7 +2060,7 @@ allow_origins=[
 Generated maps are automatically uploaded to Vercel Blob storage, providing shareable live URLs.
 
 **Features:**
-- **Live URLs**: Maps accessible at `https://peit-map-creator.vercel.app/maps/{job_id}`
+- **Live URLs**: Maps accessible at `https://peit-map-creator.com/maps/{job_id}`
 - **Direct report links**: PDF and XLSX reports have direct download URLs embedded in map HTML
 - **7-day retention**: Matches ZIP download retention policy
 - **Zero additional cost**: Within Vercel Blob free tier (1GB storage, 10GB transfer/month)
@@ -2081,7 +2082,7 @@ Reports (PDF/XLSX) are uploaded to blob storage **before** the map HTML is gener
     'stage': 'complete',
     'job_id': job_id,
     'download_url': '/api/download/{job_id}',
-    'map_url': 'https://peit-map-creator.vercel.app/maps/{job_id}',
+    'map_url': 'https://peit-map-creator.com/maps/{job_id}',
     'pdf_url': '<blob_url>',
     'xlsx_url': '<blob_url>',
 }

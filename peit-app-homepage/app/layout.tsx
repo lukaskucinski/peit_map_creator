@@ -9,7 +9,7 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://peit-map-creator.vercel.app"),
+  metadataBase: new URL("https://peit-map-creator.com"),
   title: "PEIT Map Creator",
   description: "Upload, process, and visualize geospatial files in seconds.",
   generator: "v0.app",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "PEIT Map Creator - Permitting and Environmental Information Tool",
     description: "Upload, process, and visualize geospatial files in seconds.",
-    url: "https://peit-map-creator.vercel.app",
+    url: "https://peit-map-creator.com",
     siteName: "PEIT Map Creator",
     images: [
       {

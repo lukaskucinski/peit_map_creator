@@ -8,7 +8,7 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails"
 
 // App constants
 const APP_NAME = "PEIT Map Creator"
-const APP_URL = "https://peit-map-creator.vercel.app"
+const APP_URL = "https://peit-map-creator.com"
 const SENDER_EMAIL = "noreply@peit-map-creator.com"
 const LOGO_URL = `${APP_URL}/logo_peit_map_creator.jpg`
 

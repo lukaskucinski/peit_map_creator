@@ -4,7 +4,7 @@ A Python tool that replicates the NTIA's APPEIT (ArcGIS Pro Permitting and Envir
 
 ## Live Demo
 
-Try the web version: **[PEIT Map Creator](https://peit-map-creator.vercel.app)**
+Try the web version: **[PEIT Map Creator](https://peit-map-creator.com)**
 
 ## Overview
 

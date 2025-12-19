@@ -381,7 +381,7 @@ def process_file_task(
                     'completed_at': datetime.now().isoformat(),
                     'total_features': summary["total_features"],
                     'layers_with_data': summary["layers_with_data"],
-                    'map_url': f'https://peit-map-creator.vercel.app/maps/{job_id}',
+                    'map_url': f'https://peit-map-creator.com/maps/{job_id}',
                     'pdf_url': pdf_blob_url,
                     'xlsx_url': xlsx_blob_url,
                     'zip_download_path': f'/api/download/{job_id}',
@@ -478,7 +478,9 @@ def fastapi_app():
     web_app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "https://peit-map-creator.vercel.app",
+            "https://peit-map-creator.com",
+            "https://www.peit-map-creator.com",
+            "https://peit-map-creator.vercel.app",  # Keep temporarily for migration
             "https://peit-map-creator-*.vercel.app",  # Preview deployments
             "http://localhost:3000",  # Local development
         ],
@@ -703,7 +705,7 @@ def fastapi_app():
                                 'progress': 100,
                                 'job_id': job_id,
                                 'download_url': f'/api/download/{job_id}',
-                                'map_url': f'https://peit-map-creator.vercel.app/maps/{job_id}',
+                                'map_url': f'https://peit-map-creator.com/maps/{job_id}',
                                 'map_blob_url': result.get('map_blob_url'),
                                 'pdf_url': result.get('pdf_blob_url'),
                                 'xlsx_url': result.get('xlsx_blob_url'),
