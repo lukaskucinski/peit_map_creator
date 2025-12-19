@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://peit-map-creator.vercel.app/sitemap.xml
+Sitemap: https://peit-map-creator.com/sitemap.xml
