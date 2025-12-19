@@ -9,9 +9,7 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails"
 // App constants
 const APP_NAME = "PEIT Map Creator"
 const APP_URL = "https://peit-map-creator.vercel.app"
-// Use Resend's test domain until peit-map-creator.com is verified
-// Change back to "noreply@peit-map-creator.com" once DNS records are added
-const SENDER_EMAIL = "onboarding@resend.dev"
+const SENDER_EMAIL = "noreply@peit-map-creator.com"
 const LOGO_URL = `${APP_URL}/logo_peit_map_creator.jpg`
 
 // Generate styled HTML email
@@ -57,9 +55,10 @@ function generateWelcomeEmail(userName?: string): string {
               </p>
 
               <ul style="margin: 0 0 32px; padding-left: 24px; font-size: 16px; color: #4a4a4a; line-height: 1.8;">
-                <li>Create environmental intersection maps</li>
-                <li>Save maps to your history</li>
-                <li>Download reports in PDF and Excel</li>
+                <li>Create more environmental maps</li>
+                <li>Save maps to your account</li>
+                <li>Access map history</li>
+                <li>Download PDF/XLSX reports</li>
               </ul>
 
               <!-- CTA Button -->
