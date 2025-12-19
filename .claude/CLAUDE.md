@@ -1722,6 +1722,46 @@ Key files:
 - `@supabase/supabase-js` - Supabase client
 - `@supabase/ssr` - Server-side rendering support
 
+### Welcome Email
+
+New users receive a branded welcome email when they sign up (via any method: OAuth or email/password).
+
+**Implementation:**
+- **Supabase Edge Function**: `supabase/functions/send-welcome-email/index.ts`
+- **Database Trigger**: `on_auth_user_created_welcome_email` on `auth.users` table
+- **Email Service**: Resend API (free tier: 100 emails/day)
+- **Sender**: `noreply@peit-map-creator.com`
+
+**How it works:**
+1. User signs up (OAuth or email/password)
+2. Supabase inserts row into `auth.users` table
+3. PostgreSQL trigger `on_auth_user_created_welcome_email` fires
+4. Trigger calls Edge Function via `pg_net` HTTP POST
+5. Edge Function sends branded HTML email via Resend API
+
+**Email Content:**
+- Logo linked to app homepage
+- Personalized greeting (uses `full_name` from OAuth metadata if available)
+- Feature highlights (maps, history, reports)
+- "Start Creating" CTA button
+- Clean, modern styling with system fonts
+
+**Configuration:**
+- Resend API key stored as Supabase secret: `RESEND_API_KEY`
+- Domain `peit-map-creator.com` verified in Resend dashboard
+- Edge Function deployed with `--no-verify-jwt` flag (called by database trigger, not authenticated users)
+
+**Maintenance:**
+- To update email template: Edit `supabase/functions/send-welcome-email/index.ts` and redeploy:
+  ```bash
+  cd peit-app-homepage
+  npx supabase functions deploy send-welcome-email --no-verify-jwt
+  ```
+- To disable welcome emails: Drop the trigger in Supabase SQL Editor:
+  ```sql
+  DROP TRIGGER IF EXISTS on_auth_user_created_welcome_email ON auth.users;
+  ```
+
 ### Dark Mode
 
 The app supports light, dark, and system themes using `next-themes`.
