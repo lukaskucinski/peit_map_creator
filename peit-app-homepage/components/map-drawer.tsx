@@ -8,8 +8,8 @@ import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css"
 import "@geoman-io/leaflet-geoman-free"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { X, Check, Trash2, Search, Layers, AlertCircle } from "lucide-react"
-import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary } from "@/lib/geojson-utils"
+import { X, Check, Trash2, Search, Layers, AlertCircle, Loader2 } from "lucide-react"
+import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary, generateLocationFilename } from "@/lib/geojson-utils"
 import type { FeatureCollection } from "geojson"
 import type { FeatureGroup as LeafletFeatureGroup } from "leaflet"
 
@@ -375,7 +375,9 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
     }
   }, [])
 
-  const handleDone = useCallback(() => {
+  const [isGeneratingFilename, setIsGeneratingFilename] = useState(false)
+
+  const handleDone = useCallback(async () => {
     if (!featureGroupRef.current) return
 
     const geojson = layersToGeoJSON(featureGroupRef.current)
@@ -386,10 +388,15 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
       return
     }
 
+    // Generate location-based filename (shows brief loading state)
+    setIsGeneratingFilename(true)
+    const filename = await generateLocationFilename(geojson)
+    setIsGeneratingFilename(false)
+
     // Convert to File and pass to parent
     const jsonString = JSON.stringify(geojson, null, 2)
     const blob = new Blob([jsonString], { type: "application/geo+json" })
-    const file = new File([blob], "drawn_geometry.geojson", { type: "application/geo+json" })
+    const file = new File([blob], filename, { type: "application/geo+json" })
 
     onComplete(file)
   }, [onComplete])
@@ -473,11 +480,20 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
           <Button
             size="sm"
             onClick={handleDone}
-            disabled={featureCount === 0}
+            disabled={featureCount === 0 || isGeneratingFilename}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            <Check className="h-4 w-4 mr-1" />
-            Use This Geometry
+            {isGeneratingFilename ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-1" />
+                Use This Geometry
+              </>
+            )}
           </Button>
         </div>
       </div>

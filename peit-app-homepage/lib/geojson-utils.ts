@@ -6,6 +6,22 @@ import * as turf from '@turf/turf'
 export const MAX_AREA_SQ_MILES = 5000
 export const WARN_AREA_SQ_MILES = 2500
 
+// US state abbreviations for filename generation
+const STATE_ABBREVIATIONS: Record<string, string> = {
+  'Alabama': 'al', 'Alaska': 'ak', 'Arizona': 'az', 'Arkansas': 'ar', 'California': 'ca',
+  'Colorado': 'co', 'Connecticut': 'ct', 'Delaware': 'de', 'Florida': 'fl', 'Georgia': 'ga',
+  'Hawaii': 'hi', 'Idaho': 'id', 'Illinois': 'il', 'Indiana': 'in', 'Iowa': 'ia',
+  'Kansas': 'ks', 'Kentucky': 'ky', 'Louisiana': 'la', 'Maine': 'me', 'Maryland': 'md',
+  'Massachusetts': 'ma', 'Michigan': 'mi', 'Minnesota': 'mn', 'Mississippi': 'ms', 'Missouri': 'mo',
+  'Montana': 'mt', 'Nebraska': 'ne', 'Nevada': 'nv', 'New Hampshire': 'nh', 'New Jersey': 'nj',
+  'New Mexico': 'nm', 'New York': 'ny', 'North Carolina': 'nc', 'North Dakota': 'nd', 'Ohio': 'oh',
+  'Oklahoma': 'ok', 'Oregon': 'or', 'Pennsylvania': 'pa', 'Rhode Island': 'ri', 'South Carolina': 'sc',
+  'South Dakota': 'sd', 'Tennessee': 'tn', 'Texas': 'tx', 'Utah': 'ut', 'Vermont': 'vt',
+  'Virginia': 'va', 'Washington': 'wa', 'West Virginia': 'wv', 'Wisconsin': 'wi', 'Wyoming': 'wy',
+  'District of Columbia': 'dc', 'Puerto Rico': 'pr', 'Guam': 'gu', 'American Samoa': 'as',
+  'U.S. Virgin Islands': 'vi', 'Northern Mariana Islands': 'mp'
+}
+
 // Conversion: 1 square mile = 2,589,988 square meters
 const SQ_METERS_PER_SQ_MILE = 2589988
 
@@ -42,6 +58,70 @@ export function geojsonToFile(geojson: FeatureCollection, filename: string = 'dr
   const jsonString = JSON.stringify(geojson, null, 2)
   const blob = new Blob([jsonString], { type: 'application/geo+json' })
   return new File([blob], filename, { type: 'application/geo+json' })
+}
+
+/**
+ * Reverse geocode a GeoJSON FeatureCollection's centroid to generate a location-based filename.
+ * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ *
+ * @param geojson - The FeatureCollection to geocode
+ * @returns A filename like "seattle_king_wa.geojson" or "drawn_geometry.geojson" on failure
+ */
+export async function generateLocationFilename(geojson: FeatureCollection): Promise<string> {
+  const defaultFilename = 'drawn_geometry.geojson'
+
+  try {
+    // Calculate centroid of the geometry
+    const centroid = turf.centroid(geojson)
+    const [lon, lat] = centroid.geometry.coordinates
+
+    // Query Nominatim reverse geocoding API
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+      {
+        headers: {
+          // Nominatim requires a User-Agent header
+          'User-Agent': 'PEITMapCreator/1.0 (https://peit-map-creator.com)'
+        }
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('Geocoding request failed:', response.status)
+      return defaultFilename
+    }
+
+    const data = await response.json()
+
+    if (!data.address) {
+      console.warn('No address data in geocoding response')
+      return defaultFilename
+    }
+
+    // Extract location components (in order of specificity)
+    const city = data.address.city || data.address.town || data.address.village ||
+                 data.address.municipality || data.address.hamlet || ''
+    const county = (data.address.county || '').replace(/\s+County$/i, '')
+    const state = data.address.state || ''
+
+    // Get state abbreviation
+    const stateAbbr = STATE_ABBREVIATIONS[state] || ''
+
+    // Build filename parts (filter out empty strings)
+    const parts = [city, county, stateAbbr]
+      .filter(Boolean)
+      .map(s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
+      .filter(s => s.length > 0)
+
+    if (parts.length === 0) {
+      return defaultFilename
+    }
+
+    return `${parts.join('_')}.geojson`
+  } catch (error) {
+    console.warn('Geocoding failed:', error)
+    return defaultFilename
+  }
 }
 
 /**
