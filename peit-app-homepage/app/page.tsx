@@ -26,10 +26,13 @@ import { ClaimJobPrompt } from "@/components/claim-job-prompt"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@supabase/supabase-js"
 
+// Geometry source type - tracks whether geometry was uploaded or drawn
+type GeometrySource = 'upload' | 'draw'
+
 // Application state types
 type AppState =
   | { step: 'upload' }
-  | { step: 'draw' }
+  | { step: 'draw'; initialGeometry?: FeatureCollection }
   | { step: 'configure'; file: File; geojsonData?: FeatureCollection | null }
   | { step: 'processing'; file: File; config: ProcessingConfig }
   | { step: 'complete'; file: File; config: ProcessingConfig; jobId?: string; downloadUrl?: string; mapUrl?: string; pdfUrl?: string; xlsxUrl?: string }
@@ -39,6 +42,7 @@ export default function HomePage() {
   const [appState, setAppState] = useState<AppState>({ step: 'upload' })
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
   const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
+  const [geometrySource, setGeometrySource] = useState<GeometrySource>('upload')
   const [user, setUser] = useState<User | null>(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
@@ -211,6 +215,7 @@ export default function HomePage() {
   const handleFileSelected = useCallback((file: File) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
+    setGeometrySource('upload')
 
     // Parse file for area calculation and geometry type detection
     // Supports: GeoJSON, Shapefile, KML, KMZ, GeoPackage (lazy-loaded WASM)
@@ -228,6 +233,7 @@ export default function HomePage() {
     setAppState({ step: 'upload' })
     setProgressUpdates([])
     setGeojsonData(null)
+    setGeometrySource('upload')
   }, [])
 
   // Handle draw mode
@@ -236,10 +242,18 @@ export default function HomePage() {
     setProgressUpdates([])
   }, [])
 
+  // Handle edit geometry (return to draw mode with existing geometry)
+  const handleEditGeometry = useCallback(() => {
+    if (geojsonData) {
+      setAppState({ step: 'draw', initialGeometry: geojsonData })
+    }
+  }, [geojsonData])
+
   // Handle draw complete (geometry drawn and confirmed)
   const handleDrawComplete = useCallback((file: File) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
+    setGeometrySource('draw')
 
     // Parse the drawn geometry file for area calculation
     // Drawn geometry is always GeoJSON, but use unified parser for consistency
@@ -375,7 +389,10 @@ export default function HomePage() {
             onFileSelected={handleFileSelected}
             onFileCleared={handleFileCleared}
             onDrawClick={handleDrawClick}
+            onEditGeometry={geometrySource === 'draw' ? handleEditGeometry : undefined}
             selectedFile={appState.step === 'configure' ? appState.file : null}
+            geojsonData={geojsonData}
+            geometrySource={geometrySource}
             disabled={false}
           />
         )}
@@ -385,6 +402,7 @@ export default function HomePage() {
           <MapDrawer
             onComplete={handleDrawComplete}
             onCancel={handleDrawCancel}
+            initialGeometry={appState.step === 'draw' ? appState.initialGeometry : undefined}
           />
         )}
 

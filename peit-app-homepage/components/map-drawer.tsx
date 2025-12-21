@@ -52,6 +52,7 @@ const BASE_MAPS = {
 interface MapDrawerProps {
   onComplete: (file: File) => void
   onCancel: () => void
+  initialGeometry?: FeatureCollection
 }
 
 // Component to initialize Geoman drawing controls and handle events
@@ -224,6 +225,68 @@ function SearchControl() {
   )
 }
 
+// Component to load initial geometry into the feature group
+function InitialGeometryLoader({
+  featureGroupRef,
+  initialGeometry,
+  onLoaded
+}: {
+  featureGroupRef: React.RefObject<LeafletFeatureGroup | null>
+  initialGeometry: FeatureCollection
+  onLoaded: () => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!featureGroupRef.current || !initialGeometry?.features?.length) return
+
+    // Small delay to ensure feature group is ready
+    const timer = setTimeout(() => {
+      const fg = featureGroupRef.current
+      if (!fg) return
+
+      // Clear any existing layers
+      fg.clearLayers()
+
+      // Add each feature as a Leaflet layer
+      for (const feature of initialGeometry.features) {
+        if (!feature.geometry) continue
+
+        try {
+          const layer = L.geoJSON(feature, {
+            pointToLayer: (_, latlng) => L.marker(latlng),
+          })
+
+          // Add each layer from the GeoJSON layer group
+          layer.eachLayer((l) => {
+            fg.addLayer(l)
+          })
+        } catch (e) {
+          console.error("Failed to add feature:", e)
+        }
+      }
+
+      // Fit map to the geometry bounds
+      if (fg.getLayers().length > 0) {
+        try {
+          const bounds = fg.getBounds()
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] })
+          }
+        } catch (e) {
+          console.error("Failed to fit bounds:", e)
+        }
+      }
+
+      onLoaded()
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [featureGroupRef, initialGeometry, map, onLoaded])
+
+  return null
+}
+
 // Component for base map selector
 function BaseMapSelector({
   currentBaseMap,
@@ -270,13 +333,14 @@ function BaseMapSelector({
   )
 }
 
-export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
+export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerProps) {
   const { resolvedTheme } = useTheme()
   const [baseMap, setBaseMap] = useState<keyof typeof BASE_MAPS>("street")
   const [featureCount, setFeatureCount] = useState(0)
   const [validationError, setValidationError] = useState<string | null>(null)
   const featureGroupRef = useRef<LeafletFeatureGroup | null>(null)
   const initialBasemapSet = useRef(false)
+  const initialGeometryLoaded = useRef(false)
 
   // Set default basemap based on theme (only once on initial mount)
   useEffect(() => {
@@ -296,6 +360,12 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
       setValidationError(null)
     }
   }, [])
+
+  // Handle initial geometry loaded
+  const handleInitialGeometryLoaded = useCallback(() => {
+    initialGeometryLoaded.current = true
+    updateFeatureCount()
+  }, [updateFeatureCount])
 
   const handleClear = useCallback(() => {
     if (featureGroupRef.current) {
@@ -356,6 +426,13 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
           />
           <FeatureGroup ref={featureGroupRef}>
             <GeomanControls featureGroupRef={featureGroupRef} onFeatureChange={updateFeatureCount} />
+            {initialGeometry && !initialGeometryLoaded.current && (
+              <InitialGeometryLoader
+                featureGroupRef={featureGroupRef}
+                initialGeometry={initialGeometry}
+                onLoaded={handleInitialGeometryLoaded}
+              />
+            )}
           </FeatureGroup>
           <SearchControl />
           <BaseMapSelector currentBaseMap={baseMap} onBaseMapChange={setBaseMap} />

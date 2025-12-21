@@ -1702,14 +1702,29 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - File validation (type, size)
 - Visual feedback for upload states
 - "Draw Your Own!" button to launch interactive map drawing
+- **Geometry preview**: When file is selected, shows SVG geometry preview as subtle background watermark
+- **Edit Drawing button**: For drawn geometries, displays "Edit Drawing" button to return to map drawer with existing geometry loaded
 
-**`components/map-drawer.tsx`** (NEW)
+**`components/geometry-preview.tsx`**
+- SVG-based geometry preview component (no basemap, abstract representation)
+- Renders GeoJSON features as SVG paths (polygons, lines, points)
+- Theme-aware styling (works in light/dark mode)
+- Uses `lib/geometry-svg.ts` for coordinate projection
+
+**`lib/geometry-svg.ts`**
+- Utilities for converting GeoJSON to SVG paths
+- `calculateBBox()`: Calculate bounding box from GeoJSON
+- `projectToSVG()`: Project geographic coordinates to SVG space (flips Y-axis)
+- `featureToSVGElements()`: Convert GeoJSON features to SVG path data
+
+**`components/map-drawer.tsx`**
 - Interactive map for drawing custom geometries
 - Full-screen overlay below header
 - Leaflet-Geoman integration for drawing tools (polygon, polyline, rectangle, marker)
 - Address/coordinate search using Nominatim geocoder
 - Base map selector (Street, Light, Dark, Satellite)
 - Converts drawn geometries to GeoJSON file for processing pipeline
+- **Initial geometry loading**: Accepts `initialGeometry` prop to pre-populate feature group for editing existing drawings
 
 **`components/map-drawer-dynamic.tsx`**
 - Dynamic import wrapper with `ssr: false` for Leaflet compatibility
