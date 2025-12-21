@@ -140,27 +140,140 @@ The tool uses HTTP POST requests to query FeatureServers (not GET) to avoid 414 
 
 Implementation: `requests.post(query_url, data=params, timeout=60)`
 
-### Bounding Box (Envelope) Queries with Client-Side Filtering
-Uses bounding box for initial FeatureServer queries, then performs client-side filtering for precise polygon intersection. This two-stage approach is faster and more reliable across different FeatureServer implementations.
+### Polygon Query Strategy (with Smart Heuristic)
 
-**Stage 1 - Server-side (Envelope):**
-```python
+The tool uses a **smart query strategy** that automatically selects between polygon queries and envelope (bounding box) queries based on input geometry characteristics. This optimization balances query accuracy with performance.
+
+**Why Polygon Queries?**
+
+With bounding box queries, a discontiguous polygon spanning a large area could return 1000 features (the server limit), but 600+ might be outside the actual polygon. This means features that truly intersect might never be returned because the server limit was hit prematurely.
+
+Polygon queries tell the server exactly which features to return, dramatically reducing false positives and ensuring the server limit is used efficiently.
+
+**Smart Query Selection Heuristic:**
+
+The system automatically chooses the optimal query method based on:
+1. **Input area size** (in square miles)
+2. **Bounding box fill ratio** (polygon area / bbox area)
+
+Small compact polygons use fast envelope queries; large sparse polygons use precise polygon queries.
+
+| Input Area | Threshold | Behavior |
+|------------|-----------|----------|
+| < 100 sq mi | 5% | Use envelope for almost everything (fast, won't hit limits) |
+| 100-500 sq mi | 5%→50% | Gradually require more compactness for envelope |
+| 500-1500 sq mi | 50%→70% | Balanced approach |
+| 1500-3000 sq mi | 70%→80% | Large areas need fairly compact shape for envelope |
+| 3000-4000 sq mi | 80%→95% | Very large need near-rectangle for envelope |
+| > 4000 sq mi | 95% | Only use envelope if nearly perfect rectangle |
+
+**Decision Logic:**
+- If `bbox_fill_ratio >= threshold` → Use envelope query (polygon is compact)
+- If `bbox_fill_ratio < threshold` → Use polygon query (too much empty space in bbox)
+
+**Query Strategy:**
+
+1. **Polygon Query**: Sends actual polygon geometry in ESRI JSON format
+   - Used for sparse/discontiguous polygons where envelope would return too many false positives
+   - Automatic simplification if geometry exceeds `max_vertices` (default: 1000)
+   - Progressive simplification with topology preservation
+   - Falls back to envelope on timeout, error, or unsupported geometry
+
+2. **Envelope Query**: Sends bounding box
+   - Used for compact polygons where it's faster and won't hit server limits
+   - Always available as fallback if polygon query fails
+   - Used when `polygon_query_enabled: false`
+
+3. **Client-side Filtering**: Applied after server query to catch edge cases
+   ```python
+   gdf = gdf[gdf.intersects(polygon_geometry)]
+   ```
+
+**Configuration:**
+```json
 {
-    'xmin': bounds[0],
-    'ymin': bounds[1],
-    'xmax': bounds[2],
-    'ymax': bounds[3],
-    'spatialReference': {'wkid': 4326}
+  "geometry_settings": {
+    "polygon_query_enabled": true,
+    "polygon_query_max_vertices": 1000,
+    "polygon_query_simplify_tolerance": 0.0001,
+    "polygon_query_fallback_on_error": true
+  }
 }
 ```
 
-**Stage 2 - Client-side (Precise):**
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `polygon_query_enabled` | bool | `true` | Enable smart polygon/envelope selection |
+| `polygon_query_max_vertices` | int | `1000` | Max vertices before simplification |
+| `polygon_query_simplify_tolerance` | float | `0.0001` | Initial simplification tolerance (~11m) |
+| `polygon_query_fallback_on_error` | bool | `true` | Fall back to envelope on failure |
+
+Note: The bbox fill threshold is calculated dynamically based on area size - no configuration needed.
+
+**Geometry Simplification:**
+
+Complex polygons are automatically simplified to reduce server processing time:
+- Uses Shapely's `simplify(tolerance, preserve_topology=True)`
+- Progressive tolerance increase (2x per iteration, up to 5 iterations)
+- Maximum tolerance cap at 0.01 degrees (~1.1km) to prevent over-simplification
+- Invalid simplified geometries fall back to original
+- Simplification is performed ONCE before processing all layers (optimization)
+
+**Area Calculation:**
+
+Area is calculated using latitude-dependent scaling for accuracy:
 ```python
-polygon_geometry = polygon_geom.geometry.iloc[0]
-gdf = gdf[gdf.intersects(polygon_geometry)]
+lat_miles_per_deg = 69.0
+lon_miles_per_deg = 69.0 * math.cos(math.radians(lat))
+area_sq_miles = area_deg2 * lat_miles_per_deg * lon_miles_per_deg
 ```
 
-This ensures only features that truly intersect the input polygon are included in final results.
+This formula is used consistently in both `geometry_input/buffering.py` and `utils/geometry_converters.py`.
+
+**Metadata Tracking:**
+
+Query method and heuristic details are tracked in metadata:
+```json
+{
+  "query_method": "polygon",
+  "query_vertices": 156,
+  "simplification_applied": true,
+  "original_vertices": 2450,
+  "area_sq_miles": 2915.0,
+  "bbox_fill_ratio": 0.35,
+  "dynamic_threshold": 0.77
+}
+```
+
+Fallback scenarios include reason:
+```json
+{
+  "query_method": "envelope_fallback",
+  "query_fallback_reason": "timeout"
+}
+```
+
+**Console Output:**
+```
+Polygon query: disabled (bbox fill 100.0% >= 79% threshold for 2915 sq mi)
+  Using envelope queries (more efficient for compact geometries)
+
+  Querying BIA AIAN National LAR...
+    - Using envelope query
+    - Server returned 45 features
+    ✓ Found 45 intersecting features
+```
+
+Or for polygon queries:
+```
+Polygon query: enabled (bbox fill 35.0% < 77% threshold for 2915 sq mi)
+  Simplified from 2450 to 156 vertices
+
+  Querying BIA AIAN National LAR...
+    - Using polygon query (156 vertices)
+    - Server returned 45 features
+    ✓ Found 45 intersecting features
+```
 
 ### ESRI JSON to GeoJSON Conversion
 The tool converts three ESRI geometry types to GeoJSON using `utils/geometry_converters.py`:
@@ -1456,13 +1569,16 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 - `get_logger(name)`: Get logger instance for module
 
 ### utils.geometry_converters
-**Purpose**: ESRI JSON to GeoJSON conversion
+**Purpose**: ESRI JSON to GeoJSON conversion and geometry utilities
 
 **Functions**:
 - `convert_esri_point(geom, props)`: Convert point geometry
 - `convert_esri_linestring(geom, props)`: Convert line geometry
 - `convert_esri_polygon(geom, props)`: Convert polygon geometry
 - `convert_esri_to_geojson(esri_feature)`: Main converter dispatcher
+- `shapely_to_esri_polygon(geom)`: Convert Shapely Polygon/MultiPolygon to ESRI JSON format for server queries
+- `count_geometry_vertices(geom)`: Count total vertices in Polygon or MultiPolygon
+- `simplify_for_query(geom, max_vertices, tolerance, max_tolerance)`: Progressively simplify geometry for server queries
 
 ### utils.html_generators
 **Purpose**: Generate HTML/JavaScript code

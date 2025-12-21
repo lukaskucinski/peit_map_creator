@@ -8,6 +8,7 @@ Functions:
     process_all_layers: Query all configured layers and return results
 """
 
+import json
 import geopandas as gpd
 from typing import Dict, List, Optional, Set, Tuple
 from pyproj import CRS
@@ -17,6 +18,14 @@ from geometry_input.clipping import create_clip_boundary, aggregate_clip_metadat
 from config.config_loader import load_geometry_settings
 from utils.logger import get_logger
 from utils.state_filter import get_intersecting_states, filter_layers_by_state
+from utils.geometry_converters import (
+    shapely_to_esri_polygon,
+    count_geometry_vertices,
+    simplify_for_query,
+    calculate_bbox_fill_ratio,
+    calculate_area_sq_miles,
+    calculate_dynamic_bbox_threshold
+)
 
 logger = get_logger(__name__)
 
@@ -99,6 +108,78 @@ def process_all_layers(
         else:
             logger.info("State filter: No states detected (processing all layers)")
 
+    # Polygon query settings - use actual polygon geometry instead of bounding box
+    polygon_query_config = geometry_settings.get('polygon_query_enabled', True)
+    max_query_vertices = geometry_settings.get('polygon_query_max_vertices', 1000)
+    simplify_tolerance = geometry_settings.get('polygon_query_simplify_tolerance', 0.0001)
+
+    # Pre-compute ESRI polygon JSON ONCE for all layer queries (optimization)
+    esri_polygon_json = None
+    polygon_query_metadata = {}
+    use_polygon_query = False  # Will be set based on heuristic
+
+    if polygon_query_config:
+        polygon_geometry = polygon_gdf.geometry.iloc[0]
+
+        # Calculate area and dynamic threshold
+        # Larger areas need stricter thresholds (prefer polygon query to avoid hitting limits)
+        area_sq_miles = calculate_area_sq_miles(polygon_geometry)
+        bbox_fill_ratio = calculate_bbox_fill_ratio(polygon_geometry)
+        bbox_fill_threshold = calculate_dynamic_bbox_threshold(area_sq_miles)
+
+        # Track in metadata
+        polygon_query_metadata['area_sq_miles'] = round(area_sq_miles, 1)
+        polygon_query_metadata['bbox_fill_ratio'] = round(bbox_fill_ratio, 3)
+        polygon_query_metadata['dynamic_threshold'] = round(bbox_fill_threshold, 2)
+
+        if bbox_fill_ratio >= bbox_fill_threshold:
+            # Polygon fills most of its bounding box - envelope query is more efficient
+            logger.info(
+                f"Polygon query: disabled (bbox fill {bbox_fill_ratio:.1%} >= "
+                f"{bbox_fill_threshold:.0%} threshold for {area_sq_miles:.0f} sq mi)"
+            )
+            logger.info("  Using envelope queries (more efficient for compact geometries)")
+        else:
+            # Polygon is sparse/discontiguous - polygon query is more efficient
+            use_polygon_query = True
+            original_vertices = count_geometry_vertices(polygon_geometry)
+
+            # Simplify geometry if needed (done once, not per-layer)
+            simplified_geom = simplify_for_query(
+                polygon_geometry,
+                max_vertices=max_query_vertices,
+                tolerance=simplify_tolerance
+            )
+            query_vertices = count_geometry_vertices(simplified_geom)
+
+            # Track simplification metadata
+            polygon_query_metadata['query_vertices'] = query_vertices
+            polygon_query_metadata['simplification_applied'] = query_vertices < original_vertices
+            if polygon_query_metadata['simplification_applied']:
+                polygon_query_metadata['original_vertices'] = original_vertices
+                logger.info(
+                    f"Polygon query: enabled (bbox fill {bbox_fill_ratio:.1%} < "
+                    f"{bbox_fill_threshold:.0%} threshold for {area_sq_miles:.0f} sq mi)"
+                )
+                logger.info(
+                    f"  Simplified from {original_vertices} to {query_vertices} vertices"
+                )
+            else:
+                logger.info(
+                    f"Polygon query: enabled ({query_vertices} vertices, "
+                    f"bbox fill {bbox_fill_ratio:.1%}, {area_sq_miles:.0f} sq mi)"
+                )
+
+            # Convert to ESRI JSON once
+            esri_polygon = shapely_to_esri_polygon(simplified_geom)
+            if esri_polygon:
+                esri_polygon_json = json.dumps(esri_polygon)
+            else:
+                logger.warning("Could not convert geometry to ESRI format, using envelope queries")
+                use_polygon_query = False
+    else:
+        logger.info("Polygon query disabled in config (using envelope queries)")
+
     results = {}
     metadata = {}
 
@@ -118,7 +199,10 @@ def process_all_layers(
             polygon_geom=polygon_gdf,
             layer_name=layer_name,
             clip_boundary=clip_boundary,
-            geometry_type=geometry_type
+            geometry_type=geometry_type,
+            use_polygon_query=use_polygon_query,
+            esri_polygon_json=esri_polygon_json,
+            polygon_query_metadata=polygon_query_metadata
         )
 
         if gdf is not None:
@@ -135,10 +219,28 @@ def process_all_layers(
     layers_with_data = sum(1 for m in metadata.values() if m['feature_count'] > 0)
     total_time = sum(m['query_time'] for m in metadata.values())
 
+    # Count query methods used
+    polygon_queries = sum(
+        1 for m in metadata.values() if m.get('query_method') == 'polygon'
+    )
+    envelope_queries = sum(
+        1 for m in metadata.values() if m.get('query_method') == 'envelope'
+    )
+    fallback_queries = sum(
+        1 for m in metadata.values() if m.get('query_method') == 'envelope_fallback'
+    )
+
     logger.info(f"Total layers queried: {len(metadata)}")
     logger.info(f"Layers with intersections: {layers_with_data}")
     logger.info(f"Total features found: {total_features}")
     logger.info(f"Total query time: {total_time:.2f} seconds")
+
+    # Log query method summary
+    if use_polygon_query:
+        logger.info(
+            f"Query methods: {polygon_queries} polygon, "
+            f"{envelope_queries} envelope, {fallback_queries} fallback"
+        )
 
     # Aggregate clipping statistics
     clip_summary = {
