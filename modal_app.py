@@ -517,8 +517,10 @@ def fastapi_app():
         try:
             active = active_jobs_dict.get(key, 0)
             if active >= MAX_CONCURRENT_JOBS_PER_IP:
+                print(f"[RATE LIMIT] Concurrent limit hit for {ip}: {active} active jobs")
                 return False
             active_jobs_dict[key] = active + 1
+            print(f"[RATE LIMIT] Slot acquired for {ip}: {active + 1} active jobs")
             return True
         except Exception:
             # If Dict is unavailable, allow the request
@@ -529,7 +531,9 @@ def fastapi_app():
         key = f"active:{ip}"
         try:
             active = active_jobs_dict.get(key, 1)
-            active_jobs_dict[key] = max(0, active - 1)
+            new_count = max(0, active - 1)
+            active_jobs_dict[key] = new_count
+            print(f"[RATE LIMIT] Slot released for {ip}: {new_count} active jobs")
         except Exception:
             pass
 
@@ -615,17 +619,8 @@ def fastapi_app():
                 }
             )
 
-        # Concurrent job limit check
-        if not check_concurrent_limit(client_ip):
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "error": "Too many concurrent jobs",
-                    "message": f"Maximum {MAX_CONCURRENT_JOBS_PER_IP} simultaneous jobs. Please wait for current jobs to complete.",
-                }
-            )
-
-        # Validate file
+        # Validate file BEFORE acquiring concurrent job slot
+        # This prevents slot leaks when validation fails
         if not file.filename:
             raise HTTPException(status_code=400, detail="No filename provided")
 
@@ -647,6 +642,17 @@ def fastapi_app():
             raise HTTPException(
                 status_code=400,
                 detail="File too large. Maximum size: 5MB"
+            )
+
+        # Concurrent job limit check - AFTER validation to prevent slot leaks
+        # If validation fails above, we don't consume a slot
+        if not check_concurrent_limit(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "Too many concurrent jobs",
+                    "message": f"Maximum {MAX_CONCURRENT_JOBS_PER_IP} simultaneous jobs. Please wait for current jobs to complete.",
+                }
             )
 
         # Generate job ID (16 chars for security - prevents URL enumeration)
@@ -721,6 +727,11 @@ def fastapi_app():
                             message = get_progress_message(progress)
                             yield f"data: {json.dumps({'stage': 'processing', 'message': message, 'progress': progress})}\n\n"
 
+            except asyncio.CancelledError:
+                # Client disconnected (closed browser tab) - release job slot
+                print(f"[SSE] Client disconnected for job {job_id}, releasing slot for {client_ip}")
+                release_job_slot(client_ip)
+                raise  # Must re-raise CancelledError to properly close the generator
             except Exception as e:
                 # Release job slot on error
                 release_job_slot(client_ip)
