@@ -140,9 +140,9 @@ The tool uses HTTP POST requests to query FeatureServers (not GET) to avoid 414 
 
 Implementation: `requests.post(query_url, data=params, timeout=60)`
 
-### Polygon Query Strategy (with Envelope Fallback)
+### Polygon Query Strategy (with Smart Heuristic)
 
-The tool uses a **polygon-first query strategy** that sends the actual input polygon geometry to FeatureServers for precise server-side filtering. This is more efficient than bounding box queries for complex or discontiguous polygons (e.g., scattered tribal lands across a state).
+The tool uses a **smart query strategy** that automatically selects between polygon queries and envelope (bounding box) queries based on input geometry characteristics. This optimization balances query accuracy with performance.
 
 **Why Polygon Queries?**
 
@@ -150,15 +150,38 @@ With bounding box queries, a discontiguous polygon spanning a large area could r
 
 Polygon queries tell the server exactly which features to return, dramatically reducing false positives and ensuring the server limit is used efficiently.
 
+**Smart Query Selection Heuristic:**
+
+The system automatically chooses the optimal query method based on:
+1. **Input area size** (in square miles)
+2. **Bounding box fill ratio** (polygon area / bbox area)
+
+Small compact polygons use fast envelope queries; large sparse polygons use precise polygon queries.
+
+| Input Area | Threshold | Behavior |
+|------------|-----------|----------|
+| < 100 sq mi | 5% | Use envelope for almost everything (fast, won't hit limits) |
+| 100-500 sq mi | 5%→50% | Gradually require more compactness for envelope |
+| 500-1500 sq mi | 50%→70% | Balanced approach |
+| 1500-3000 sq mi | 70%→80% | Large areas need fairly compact shape for envelope |
+| 3000-4000 sq mi | 80%→95% | Very large need near-rectangle for envelope |
+| > 4000 sq mi | 95% | Only use envelope if nearly perfect rectangle |
+
+**Decision Logic:**
+- If `bbox_fill_ratio >= threshold` → Use envelope query (polygon is compact)
+- If `bbox_fill_ratio < threshold` → Use polygon query (too much empty space in bbox)
+
 **Query Strategy:**
 
-1. **Polygon Query (Default)**: Sends actual polygon geometry in ESRI JSON format
+1. **Polygon Query**: Sends actual polygon geometry in ESRI JSON format
+   - Used for sparse/discontiguous polygons where envelope would return too many false positives
    - Automatic simplification if geometry exceeds `max_vertices` (default: 1000)
    - Progressive simplification with topology preservation
    - Falls back to envelope on timeout, error, or unsupported geometry
 
-2. **Envelope Query (Fallback)**: Sends bounding box if polygon query fails
-   - Always available as fallback
+2. **Envelope Query**: Sends bounding box
+   - Used for compact polygons where it's faster and won't hit server limits
+   - Always available as fallback if polygon query fails
    - Used when `polygon_query_enabled: false`
 
 3. **Client-side Filtering**: Applied after server query to catch edge cases
@@ -180,10 +203,12 @@ Polygon queries tell the server exactly which features to return, dramatically r
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `polygon_query_enabled` | bool | `true` | Use polygon geometry instead of bounding box |
+| `polygon_query_enabled` | bool | `true` | Enable smart polygon/envelope selection |
 | `polygon_query_max_vertices` | int | `1000` | Max vertices before simplification |
 | `polygon_query_simplify_tolerance` | float | `0.0001` | Initial simplification tolerance (~11m) |
 | `polygon_query_fallback_on_error` | bool | `true` | Fall back to envelope on failure |
+
+Note: The bbox fill threshold is calculated dynamically based on area size - no configuration needed.
 
 **Geometry Simplification:**
 
@@ -192,16 +217,31 @@ Complex polygons are automatically simplified to reduce server processing time:
 - Progressive tolerance increase (2x per iteration, up to 5 iterations)
 - Maximum tolerance cap at 0.01 degrees (~1.1km) to prevent over-simplification
 - Invalid simplified geometries fall back to original
+- Simplification is performed ONCE before processing all layers (optimization)
+
+**Area Calculation:**
+
+Area is calculated using latitude-dependent scaling for accuracy:
+```python
+lat_miles_per_deg = 69.0
+lon_miles_per_deg = 69.0 * math.cos(math.radians(lat))
+area_sq_miles = area_deg2 * lat_miles_per_deg * lon_miles_per_deg
+```
+
+This formula is used consistently in both `geometry_input/buffering.py` and `utils/geometry_converters.py`.
 
 **Metadata Tracking:**
 
-Query method and simplification details are tracked in metadata:
+Query method and heuristic details are tracked in metadata:
 ```json
 {
   "query_method": "polygon",
   "query_vertices": 156,
   "simplification_applied": true,
-  "original_vertices": 2450
+  "original_vertices": 2450,
+  "area_sq_miles": 2915.0,
+  "bbox_fill_ratio": 0.35,
+  "dynamic_threshold": 0.77
 }
 ```
 
@@ -215,9 +255,22 @@ Fallback scenarios include reason:
 
 **Console Output:**
 ```
+Polygon query: disabled (bbox fill 100.0% >= 79% threshold for 2915 sq mi)
+  Using envelope queries (more efficient for compact geometries)
+
+  Querying BIA AIAN National LAR...
+    - Using envelope query
+    - Server returned 45 features
+    ✓ Found 45 intersecting features
+```
+
+Or for polygon queries:
+```
+Polygon query: enabled (bbox fill 35.0% < 77% threshold for 2915 sq mi)
+  Simplified from 2450 to 156 vertices
+
   Querying BIA AIAN National LAR...
     - Using polygon query (156 vertices)
-    - Simplified from 2450 to 156 vertices
     - Server returned 45 features
     ✓ Found 45 intersecting features
 ```

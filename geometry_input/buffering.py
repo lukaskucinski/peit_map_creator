@@ -177,15 +177,28 @@ def calculate_buffer_area(buffered_geom: BaseGeometry) -> dict:
 
     Note:
         Area calculations in EPSG:4326 (degrees) are approximate.
+        Uses latitude-dependent scaling for more accurate results.
         For precise area, would need to reproject to equal-area CRS.
     """
+    import math
+
     # Quick area calculation (approximate for lat/lon)
     area_degrees_sq = buffered_geom.area
 
-    # Rough conversion: 1 degree ≈ 111 km at equator
-    # This is very approximate and varies by latitude
-    area_km_sq_approx = area_degrees_sq * (111 ** 2)
-    area_miles_sq_approx = area_km_sq_approx * 0.386102
+    # Get centroid latitude for scaling
+    # Longitude degrees shrink as you move away from equator
+    centroid = buffered_geom.centroid
+    lat = centroid.y
+
+    # Latitude-dependent calculation (matches geometry_converters.py)
+    # 1 degree latitude ≈ 69 miles (fairly constant)
+    # 1 degree longitude ≈ 69 * cos(lat) miles
+    lat_miles_per_deg = 69.0
+    lon_miles_per_deg = 69.0 * math.cos(math.radians(lat))
+    area_miles_sq_approx = area_degrees_sq * lat_miles_per_deg * lon_miles_per_deg
+
+    # Convert to km for backward compatibility
+    area_km_sq_approx = area_miles_sq_approx / 0.386102
 
     area_info = {
         'area_sq_degrees': area_degrees_sq,

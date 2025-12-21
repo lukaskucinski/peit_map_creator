@@ -177,7 +177,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
 if __name__ == "__main__":
     # Example: Process the Vermont Project Area test file
-    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\alabama_sites_statewide.kmz"
+    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\indiana_large_square_poly.kmz"
 
     # Run the workflow
     output_dir = main(INPUT_FILE)

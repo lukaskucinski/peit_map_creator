@@ -108,6 +108,8 @@ def load_geometry_settings(config: Dict = None) -> Dict:
         'polygon_query_max_vertices': 1000,
         'polygon_query_simplify_tolerance': 0.0001,
         'polygon_query_fallback_on_error': True
+        # Note: bbox fill threshold is now calculated dynamically based on area size
+        # Larger areas get stricter thresholds to prefer polygon queries (avoid hitting limits)
     }
 
     # Get geometry_settings from config, or use defaults

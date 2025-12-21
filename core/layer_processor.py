@@ -21,7 +21,10 @@ from utils.state_filter import get_intersecting_states, filter_layers_by_state
 from utils.geometry_converters import (
     shapely_to_esri_polygon,
     count_geometry_vertices,
-    simplify_for_query
+    simplify_for_query,
+    calculate_bbox_fill_ratio,
+    calculate_area_sq_miles,
+    calculate_dynamic_bbox_threshold
 )
 
 logger = get_logger(__name__)
@@ -106,47 +109,76 @@ def process_all_layers(
             logger.info("State filter: No states detected (processing all layers)")
 
     # Polygon query settings - use actual polygon geometry instead of bounding box
-    use_polygon_query = geometry_settings.get('polygon_query_enabled', True)
+    polygon_query_config = geometry_settings.get('polygon_query_enabled', True)
     max_query_vertices = geometry_settings.get('polygon_query_max_vertices', 1000)
     simplify_tolerance = geometry_settings.get('polygon_query_simplify_tolerance', 0.0001)
 
     # Pre-compute ESRI polygon JSON ONCE for all layer queries (optimization)
     esri_polygon_json = None
     polygon_query_metadata = {}
+    use_polygon_query = False  # Will be set based on heuristic
 
-    if use_polygon_query:
+    if polygon_query_config:
         polygon_geometry = polygon_gdf.geometry.iloc[0]
-        original_vertices = count_geometry_vertices(polygon_geometry)
 
-        # Simplify geometry if needed (done once, not per-layer)
-        simplified_geom = simplify_for_query(
-            polygon_geometry,
-            max_vertices=max_query_vertices,
-            tolerance=simplify_tolerance
-        )
-        query_vertices = count_geometry_vertices(simplified_geom)
+        # Calculate area and dynamic threshold
+        # Larger areas need stricter thresholds (prefer polygon query to avoid hitting limits)
+        area_sq_miles = calculate_area_sq_miles(polygon_geometry)
+        bbox_fill_ratio = calculate_bbox_fill_ratio(polygon_geometry)
+        bbox_fill_threshold = calculate_dynamic_bbox_threshold(area_sq_miles)
 
-        # Track simplification metadata
-        polygon_query_metadata['query_vertices'] = query_vertices
-        polygon_query_metadata['simplification_applied'] = query_vertices < original_vertices
-        if polygon_query_metadata['simplification_applied']:
-            polygon_query_metadata['original_vertices'] = original_vertices
+        # Track in metadata
+        polygon_query_metadata['area_sq_miles'] = round(area_sq_miles, 1)
+        polygon_query_metadata['bbox_fill_ratio'] = round(bbox_fill_ratio, 3)
+        polygon_query_metadata['dynamic_threshold'] = round(bbox_fill_threshold, 2)
+
+        if bbox_fill_ratio >= bbox_fill_threshold:
+            # Polygon fills most of its bounding box - envelope query is more efficient
             logger.info(
-                f"Polygon query: simplified from {original_vertices} to "
-                f"{query_vertices} vertices"
+                f"Polygon query: disabled (bbox fill {bbox_fill_ratio:.1%} >= "
+                f"{bbox_fill_threshold:.0%} threshold for {area_sq_miles:.0f} sq mi)"
             )
+            logger.info("  Using envelope queries (more efficient for compact geometries)")
         else:
-            logger.info(f"Polygon query enabled ({query_vertices} vertices)")
+            # Polygon is sparse/discontiguous - polygon query is more efficient
+            use_polygon_query = True
+            original_vertices = count_geometry_vertices(polygon_geometry)
 
-        # Convert to ESRI JSON once
-        esri_polygon = shapely_to_esri_polygon(simplified_geom)
-        if esri_polygon:
-            esri_polygon_json = json.dumps(esri_polygon)
-        else:
-            logger.warning("Could not convert geometry to ESRI format, using envelope queries")
-            use_polygon_query = False
+            # Simplify geometry if needed (done once, not per-layer)
+            simplified_geom = simplify_for_query(
+                polygon_geometry,
+                max_vertices=max_query_vertices,
+                tolerance=simplify_tolerance
+            )
+            query_vertices = count_geometry_vertices(simplified_geom)
+
+            # Track simplification metadata
+            polygon_query_metadata['query_vertices'] = query_vertices
+            polygon_query_metadata['simplification_applied'] = query_vertices < original_vertices
+            if polygon_query_metadata['simplification_applied']:
+                polygon_query_metadata['original_vertices'] = original_vertices
+                logger.info(
+                    f"Polygon query: enabled (bbox fill {bbox_fill_ratio:.1%} < "
+                    f"{bbox_fill_threshold:.0%} threshold for {area_sq_miles:.0f} sq mi)"
+                )
+                logger.info(
+                    f"  Simplified from {original_vertices} to {query_vertices} vertices"
+                )
+            else:
+                logger.info(
+                    f"Polygon query: enabled ({query_vertices} vertices, "
+                    f"bbox fill {bbox_fill_ratio:.1%}, {area_sq_miles:.0f} sq mi)"
+                )
+
+            # Convert to ESRI JSON once
+            esri_polygon = shapely_to_esri_polygon(simplified_geom)
+            if esri_polygon:
+                esri_polygon_json = json.dumps(esri_polygon)
+            else:
+                logger.warning("Could not convert geometry to ESRI format, using envelope queries")
+                use_polygon_query = False
     else:
-        logger.info("Polygon query disabled (using envelope queries)")
+        logger.info("Polygon query disabled in config (using envelope queries)")
 
     results = {}
     metadata = {}
