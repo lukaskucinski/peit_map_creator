@@ -61,15 +61,23 @@ export function geojsonToFile(geojson: FeatureCollection, filename: string = 'dr
 }
 
 /**
- * Reverse geocode a GeoJSON FeatureCollection's centroid to generate a location-based filename.
+ * Location data from reverse geocoding
+ */
+export interface LocationData {
+  city: string      // City/town/village name
+  county: string    // County name (without "County" suffix)
+  state: string     // Full state name
+  stateAbbr: string // Two-letter state abbreviation
+}
+
+/**
+ * Reverse geocode a GeoJSON FeatureCollection's centroid to get location data.
  * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
  *
  * @param geojson - The FeatureCollection to geocode
- * @returns A filename like "seattle_king_wa.geojson" or "drawn_geometry.geojson" on failure
+ * @returns Location data or null on failure
  */
-export async function generateLocationFilename(geojson: FeatureCollection): Promise<string> {
-  const defaultFilename = 'drawn_geometry.geojson'
-
+export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promise<LocationData | null> {
   try {
     // Calculate centroid of the geometry
     const centroid = turf.centroid(geojson)
@@ -88,40 +96,95 @@ export async function generateLocationFilename(geojson: FeatureCollection): Prom
 
     if (!response.ok) {
       console.warn('Geocoding request failed:', response.status)
-      return defaultFilename
+      return null
     }
 
     const data = await response.json()
 
     if (!data.address) {
       console.warn('No address data in geocoding response')
-      return defaultFilename
+      return null
     }
 
-    // Extract location components (in order of specificity)
+    // Extract location components
     const city = data.address.city || data.address.town || data.address.village ||
                  data.address.municipality || data.address.hamlet || ''
     const county = (data.address.county || '').replace(/\s+County$/i, '')
     const state = data.address.state || ''
-
-    // Get state abbreviation
     const stateAbbr = STATE_ABBREVIATIONS[state] || ''
 
-    // Build filename parts (filter out empty strings)
-    const parts = [city, county, stateAbbr]
-      .filter(Boolean)
-      .map(s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
-      .filter(s => s.length > 0)
-
-    if (parts.length === 0) {
-      return defaultFilename
-    }
-
-    return `${parts.join('_')}.geojson`
+    return { city, county, state, stateAbbr }
   } catch (error) {
     console.warn('Geocoding failed:', error)
+    return null
+  }
+}
+
+/**
+ * Reverse geocode a GeoJSON FeatureCollection's centroid to generate a location-based filename.
+ * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ *
+ * @param geojson - The FeatureCollection to geocode
+ * @returns A filename like "seattle_king_wa.geojson" or "drawn_geometry.geojson" on failure
+ */
+export async function generateLocationFilename(geojson: FeatureCollection): Promise<string> {
+  const defaultFilename = 'drawn_geometry.geojson'
+
+  const location = await reverseGeocodeGeometry(geojson)
+  if (!location) return defaultFilename
+
+  // Build filename parts (filter out empty strings)
+  const parts = [location.city, location.county, location.stateAbbr]
+    .filter(Boolean)
+    .map(s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
+    .filter(s => s.length > 0)
+
+  if (parts.length === 0) {
     return defaultFilename
   }
+
+  return `${parts.join('_')}.geojson`
+}
+
+/**
+ * Generate a location-based Project ID from geocoded location data.
+ * Format: PEIT-CIT-COU-ST-DDMMYYYY (e.g., PEIT-SEA-KIN-WA-21122025)
+ *
+ * @param location - Location data from reverse geocoding
+ * @returns Project ID string
+ */
+export function generateLocationProjectId(location: LocationData | null): string {
+  const now = new Date()
+  const day = now.getDate().toString().padStart(2, '0')
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const year = now.getFullYear()
+  const datePart = `${day}${month}${year}`
+
+  if (!location) {
+    // Fallback to random ID if no location
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+    return `PEIT-${random}-${datePart}`
+  }
+
+  // Create 3-letter codes from location parts
+  const cityCode = location.city
+    ? location.city.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '')
+    : ''
+  const countyCode = location.county
+    ? location.county.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '')
+    : ''
+  const stateCode = location.stateAbbr.toUpperCase()
+
+  // Build parts array (filter out empty strings)
+  const parts = [cityCode, countyCode, stateCode].filter(s => s.length > 0)
+
+  if (parts.length === 0) {
+    // Fallback if all parts are empty
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+    return `PEIT-${random}-${datePart}`
+  }
+
+  return `PEIT-${parts.join('-')}-${datePart}`
 }
 
 /**

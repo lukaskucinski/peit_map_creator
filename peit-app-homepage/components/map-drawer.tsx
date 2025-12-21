@@ -9,7 +9,7 @@ import "@geoman-io/leaflet-geoman-free"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { X, Check, Trash2, Search, Layers, AlertCircle, Loader2 } from "lucide-react"
-import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary, generateLocationFilename } from "@/lib/geojson-utils"
+import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary, reverseGeocodeGeometry, type LocationData } from "@/lib/geojson-utils"
 import type { FeatureCollection } from "geojson"
 import type { FeatureGroup as LeafletFeatureGroup } from "leaflet"
 
@@ -50,7 +50,7 @@ const BASE_MAPS = {
 }
 
 interface MapDrawerProps {
-  onComplete: (file: File) => void
+  onComplete: (file: File, locationData?: LocationData | null) => void
   onCancel: () => void
   initialGeometry?: FeatureCollection
 }
@@ -388,17 +388,29 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
       return
     }
 
-    // Generate location-based filename (shows brief loading state)
+    // Geocode to get location data for filename and project ID
     setIsGeneratingFilename(true)
-    const filename = await generateLocationFilename(geojson)
+    const locationData = await reverseGeocodeGeometry(geojson)
     setIsGeneratingFilename(false)
 
-    // Convert to File and pass to parent
+    // Generate filename from location data
+    let filename = 'drawn_geometry.geojson'
+    if (locationData) {
+      const parts = [locationData.city, locationData.county, locationData.stateAbbr]
+        .filter(Boolean)
+        .map(s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
+        .filter(s => s.length > 0)
+      if (parts.length > 0) {
+        filename = `${parts.join('_')}.geojson`
+      }
+    }
+
+    // Convert to File and pass to parent with location data
     const jsonString = JSON.stringify(geojson, null, 2)
     const blob = new Blob([jsonString], { type: "application/geo+json" })
     const file = new File([blob], filename, { type: "application/geo+json" })
 
-    onComplete(file)
+    onComplete(file, locationData)
   }, [onComplete])
 
   const currentGeojson = featureGroupRef.current ? layersToGeoJSON(featureGroupRef.current) : null

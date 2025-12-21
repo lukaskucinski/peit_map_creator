@@ -12,8 +12,10 @@ import type { FeatureCollection } from "geojson"
 import {
   validateGeometryArea,
   detectGeometryType,
+  generateLocationProjectId,
   type AreaValidation,
   type DetectedGeometryType,
+  type LocationData,
   MAX_AREA_SQ_MILES,
 } from "@/lib/geojson-utils"
 
@@ -29,6 +31,8 @@ interface ConfigPanelProps {
   onRun: (config: ProcessingConfig) => void
   disabled?: boolean
   geojsonData?: FeatureCollection | null
+  /** Location data from reverse geocoding (for generating location-based project ID) */
+  locationData?: LocationData | null
   /** Initial config values to restore (for edit mode) */
   initialConfig?: Partial<ProcessingConfig>
   /** Called when any config value changes */
@@ -77,7 +81,7 @@ function LabelWithTooltip({ label, tooltip, htmlFor }: { label: string; tooltip:
   )
 }
 
-export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, initialConfig, onConfigChange }: ConfigPanelProps) {
+export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, locationData, initialConfig, onConfigChange }: ConfigPanelProps) {
   const [projectName, setProjectName] = useState(initialConfig?.projectName ?? "")
   const [projectId, setProjectId] = useState(initialConfig?.projectId ?? "")
   const [bufferDistanceFeet, setBufferDistanceFeet] = useState(initialConfig?.bufferDistanceFeet ?? DEFAULT_BUFFER_FEET)
@@ -162,11 +166,11 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, in
   const handleRun = useCallback(() => {
     onRun({
       projectName: projectName.trim() || defaultProjectName,
-      projectId: projectId.trim() || generateProjectId(),
+      projectId: projectId.trim() || generateLocationProjectId(locationData),
       bufferDistanceFeet,
       clipBufferMiles,
     })
-  }, [projectName, projectId, bufferDistanceFeet, clipBufferMiles, defaultProjectName, onRun])
+  }, [projectName, projectId, bufferDistanceFeet, clipBufferMiles, defaultProjectName, locationData, onRun])
 
   // Format buffer distance for display
   const formatBufferFeet = (feet: number): string => {
@@ -464,13 +468,4 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, in
       </CardContent>
     </Card>
   )
-}
-
-/**
- * Generate a simple project ID
- */
-function generateProjectId(): string {
-  const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 6)
-  return `PEIT-${timestamp}-${random}`.toUpperCase()
 }
