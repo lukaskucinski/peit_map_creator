@@ -1704,6 +1704,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - "Draw Your Own!" button to launch interactive map drawing
 - **Geometry preview**: When file is selected, shows SVG geometry preview as subtle background watermark
 - **Edit Drawing button**: For drawn geometries, displays "Edit Drawing" button to return to map drawer with existing geometry loaded
+- **Green globe icon**: File selected state shows green globe with checkmark badge
 
 **`components/geometry-preview.tsx`**
 - SVG-based geometry preview component (no basemap, abstract representation)
