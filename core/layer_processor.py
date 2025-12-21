@@ -8,6 +8,7 @@ Functions:
     process_all_layers: Query all configured layers and return results
 """
 
+import json
 import geopandas as gpd
 from typing import Dict, List, Optional, Set, Tuple
 from pyproj import CRS
@@ -17,6 +18,11 @@ from geometry_input.clipping import create_clip_boundary, aggregate_clip_metadat
 from config.config_loader import load_geometry_settings
 from utils.logger import get_logger
 from utils.state_filter import get_intersecting_states, filter_layers_by_state
+from utils.geometry_converters import (
+    shapely_to_esri_polygon,
+    count_geometry_vertices,
+    simplify_for_query
+)
 
 logger = get_logger(__name__)
 
@@ -104,8 +110,41 @@ def process_all_layers(
     max_query_vertices = geometry_settings.get('polygon_query_max_vertices', 1000)
     simplify_tolerance = geometry_settings.get('polygon_query_simplify_tolerance', 0.0001)
 
+    # Pre-compute ESRI polygon JSON ONCE for all layer queries (optimization)
+    esri_polygon_json = None
+    polygon_query_metadata = {}
+
     if use_polygon_query:
-        logger.info(f"Polygon query enabled (max {max_query_vertices} vertices)")
+        polygon_geometry = polygon_gdf.geometry.iloc[0]
+        original_vertices = count_geometry_vertices(polygon_geometry)
+
+        # Simplify geometry if needed (done once, not per-layer)
+        simplified_geom = simplify_for_query(
+            polygon_geometry,
+            max_vertices=max_query_vertices,
+            tolerance=simplify_tolerance
+        )
+        query_vertices = count_geometry_vertices(simplified_geom)
+
+        # Track simplification metadata
+        polygon_query_metadata['query_vertices'] = query_vertices
+        polygon_query_metadata['simplification_applied'] = query_vertices < original_vertices
+        if polygon_query_metadata['simplification_applied']:
+            polygon_query_metadata['original_vertices'] = original_vertices
+            logger.info(
+                f"Polygon query: simplified from {original_vertices} to "
+                f"{query_vertices} vertices"
+            )
+        else:
+            logger.info(f"Polygon query enabled ({query_vertices} vertices)")
+
+        # Convert to ESRI JSON once
+        esri_polygon = shapely_to_esri_polygon(simplified_geom)
+        if esri_polygon:
+            esri_polygon_json = json.dumps(esri_polygon)
+        else:
+            logger.warning("Could not convert geometry to ESRI format, using envelope queries")
+            use_polygon_query = False
     else:
         logger.info("Polygon query disabled (using envelope queries)")
 
@@ -130,8 +169,8 @@ def process_all_layers(
             clip_boundary=clip_boundary,
             geometry_type=geometry_type,
             use_polygon_query=use_polygon_query,
-            simplify_tolerance=simplify_tolerance,
-            max_query_vertices=max_query_vertices
+            esri_polygon_json=esri_polygon_json,
+            polygon_query_metadata=polygon_query_metadata
         )
 
         if gdf is not None:

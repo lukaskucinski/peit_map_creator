@@ -19,12 +19,7 @@ import json
 import time
 from typing import Tuple, Optional, Dict
 from shapely.geometry.base import BaseGeometry
-from utils.geometry_converters import (
-    convert_esri_to_geojson,
-    shapely_to_esri_polygon,
-    count_geometry_vertices,
-    simplify_for_query
-)
+from utils.geometry_converters import convert_esri_to_geojson
 from utils.logger import get_logger
 from geometry_input.clipping import clip_geodataframe
 
@@ -39,8 +34,8 @@ def query_arcgis_layer(
     clip_boundary: Optional[BaseGeometry] = None,
     geometry_type: Optional[str] = None,
     use_polygon_query: bool = True,
-    simplify_tolerance: float = 0.0001,
-    max_query_vertices: int = 1000
+    esri_polygon_json: Optional[str] = None,
+    polygon_query_metadata: Optional[Dict] = None
 ) -> Tuple[Optional[gpd.GeoDataFrame], Dict]:
     """
     Query an ArcGIS FeatureServer with spatial intersection.
@@ -71,10 +66,10 @@ def query_arcgis_layer(
         Type of geometry ('point', 'line', or 'polygon') for clipping decision
     use_polygon_query : bool
         If True, send actual polygon geometry instead of bounding box (default: True)
-    simplify_tolerance : float
-        Initial tolerance for geometry simplification in degrees (default: 0.0001)
-    max_query_vertices : int
-        Maximum vertices before simplification is applied (default: 1000)
+    esri_polygon_json : str, optional
+        Pre-computed ESRI JSON polygon string for query (avoids per-layer conversion)
+    polygon_query_metadata : Dict, optional
+        Pre-computed metadata about the polygon query (vertices, simplification info)
 
     Returns:
     --------
@@ -119,64 +114,47 @@ def query_arcgis_layer(
         query_method = 'envelope'
         result = None
 
-        if use_polygon_query:
+        if use_polygon_query and esri_polygon_json:
             try:
-                # Simplify geometry if needed
-                original_vertices = count_geometry_vertices(polygon_geometry)
-                simplified_geom = simplify_for_query(
-                    polygon_geometry,
-                    max_vertices=max_query_vertices,
-                    tolerance=simplify_tolerance
-                )
-                query_vertices = count_geometry_vertices(simplified_geom)
+                # Use pre-computed metadata if available
+                if polygon_query_metadata:
+                    metadata['query_vertices'] = polygon_query_metadata.get('query_vertices')
+                    metadata['simplification_applied'] = polygon_query_metadata.get('simplification_applied', False)
+                    if metadata['simplification_applied']:
+                        metadata['original_vertices'] = polygon_query_metadata.get('original_vertices')
 
-                # Track simplification in metadata
-                metadata['query_vertices'] = query_vertices
-                metadata['simplification_applied'] = query_vertices < original_vertices
-                if metadata['simplification_applied']:
-                    metadata['original_vertices'] = original_vertices
+                # Build polygon query parameters using pre-computed ESRI JSON
+                params = {
+                    'where': '1=1',
+                    'geometry': esri_polygon_json,
+                    'geometryType': 'esriGeometryPolygon',
+                    'spatialRel': 'esriSpatialRelIntersects',
+                    'outFields': '*',
+                    'returnGeometry': 'true',
+                    'f': 'json',
+                    'inSR': '4326',
+                    'outSR': '4326'
+                }
 
-                # Convert to ESRI JSON polygon format
-                esri_polygon = shapely_to_esri_polygon(simplified_geom)
+                query_vertices = metadata.get('query_vertices', 'N/A')
+                logger.info(f"    - Using polygon query ({query_vertices} vertices)")
+                logger.debug(f"Querying: {query_url}")
+                response = requests.post(query_url, data=params, timeout=60)
+                response.raise_for_status()
 
-                if esri_polygon:
-                    # Build polygon query parameters
-                    params = {
-                        'where': '1=1',
-                        'geometry': json.dumps(esri_polygon),
-                        'geometryType': 'esriGeometryPolygon',
-                        'spatialRel': 'esriSpatialRelIntersects',
-                        'outFields': '*',
-                        'returnGeometry': 'true',
-                        'f': 'json',
-                        'inSR': '4326',
-                        'outSR': '4326'
-                    }
+                result = response.json()
 
-                    logger.info(f"    - Using polygon query ({query_vertices} vertices)")
-                    logger.debug(f"Querying: {query_url}")
-                    response = requests.post(query_url, data=params, timeout=60)
-                    response.raise_for_status()
-
-                    result = response.json()
-
-                    # Check for ESRI error in response
-                    if 'error' in result:
-                        error_msg = result['error'].get('message', 'Unknown error')
-                        logger.warning(
-                            f"    - Polygon query returned ESRI error: {error_msg}, "
-                            f"falling back to envelope"
-                        )
-                        metadata['query_fallback_reason'] = f"esri_error: {error_msg}"
-                        result = None
-                    else:
-                        query_method = 'polygon'
-                else:
+                # Check for ESRI error in response
+                if 'error' in result:
+                    error_msg = result['error'].get('message', 'Unknown error')
                     logger.warning(
-                        "    - Could not convert geometry to ESRI format, "
-                        "falling back to envelope"
+                        f"    - Polygon query returned ESRI error: {error_msg}, "
+                        f"falling back to envelope"
                     )
-                    metadata['query_fallback_reason'] = "conversion_failed"
+                    metadata['query_fallback_reason'] = f"esri_error: {error_msg}"
+                    result = None
+                else:
+                    query_method = 'polygon'
 
             except requests.exceptions.Timeout:
                 logger.warning(
