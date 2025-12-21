@@ -433,6 +433,7 @@ def process_file_task(
 # so they only run in the Modal container, not on the local machine
 @app.function(
     image=peit_image,
+    timeout=600,  # 10 minutes (matches process_file_task timeout)
     volumes={"/results": results_volume},
     secrets=[supabase_secret, vercel_blob_secret],  # For account/job deletion endpoints
 )
