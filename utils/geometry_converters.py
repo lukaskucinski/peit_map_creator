@@ -1,18 +1,30 @@
 """
 Geometry conversion utilities for PEIT Map Creator.
 
-This module provides functions to convert ESRI JSON geometry formats to GeoJSON.
+This module provides functions to convert between ESRI JSON and GeoJSON formats,
+as well as utilities for geometry simplification and vertex counting.
+
 ArcGIS FeatureServers return geometries in ESRI JSON format, which needs to be
-converted to standard GeoJSON for use with GeoPandas and Folium.
+converted to standard GeoJSON for use with GeoPandas and Folium. Additionally,
+when sending spatial queries, Shapely geometries need to be converted to ESRI JSON.
 
 Functions:
     convert_esri_point: Convert ESRI point geometry to GeoJSON
     convert_esri_linestring: Convert ESRI paths to GeoJSON LineString
     convert_esri_polygon: Convert ESRI rings to GeoJSON Polygon
     convert_esri_to_geojson: Main dispatcher for ESRI to GeoJSON conversion
+    shapely_to_esri_polygon: Convert Shapely Polygon/MultiPolygon to ESRI JSON
+    count_geometry_vertices: Count total vertices in a geometry
+    simplify_for_query: Simplify geometry for server queries
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, List
+from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry.base import BaseGeometry
+
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def convert_esri_point(geom: Dict, props: Dict) -> Optional[Dict]:
@@ -166,3 +178,187 @@ def convert_esri_to_geojson(esri_feature: Dict) -> Optional[Dict]:
 
     # Unknown geometry type
     return None
+
+
+def shapely_to_esri_polygon(geom: BaseGeometry) -> Optional[Dict]:
+    """
+    Convert Shapely Polygon/MultiPolygon to ESRI JSON polygon format.
+
+    This function converts Shapely geometry objects to the ESRI JSON format
+    required for spatial queries to ArcGIS FeatureServers.
+
+    Parameters:
+    -----------
+    geom : BaseGeometry
+        Shapely Polygon or MultiPolygon geometry
+
+    Returns:
+    --------
+    Optional[Dict]
+        ESRI JSON polygon dict with 'rings' and 'spatialReference' keys,
+        or None if geometry is invalid/unsupported
+
+    ESRI JSON Format:
+        {
+            "rings": [[[x1,y1], [x2,y2], ...], [[hole1], ...]],
+            "spatialReference": {"wkid": 4326}
+        }
+
+    Notes:
+    ------
+    - All rings (exterior and interior) are combined into a single array
+    - For MultiPolygon, rings from all component polygons are combined
+    - Coordinates are [x, y] format (longitude, latitude)
+    """
+    if geom is None or geom.is_empty:
+        return None
+
+    rings: List[List[List[float]]] = []
+
+    if geom.geom_type == 'Polygon':
+        # Exterior ring
+        exterior_coords = list(geom.exterior.coords)
+        rings.append([[x, y] for x, y in exterior_coords])
+
+        # Interior rings (holes)
+        for interior in geom.interiors:
+            interior_coords = list(interior.coords)
+            rings.append([[x, y] for x, y in interior_coords])
+
+    elif geom.geom_type == 'MultiPolygon':
+        for polygon in geom.geoms:
+            # Exterior ring
+            exterior_coords = list(polygon.exterior.coords)
+            rings.append([[x, y] for x, y in exterior_coords])
+
+            # Interior rings (holes)
+            for interior in polygon.interiors:
+                interior_coords = list(interior.coords)
+                rings.append([[x, y] for x, y in interior_coords])
+    else:
+        # Unsupported geometry type
+        return None
+
+    return {
+        'rings': rings,
+        'spatialReference': {'wkid': 4326}
+    }
+
+
+def count_geometry_vertices(geom: BaseGeometry) -> int:
+    """
+    Count total vertices in a Polygon or MultiPolygon geometry.
+
+    Parameters:
+    -----------
+    geom : BaseGeometry
+        Shapely geometry (Polygon or MultiPolygon)
+
+    Returns:
+    --------
+    int
+        Total number of vertices in the geometry
+    """
+    if geom is None or geom.is_empty:
+        return 0
+
+    if geom.geom_type == 'Polygon':
+        count = len(geom.exterior.coords)
+        for interior in geom.interiors:
+            count += len(interior.coords)
+        return count
+
+    elif geom.geom_type == 'MultiPolygon':
+        total = 0
+        for polygon in geom.geoms:
+            total += len(polygon.exterior.coords)
+            for interior in polygon.interiors:
+                total += len(interior.coords)
+        return total
+
+    return 0
+
+
+def simplify_for_query(
+    geom: BaseGeometry,
+    max_vertices: int = 1000,
+    tolerance: float = 0.0001,
+    max_tolerance: float = 0.01
+) -> BaseGeometry:
+    """
+    Simplify geometry to reduce vertex count for server queries.
+
+    Uses progressive simplification with topology preservation to reduce
+    complex geometries to a manageable size for ArcGIS FeatureServer queries.
+
+    Parameters:
+    -----------
+    geom : BaseGeometry
+        Input geometry to simplify
+    max_vertices : int
+        Maximum vertex count before simplification is applied (default: 1000)
+    tolerance : float
+        Initial simplification tolerance in degrees (default: 0.0001 ~ 11m)
+    max_tolerance : float
+        Maximum simplification tolerance to prevent over-simplification
+        (default: 0.01 ~ 1.1km)
+
+    Returns:
+    --------
+    BaseGeometry
+        Simplified geometry (or original if already under max_vertices)
+
+    Notes:
+    ------
+    - Uses progressive simplification: increases tolerance until under limit
+    - Preserves topology to avoid self-intersections
+    - Maximum tolerance cap prevents severe shape distortion
+    - Returns original geometry if simplification would make it invalid
+    """
+    original_vertex_count = count_geometry_vertices(geom)
+
+    if original_vertex_count <= max_vertices:
+        return geom
+
+    logger.debug(
+        f"Simplifying geometry: {original_vertex_count} vertices "
+        f"exceeds limit of {max_vertices}"
+    )
+
+    current_tolerance = tolerance
+    simplified = geom
+
+    for i in range(5):  # Max 5 iterations
+        simplified = geom.simplify(current_tolerance, preserve_topology=True)
+        new_count = count_geometry_vertices(simplified)
+
+        logger.debug(
+            f"  Iteration {i+1}: tolerance={current_tolerance:.6f}, "
+            f"vertices={new_count}"
+        )
+
+        if new_count <= max_vertices:
+            break
+
+        current_tolerance *= 2
+
+        if current_tolerance > max_tolerance:
+            logger.warning(
+                f"Reached max tolerance ({max_tolerance}), "
+                f"vertices still at {new_count}"
+            )
+            break
+
+    final_count = count_geometry_vertices(simplified)
+
+    # Validate simplified geometry
+    if simplified.is_empty or not simplified.is_valid:
+        logger.warning("Simplified geometry invalid, using original")
+        return geom
+
+    if final_count < original_vertex_count:
+        logger.info(
+            f"Simplified from {original_vertex_count} to {final_count} vertices"
+        )
+
+    return simplified

@@ -5,6 +5,10 @@ This module handles querying ArcGIS FeatureServers with spatial intersection
 and converting the results to GeoDataFrames. Uses POST requests to avoid URI length
 limitations and performs client-side filtering for precise polygon intersection.
 
+Supports two query strategies:
+1. Polygon query: Sends actual polygon geometry for precise server-side filtering
+2. Envelope query: Sends bounding box (fallback for complex geometries or errors)
+
 Functions:
     query_arcgis_layer: Query a FeatureServer layer and return intersecting features
 """
@@ -15,7 +19,12 @@ import json
 import time
 from typing import Tuple, Optional, Dict
 from shapely.geometry.base import BaseGeometry
-from utils.geometry_converters import convert_esri_to_geojson
+from utils.geometry_converters import (
+    convert_esri_to_geojson,
+    shapely_to_esri_polygon,
+    count_geometry_vertices,
+    simplify_for_query
+)
 from utils.logger import get_logger
 from geometry_input.clipping import clip_geodataframe
 
@@ -28,15 +37,23 @@ def query_arcgis_layer(
     polygon_geom: gpd.GeoDataFrame,
     layer_name: str = "Layer",
     clip_boundary: Optional[BaseGeometry] = None,
-    geometry_type: Optional[str] = None
+    geometry_type: Optional[str] = None,
+    use_polygon_query: bool = True,
+    simplify_tolerance: float = 0.0001,
+    max_query_vertices: int = 1000
 ) -> Tuple[Optional[gpd.GeoDataFrame], Dict]:
     """
     Query an ArcGIS FeatureServer with spatial intersection.
 
-    Uses a three-stage approach:
-    1. Server-side: Query using bounding box (envelope) for speed
-    2. Client-side: Filter to precise polygon intersection
-    3. Client-side: Clip geometries to buffer boundary (lines/polygons only)
+    Supports two query strategies:
+    1. Polygon query (default): Sends actual polygon geometry for precise
+       server-side filtering. More efficient for complex/discontiguous polygons.
+    2. Envelope query (fallback): Sends bounding box. Used when polygon query
+       fails or is disabled.
+
+    After server-side filtering, applies:
+    - Client-side precise polygon intersection filter
+    - Client-side geometry clipping (lines/polygons only)
 
     Parameters:
     -----------
@@ -52,6 +69,12 @@ def query_arcgis_layer(
         Geometry boundary to clip results to (typically 1-mile buffer around input)
     geometry_type : str, optional
         Type of geometry ('point', 'line', or 'polygon') for clipping decision
+    use_polygon_query : bool
+        If True, send actual polygon geometry instead of bounding box (default: True)
+    simplify_tolerance : float
+        Initial tolerance for geometry simplification in degrees (default: 0.0001)
+    max_query_vertices : int
+        Maximum vertices before simplification is applied (default: 1000)
 
     Returns:
     --------
@@ -61,8 +84,12 @@ def query_arcgis_layer(
     Metadata Keys:
         - layer_name: Name of the layer
         - feature_count: Final count after filtering
-        - bbox_count: Initial count from bounding box query
-        - filtered_count: Number of features filtered out
+        - server_count: Initial count from server query
+        - filtered_count: Number of features filtered out by client-side intersection
+        - query_method: 'polygon' | 'envelope' | 'envelope_fallback'
+        - query_vertices: Vertex count used in polygon query (if applicable)
+        - simplification_applied: Whether geometry was simplified (if applicable)
+        - query_fallback_reason: Reason for fallback to envelope (if applicable)
         - clipping: Clipping statistics (if clipping was applied)
         - query_time: Total query time in seconds
         - warning: Any warnings (e.g., exceededTransferLimit)
@@ -75,7 +102,8 @@ def query_arcgis_layer(
         'feature_count': 0,
         'warning': None,
         'error': None,
-        'query_time': 0
+        'query_time': 0,
+        'query_method': 'envelope'  # Default, updated if polygon query succeeds
     }
 
     start_time = time.time()
@@ -84,36 +112,126 @@ def query_arcgis_layer(
         # Construct query URL
         query_url = f"{layer_url}/{layer_id}/query"
 
-        # Get bounding box (envelope) for spatial query
-        bounds = polygon_geom.total_bounds
-        envelope = {
-            'xmin': bounds[0],
-            'ymin': bounds[1],
-            'xmax': bounds[2],
-            'ymax': bounds[3],
-            'spatialReference': {'wkid': 4326}
-        }
+        # Extract polygon geometry for queries
+        polygon_geometry = polygon_geom.geometry.iloc[0]
 
-        # Build query parameters (using POST to avoid 414 URI too long errors)
-        params = {
-            'where': '1=1',
-            'geometry': json.dumps(envelope),
-            'geometryType': 'esriGeometryEnvelope',
-            'spatialRel': 'esriSpatialRelIntersects',
-            'outFields': '*',
-            'returnGeometry': 'true',
-            'f': 'json',
-            'inSR': '4326',
-            'outSR': '4326'
-        }
+        # Determine query strategy
+        query_method = 'envelope'
+        result = None
 
-        # Make POST request (avoids URL length limitations)
-        logger.debug(f"Querying: {query_url}")
-        response = requests.post(query_url, data=params, timeout=60)
-        response.raise_for_status()
+        if use_polygon_query:
+            try:
+                # Simplify geometry if needed
+                original_vertices = count_geometry_vertices(polygon_geometry)
+                simplified_geom = simplify_for_query(
+                    polygon_geometry,
+                    max_vertices=max_query_vertices,
+                    tolerance=simplify_tolerance
+                )
+                query_vertices = count_geometry_vertices(simplified_geom)
 
-        # Parse response
-        result = response.json()
+                # Track simplification in metadata
+                metadata['query_vertices'] = query_vertices
+                metadata['simplification_applied'] = query_vertices < original_vertices
+                if metadata['simplification_applied']:
+                    metadata['original_vertices'] = original_vertices
+
+                # Convert to ESRI JSON polygon format
+                esri_polygon = shapely_to_esri_polygon(simplified_geom)
+
+                if esri_polygon:
+                    # Build polygon query parameters
+                    params = {
+                        'where': '1=1',
+                        'geometry': json.dumps(esri_polygon),
+                        'geometryType': 'esriGeometryPolygon',
+                        'spatialRel': 'esriSpatialRelIntersects',
+                        'outFields': '*',
+                        'returnGeometry': 'true',
+                        'f': 'json',
+                        'inSR': '4326',
+                        'outSR': '4326'
+                    }
+
+                    logger.info(f"    - Using polygon query ({query_vertices} vertices)")
+                    logger.debug(f"Querying: {query_url}")
+                    response = requests.post(query_url, data=params, timeout=60)
+                    response.raise_for_status()
+
+                    result = response.json()
+
+                    # Check for ESRI error in response
+                    if 'error' in result:
+                        error_msg = result['error'].get('message', 'Unknown error')
+                        logger.warning(
+                            f"    - Polygon query returned ESRI error: {error_msg}, "
+                            f"falling back to envelope"
+                        )
+                        metadata['query_fallback_reason'] = f"esri_error: {error_msg}"
+                        result = None
+                    else:
+                        query_method = 'polygon'
+                else:
+                    logger.warning(
+                        "    - Could not convert geometry to ESRI format, "
+                        "falling back to envelope"
+                    )
+                    metadata['query_fallback_reason'] = "conversion_failed"
+
+            except requests.exceptions.Timeout:
+                logger.warning(
+                    "    - Polygon query timed out, falling back to envelope"
+                )
+                metadata['query_fallback_reason'] = "timeout"
+            except requests.exceptions.RequestException as e:
+                logger.warning(
+                    f"    - Polygon query failed ({e}), falling back to envelope"
+                )
+                metadata['query_fallback_reason'] = f"request_error: {str(e)}"
+            except Exception as e:
+                logger.warning(
+                    f"    - Polygon query error ({e}), falling back to envelope"
+                )
+                metadata['query_fallback_reason'] = f"error: {str(e)}"
+
+        # Fallback to envelope query if polygon query failed or is disabled
+        if result is None:
+            # Get bounding box (envelope) for spatial query
+            bounds = polygon_geom.total_bounds
+            envelope = {
+                'xmin': bounds[0],
+                'ymin': bounds[1],
+                'xmax': bounds[2],
+                'ymax': bounds[3],
+                'spatialReference': {'wkid': 4326}
+            }
+
+            # Build envelope query parameters
+            params = {
+                'where': '1=1',
+                'geometry': json.dumps(envelope),
+                'geometryType': 'esriGeometryEnvelope',
+                'spatialRel': 'esriSpatialRelIntersects',
+                'outFields': '*',
+                'returnGeometry': 'true',
+                'f': 'json',
+                'inSR': '4326',
+                'outSR': '4326'
+            }
+
+            if use_polygon_query:
+                # This is a fallback from polygon query
+                query_method = 'envelope_fallback'
+                logger.info("    - Using envelope query (fallback)")
+            else:
+                logger.info("    - Using envelope query")
+
+            logger.debug(f"Querying: {query_url}")
+            response = requests.post(query_url, data=params, timeout=60)
+            response.raise_for_status()
+            result = response.json()
+
+        metadata['query_method'] = query_method
 
         # Check for features
         if 'features' in result and len(result['features']) > 0:
@@ -128,14 +246,14 @@ def query_arcgis_layer(
             gdf = gpd.GeoDataFrame.from_features(features, crs='EPSG:4326')
             initial_count = len(gdf)
 
-            logger.info(f"    - Bounding box returned {initial_count} features")
+            logger.info(f"    - Server returned {initial_count} features")
 
             # Client-side filtering: precise polygon intersection
-            # This filters out features that are in the bbox but not in the actual polygon
-            polygon_geometry = polygon_geom.geometry.iloc[0]
+            # This filters out features that are in the query area but not in the actual polygon
+            # (More relevant for envelope queries, but also catches edge cases for polygon queries)
             gdf = gdf[gdf.intersects(polygon_geometry)]
 
-            metadata['bbox_count'] = initial_count
+            metadata['server_count'] = initial_count
             metadata['filtered_count'] = initial_count - len(gdf)
 
             # Check if result exceeded limit

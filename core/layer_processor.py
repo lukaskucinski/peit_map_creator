@@ -99,6 +99,16 @@ def process_all_layers(
         else:
             logger.info("State filter: No states detected (processing all layers)")
 
+    # Polygon query settings - use actual polygon geometry instead of bounding box
+    use_polygon_query = geometry_settings.get('polygon_query_enabled', True)
+    max_query_vertices = geometry_settings.get('polygon_query_max_vertices', 1000)
+    simplify_tolerance = geometry_settings.get('polygon_query_simplify_tolerance', 0.0001)
+
+    if use_polygon_query:
+        logger.info(f"Polygon query enabled (max {max_query_vertices} vertices)")
+    else:
+        logger.info("Polygon query disabled (using envelope queries)")
+
     results = {}
     metadata = {}
 
@@ -118,7 +128,10 @@ def process_all_layers(
             polygon_geom=polygon_gdf,
             layer_name=layer_name,
             clip_boundary=clip_boundary,
-            geometry_type=geometry_type
+            geometry_type=geometry_type,
+            use_polygon_query=use_polygon_query,
+            simplify_tolerance=simplify_tolerance,
+            max_query_vertices=max_query_vertices
         )
 
         if gdf is not None:
@@ -135,10 +148,28 @@ def process_all_layers(
     layers_with_data = sum(1 for m in metadata.values() if m['feature_count'] > 0)
     total_time = sum(m['query_time'] for m in metadata.values())
 
+    # Count query methods used
+    polygon_queries = sum(
+        1 for m in metadata.values() if m.get('query_method') == 'polygon'
+    )
+    envelope_queries = sum(
+        1 for m in metadata.values() if m.get('query_method') == 'envelope'
+    )
+    fallback_queries = sum(
+        1 for m in metadata.values() if m.get('query_method') == 'envelope_fallback'
+    )
+
     logger.info(f"Total layers queried: {len(metadata)}")
     logger.info(f"Layers with intersections: {layers_with_data}")
     logger.info(f"Total features found: {total_features}")
     logger.info(f"Total query time: {total_time:.2f} seconds")
+
+    # Log query method summary
+    if use_polygon_query:
+        logger.info(
+            f"Query methods: {polygon_queries} polygon, "
+            f"{envelope_queries} envelope, {fallback_queries} fallback"
+        )
 
     # Aggregate clipping statistics
     clip_summary = {

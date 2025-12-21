@@ -102,7 +102,12 @@ def load_geometry_settings(config: Dict = None) -> Dict:
         'clip_results_to_buffer': True,
         'clip_buffer_miles': 1.0,
         'state_filter_enabled': True,
-        'max_input_area_sq_miles': 5000
+        'max_input_area_sq_miles': 5000,
+        # Polygon query settings - use actual polygon geometry instead of bounding box
+        'polygon_query_enabled': True,
+        'polygon_query_max_vertices': 1000,
+        'polygon_query_simplify_tolerance': 0.0001,
+        'polygon_query_fallback_on_error': True
     }
 
     # Get geometry_settings from config, or use defaults
