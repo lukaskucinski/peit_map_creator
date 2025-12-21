@@ -12,6 +12,7 @@ import { AuthModal } from "@/components/auth/auth-modal"
 import { runMockProcessing } from "@/lib/mock-processing"
 import { processFile, downloadResults, isUsingMockMode, claimJobs } from "@/lib/api"
 import { parseGeospatialFile } from "@/lib/file-parsers"
+import { reverseGeocodeGeometry, type LocationData } from "@/lib/geojson-utils"
 import { createClient } from "@/lib/supabase/client"
 import {
   addPendingJob,
@@ -26,10 +27,13 @@ import { ClaimJobPrompt } from "@/components/claim-job-prompt"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@supabase/supabase-js"
 
+// Geometry source type - tracks whether geometry was uploaded or drawn
+type GeometrySource = 'upload' | 'draw'
+
 // Application state types
 type AppState =
   | { step: 'upload' }
-  | { step: 'draw' }
+  | { step: 'draw'; initialGeometry?: FeatureCollection }
   | { step: 'configure'; file: File; geojsonData?: FeatureCollection | null }
   | { step: 'processing'; file: File; config: ProcessingConfig }
   | { step: 'complete'; file: File; config: ProcessingConfig; jobId?: string; downloadUrl?: string; mapUrl?: string; pdfUrl?: string; xlsxUrl?: string }
@@ -39,6 +43,11 @@ export default function HomePage() {
   const [appState, setAppState] = useState<AppState>({ step: 'upload' })
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
   const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
+  const [geometrySource, setGeometrySource] = useState<GeometrySource>('upload')
+  // Store location data from geocoding for project ID generation
+  const [locationData, setLocationData] = useState<LocationData | null>(null)
+  // Store config values to persist when editing geometry
+  const [savedConfig, setSavedConfig] = useState<Partial<ProcessingConfig> | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
@@ -211,12 +220,20 @@ export default function HomePage() {
   const handleFileSelected = useCallback((file: File) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
+    setGeometrySource('upload')
+    setSavedConfig(null) // Clear saved config for new file
+    setLocationData(null) // Clear location data for new file
 
     // Parse file for area calculation and geometry type detection
     // Supports: GeoJSON, Shapefile, KML, KMZ, GeoPackage (lazy-loaded WASM)
     parseGeospatialFile(file)
-      .then((parsed) => {
+      .then(async (parsed) => {
         setGeojsonData(parsed)
+        // Also geocode for location-based project ID (non-blocking)
+        if (parsed) {
+          const location = await reverseGeocodeGeometry(parsed)
+          setLocationData(location)
+        }
       })
       .catch(() => {
         setGeojsonData(null)
@@ -228,18 +245,35 @@ export default function HomePage() {
     setAppState({ step: 'upload' })
     setProgressUpdates([])
     setGeojsonData(null)
+    setGeometrySource('upload')
+    setSavedConfig(null) // Clear saved config
+    setLocationData(null) // Clear location data
   }, [])
 
-  // Handle draw mode
+  // Handle draw mode (fresh draw, not edit)
   const handleDrawClick = useCallback(() => {
     setAppState({ step: 'draw' })
     setProgressUpdates([])
+    setSavedConfig(null) // Clear saved config for new drawing
+    setLocationData(null) // Clear location data for new drawing
   }, [])
 
+  // Handle edit geometry (return to draw mode with existing geometry)
+  const handleEditGeometry = useCallback(() => {
+    if (geojsonData) {
+      setAppState({ step: 'draw', initialGeometry: geojsonData })
+    }
+  }, [geojsonData])
+
   // Handle draw complete (geometry drawn and confirmed)
-  const handleDrawComplete = useCallback((file: File) => {
+  // Note: We preserve savedConfig here to retain user's configuration when editing
+  const handleDrawComplete = useCallback((file: File, location?: LocationData | null) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
+    setGeometrySource('draw')
+    // savedConfig is preserved - don't clear it when returning from edit
+    // Store location data from geocoding (already done in map drawer)
+    setLocationData(location ?? null)
 
     // Parse the drawn geometry file for area calculation
     // Drawn geometry is always GeoJSON, but use unified parser for consistency
@@ -356,6 +390,12 @@ export default function HomePage() {
     setWasRestoredFromStorage(false)
     setClaimPromptReady(false)
     setClaimPromptOpen(false)
+    setSavedConfig(null) // Clear saved config for new process
+  }, [])
+
+  // Handle config changes from ConfigPanel
+  const handleConfigChange = useCallback((config: Partial<ProcessingConfig>) => {
+    setSavedConfig(config)
   }, [])
 
   // Determine what to show based on state
@@ -375,7 +415,10 @@ export default function HomePage() {
             onFileSelected={handleFileSelected}
             onFileCleared={handleFileCleared}
             onDrawClick={handleDrawClick}
+            onEditGeometry={geometrySource === 'draw' ? handleEditGeometry : undefined}
             selectedFile={appState.step === 'configure' ? appState.file : null}
+            geojsonData={geojsonData}
+            geometrySource={geometrySource}
             disabled={false}
           />
         )}
@@ -385,6 +428,7 @@ export default function HomePage() {
           <MapDrawer
             onComplete={handleDrawComplete}
             onCancel={handleDrawCancel}
+            initialGeometry={appState.step === 'draw' ? appState.initialGeometry : undefined}
           />
         )}
 
@@ -395,6 +439,9 @@ export default function HomePage() {
             onRun={handleRun}
             disabled={false}
             geojsonData={geojsonData}
+            locationData={locationData}
+            initialConfig={savedConfig ?? undefined}
+            onConfigChange={handleConfigChange}
           />
         )}
 

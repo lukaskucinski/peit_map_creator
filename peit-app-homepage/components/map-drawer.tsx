@@ -8,8 +8,8 @@ import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css"
 import "@geoman-io/leaflet-geoman-free"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { X, Check, Trash2, Search, Layers, AlertCircle } from "lucide-react"
-import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary } from "@/lib/geojson-utils"
+import { X, Check, Trash2, Search, Layers, AlertCircle, Loader2 } from "lucide-react"
+import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary, reverseGeocodeGeometry, type LocationData } from "@/lib/geojson-utils"
 import type { FeatureCollection } from "geojson"
 import type { FeatureGroup as LeafletFeatureGroup } from "leaflet"
 
@@ -50,8 +50,9 @@ const BASE_MAPS = {
 }
 
 interface MapDrawerProps {
-  onComplete: (file: File) => void
+  onComplete: (file: File, locationData?: LocationData | null) => void
   onCancel: () => void
+  initialGeometry?: FeatureCollection
 }
 
 // Component to initialize Geoman drawing controls and handle events
@@ -224,6 +225,68 @@ function SearchControl() {
   )
 }
 
+// Component to load initial geometry into the feature group
+function InitialGeometryLoader({
+  featureGroupRef,
+  initialGeometry,
+  onLoaded
+}: {
+  featureGroupRef: React.RefObject<LeafletFeatureGroup | null>
+  initialGeometry: FeatureCollection
+  onLoaded: () => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!featureGroupRef.current || !initialGeometry?.features?.length) return
+
+    // Small delay to ensure feature group is ready
+    const timer = setTimeout(() => {
+      const fg = featureGroupRef.current
+      if (!fg) return
+
+      // Clear any existing layers
+      fg.clearLayers()
+
+      // Add each feature as a Leaflet layer
+      for (const feature of initialGeometry.features) {
+        if (!feature.geometry) continue
+
+        try {
+          const layer = L.geoJSON(feature, {
+            pointToLayer: (_, latlng) => L.marker(latlng),
+          })
+
+          // Add each layer from the GeoJSON layer group
+          layer.eachLayer((l) => {
+            fg.addLayer(l)
+          })
+        } catch (e) {
+          console.error("Failed to add feature:", e)
+        }
+      }
+
+      // Fit map to the geometry bounds
+      if (fg.getLayers().length > 0) {
+        try {
+          const bounds = fg.getBounds()
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] })
+          }
+        } catch (e) {
+          console.error("Failed to fit bounds:", e)
+        }
+      }
+
+      onLoaded()
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [featureGroupRef, initialGeometry, map, onLoaded])
+
+  return null
+}
+
 // Component for base map selector
 function BaseMapSelector({
   currentBaseMap,
@@ -270,13 +333,14 @@ function BaseMapSelector({
   )
 }
 
-export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
+export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerProps) {
   const { resolvedTheme } = useTheme()
   const [baseMap, setBaseMap] = useState<keyof typeof BASE_MAPS>("street")
   const [featureCount, setFeatureCount] = useState(0)
   const [validationError, setValidationError] = useState<string | null>(null)
   const featureGroupRef = useRef<LeafletFeatureGroup | null>(null)
   const initialBasemapSet = useRef(false)
+  const initialGeometryLoaded = useRef(false)
 
   // Set default basemap based on theme (only once on initial mount)
   useEffect(() => {
@@ -297,6 +361,12 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
     }
   }, [])
 
+  // Handle initial geometry loaded
+  const handleInitialGeometryLoaded = useCallback(() => {
+    initialGeometryLoaded.current = true
+    updateFeatureCount()
+  }, [updateFeatureCount])
+
   const handleClear = useCallback(() => {
     if (featureGroupRef.current) {
       featureGroupRef.current.clearLayers()
@@ -305,7 +375,9 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
     }
   }, [])
 
-  const handleDone = useCallback(() => {
+  const [isGeneratingFilename, setIsGeneratingFilename] = useState(false)
+
+  const handleDone = useCallback(async () => {
     if (!featureGroupRef.current) return
 
     const geojson = layersToGeoJSON(featureGroupRef.current)
@@ -316,12 +388,29 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
       return
     }
 
-    // Convert to File and pass to parent
+    // Geocode to get location data for filename and project ID
+    setIsGeneratingFilename(true)
+    const locationData = await reverseGeocodeGeometry(geojson)
+    setIsGeneratingFilename(false)
+
+    // Generate filename from location data
+    let filename = 'drawn_geometry.geojson'
+    if (locationData) {
+      const parts = [locationData.city, locationData.county, locationData.stateAbbr]
+        .filter(Boolean)
+        .map(s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
+        .filter(s => s.length > 0)
+      if (parts.length > 0) {
+        filename = `${parts.join('_')}.geojson`
+      }
+    }
+
+    // Convert to File and pass to parent with location data
     const jsonString = JSON.stringify(geojson, null, 2)
     const blob = new Blob([jsonString], { type: "application/geo+json" })
-    const file = new File([blob], "drawn_geometry.geojson", { type: "application/geo+json" })
+    const file = new File([blob], filename, { type: "application/geo+json" })
 
-    onComplete(file)
+    onComplete(file, locationData)
   }, [onComplete])
 
   const currentGeojson = featureGroupRef.current ? layersToGeoJSON(featureGroupRef.current) : null
@@ -356,6 +445,13 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
           />
           <FeatureGroup ref={featureGroupRef}>
             <GeomanControls featureGroupRef={featureGroupRef} onFeatureChange={updateFeatureCount} />
+            {initialGeometry && !initialGeometryLoaded.current && (
+              <InitialGeometryLoader
+                featureGroupRef={featureGroupRef}
+                initialGeometry={initialGeometry}
+                onLoaded={handleInitialGeometryLoaded}
+              />
+            )}
           </FeatureGroup>
           <SearchControl />
           <BaseMapSelector currentBaseMap={baseMap} onBaseMapChange={setBaseMap} />
@@ -396,11 +492,20 @@ export function MapDrawer({ onComplete, onCancel }: MapDrawerProps) {
           <Button
             size="sm"
             onClick={handleDone}
-            disabled={featureCount === 0}
+            disabled={featureCount === 0 || isGeneratingFilename}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            <Check className="h-4 w-4 mr-1" />
-            Use This Geometry
+            {isGeneratingFilename ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-1" />
+                Use This Geometry
+              </>
+            )}
           </Button>
         </div>
       </div>

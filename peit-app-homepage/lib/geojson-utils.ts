@@ -6,6 +6,22 @@ import * as turf from '@turf/turf'
 export const MAX_AREA_SQ_MILES = 5000
 export const WARN_AREA_SQ_MILES = 2500
 
+// US state abbreviations for filename generation
+const STATE_ABBREVIATIONS: Record<string, string> = {
+  'Alabama': 'al', 'Alaska': 'ak', 'Arizona': 'az', 'Arkansas': 'ar', 'California': 'ca',
+  'Colorado': 'co', 'Connecticut': 'ct', 'Delaware': 'de', 'Florida': 'fl', 'Georgia': 'ga',
+  'Hawaii': 'hi', 'Idaho': 'id', 'Illinois': 'il', 'Indiana': 'in', 'Iowa': 'ia',
+  'Kansas': 'ks', 'Kentucky': 'ky', 'Louisiana': 'la', 'Maine': 'me', 'Maryland': 'md',
+  'Massachusetts': 'ma', 'Michigan': 'mi', 'Minnesota': 'mn', 'Mississippi': 'ms', 'Missouri': 'mo',
+  'Montana': 'mt', 'Nebraska': 'ne', 'Nevada': 'nv', 'New Hampshire': 'nh', 'New Jersey': 'nj',
+  'New Mexico': 'nm', 'New York': 'ny', 'North Carolina': 'nc', 'North Dakota': 'nd', 'Ohio': 'oh',
+  'Oklahoma': 'ok', 'Oregon': 'or', 'Pennsylvania': 'pa', 'Rhode Island': 'ri', 'South Carolina': 'sc',
+  'South Dakota': 'sd', 'Tennessee': 'tn', 'Texas': 'tx', 'Utah': 'ut', 'Vermont': 'vt',
+  'Virginia': 'va', 'Washington': 'wa', 'West Virginia': 'wv', 'Wisconsin': 'wi', 'Wyoming': 'wy',
+  'District of Columbia': 'dc', 'Puerto Rico': 'pr', 'Guam': 'gu', 'American Samoa': 'as',
+  'U.S. Virgin Islands': 'vi', 'Northern Mariana Islands': 'mp'
+}
+
 // Conversion: 1 square mile = 2,589,988 square meters
 const SQ_METERS_PER_SQ_MILE = 2589988
 
@@ -42,6 +58,133 @@ export function geojsonToFile(geojson: FeatureCollection, filename: string = 'dr
   const jsonString = JSON.stringify(geojson, null, 2)
   const blob = new Blob([jsonString], { type: 'application/geo+json' })
   return new File([blob], filename, { type: 'application/geo+json' })
+}
+
+/**
+ * Location data from reverse geocoding
+ */
+export interface LocationData {
+  city: string      // City/town/village name
+  county: string    // County name (without "County" suffix)
+  state: string     // Full state name
+  stateAbbr: string // Two-letter state abbreviation
+}
+
+/**
+ * Reverse geocode a GeoJSON FeatureCollection's centroid to get location data.
+ * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ *
+ * @param geojson - The FeatureCollection to geocode
+ * @returns Location data or null on failure
+ */
+export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promise<LocationData | null> {
+  try {
+    // Calculate centroid of the geometry
+    const centroid = turf.centroid(geojson)
+    const [lon, lat] = centroid.geometry.coordinates
+
+    // Query Nominatim reverse geocoding API
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+      {
+        headers: {
+          // Nominatim requires a User-Agent header
+          'User-Agent': 'PEITMapCreator/1.0 (https://peit-map-creator.com)'
+        }
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('Geocoding request failed:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+
+    if (!data.address) {
+      console.warn('No address data in geocoding response')
+      return null
+    }
+
+    // Extract location components
+    const city = data.address.city || data.address.town || data.address.village ||
+                 data.address.municipality || data.address.hamlet || ''
+    const county = (data.address.county || '').replace(/\s+County$/i, '')
+    const state = data.address.state || ''
+    const stateAbbr = STATE_ABBREVIATIONS[state] || ''
+
+    return { city, county, state, stateAbbr }
+  } catch (error) {
+    console.warn('Geocoding failed:', error)
+    return null
+  }
+}
+
+/**
+ * Reverse geocode a GeoJSON FeatureCollection's centroid to generate a location-based filename.
+ * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ *
+ * @param geojson - The FeatureCollection to geocode
+ * @returns A filename like "seattle_king_wa.geojson" or "drawn_geometry.geojson" on failure
+ */
+export async function generateLocationFilename(geojson: FeatureCollection): Promise<string> {
+  const defaultFilename = 'drawn_geometry.geojson'
+
+  const location = await reverseGeocodeGeometry(geojson)
+  if (!location) return defaultFilename
+
+  // Build filename parts (filter out empty strings)
+  const parts = [location.city, location.county, location.stateAbbr]
+    .filter(Boolean)
+    .map(s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
+    .filter(s => s.length > 0)
+
+  if (parts.length === 0) {
+    return defaultFilename
+  }
+
+  return `${parts.join('_')}.geojson`
+}
+
+/**
+ * Generate a location-based Project ID from geocoded location data.
+ * Format: PEIT-CIT-COU-ST-DDMMYYYY (e.g., PEIT-SEA-KIN-WA-21122025)
+ *
+ * @param location - Location data from reverse geocoding
+ * @returns Project ID string
+ */
+export function generateLocationProjectId(location: LocationData | null): string {
+  const now = new Date()
+  const day = now.getDate().toString().padStart(2, '0')
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const year = now.getFullYear()
+  const datePart = `${day}${month}${year}`
+
+  if (!location) {
+    // Fallback to random ID if no location
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+    return `PEIT-${random}-${datePart}`
+  }
+
+  // Create 3-letter codes from location parts
+  const cityCode = location.city
+    ? location.city.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '')
+    : ''
+  const countyCode = location.county
+    ? location.county.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '')
+    : ''
+  const stateCode = location.stateAbbr.toUpperCase()
+
+  // Build parts array (filter out empty strings)
+  const parts = [cityCode, countyCode, stateCode].filter(s => s.length > 0)
+
+  if (parts.length === 0) {
+    // Fallback if all parts are empty
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+    return `PEIT-${random}-${datePart}`
+  }
+
+  return `PEIT-${parts.join('-')}-${datePart}`
 }
 
 /**
