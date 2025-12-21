@@ -29,6 +29,10 @@ interface ConfigPanelProps {
   onRun: (config: ProcessingConfig) => void
   disabled?: boolean
   geojsonData?: FeatureCollection | null
+  /** Initial config values to restore (for edit mode) */
+  initialConfig?: Partial<ProcessingConfig>
+  /** Called when any config value changes */
+  onConfigChange?: (config: Partial<ProcessingConfig>) => void
 }
 
 // Constants
@@ -73,11 +77,11 @@ function LabelWithTooltip({ label, tooltip, htmlFor }: { label: string; tooltip:
   )
 }
 
-export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: ConfigPanelProps) {
-  const [projectName, setProjectName] = useState("")
-  const [projectId, setProjectId] = useState("")
-  const [bufferDistanceFeet, setBufferDistanceFeet] = useState(DEFAULT_BUFFER_FEET)
-  const [clipBufferMiles, setClipBufferMiles] = useState(DEFAULT_CLIP_MILES)
+export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, initialConfig, onConfigChange }: ConfigPanelProps) {
+  const [projectName, setProjectName] = useState(initialConfig?.projectName ?? "")
+  const [projectId, setProjectId] = useState(initialConfig?.projectId ?? "")
+  const [bufferDistanceFeet, setBufferDistanceFeet] = useState(initialConfig?.bufferDistanceFeet ?? DEFAULT_BUFFER_FEET)
+  const [clipBufferMiles, setClipBufferMiles] = useState(initialConfig?.clipBufferMiles ?? DEFAULT_CLIP_MILES)
   const [areaValidation, setAreaValidation] = useState<AreaValidation | null>(null)
   const [detectedGeomType, setDetectedGeomType] = useState<DetectedGeometryType | null>(null)
   const [hasAutoSetBuffer, setHasAutoSetBuffer] = useState(false)
@@ -98,19 +102,33 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData }: 
       setDetectedGeomType(geomType)
 
       // Auto-set buffer to 0 for polygon-only inputs (only on first detection)
-      if (!hasAutoSetBuffer) {
+      // Skip auto-set if we have initial config values (user already configured)
+      if (!hasAutoSetBuffer && initialConfig?.bufferDistanceFeet === undefined) {
         if (geomType === 'polygon') {
           setBufferDistanceFeet(0)
         } else {
           setBufferDistanceFeet(DEFAULT_BUFFER_FEET)
         }
         setHasAutoSetBuffer(true)
+      } else if (!hasAutoSetBuffer && initialConfig?.bufferDistanceFeet !== undefined) {
+        // Mark as auto-set to prevent future auto-setting
+        setHasAutoSetBuffer(true)
       }
     } else {
       setDetectedGeomType(null)
       setHasAutoSetBuffer(false)
     }
-  }, [geojsonData, hasAutoSetBuffer])
+  }, [geojsonData, hasAutoSetBuffer, initialConfig?.bufferDistanceFeet])
+
+  // Notify parent of config changes
+  useEffect(() => {
+    onConfigChange?.({
+      projectName,
+      projectId,
+      bufferDistanceFeet,
+      clipBufferMiles,
+    })
+  }, [projectName, projectId, bufferDistanceFeet, clipBufferMiles, onConfigChange])
 
   // Calculate area validation when geojsonData or bufferDistanceFeet changes
   useEffect(() => {

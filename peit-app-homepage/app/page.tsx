@@ -43,6 +43,8 @@ export default function HomePage() {
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
   const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
   const [geometrySource, setGeometrySource] = useState<GeometrySource>('upload')
+  // Store config values to persist when editing geometry
+  const [savedConfig, setSavedConfig] = useState<Partial<ProcessingConfig> | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin")
@@ -216,6 +218,7 @@ export default function HomePage() {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
     setGeometrySource('upload')
+    setSavedConfig(null) // Clear saved config for new file
 
     // Parse file for area calculation and geometry type detection
     // Supports: GeoJSON, Shapefile, KML, KMZ, GeoPackage (lazy-loaded WASM)
@@ -234,12 +237,14 @@ export default function HomePage() {
     setProgressUpdates([])
     setGeojsonData(null)
     setGeometrySource('upload')
+    setSavedConfig(null) // Clear saved config
   }, [])
 
-  // Handle draw mode
+  // Handle draw mode (fresh draw, not edit)
   const handleDrawClick = useCallback(() => {
     setAppState({ step: 'draw' })
     setProgressUpdates([])
+    setSavedConfig(null) // Clear saved config for new drawing
   }, [])
 
   // Handle edit geometry (return to draw mode with existing geometry)
@@ -250,10 +255,12 @@ export default function HomePage() {
   }, [geojsonData])
 
   // Handle draw complete (geometry drawn and confirmed)
+  // Note: We preserve savedConfig here to retain user's configuration when editing
   const handleDrawComplete = useCallback((file: File) => {
     setAppState({ step: 'configure', file })
     setProgressUpdates([])
     setGeometrySource('draw')
+    // savedConfig is preserved - don't clear it when returning from edit
 
     // Parse the drawn geometry file for area calculation
     // Drawn geometry is always GeoJSON, but use unified parser for consistency
@@ -370,6 +377,12 @@ export default function HomePage() {
     setWasRestoredFromStorage(false)
     setClaimPromptReady(false)
     setClaimPromptOpen(false)
+    setSavedConfig(null) // Clear saved config for new process
+  }, [])
+
+  // Handle config changes from ConfigPanel
+  const handleConfigChange = useCallback((config: Partial<ProcessingConfig>) => {
+    setSavedConfig(config)
   }, [])
 
   // Determine what to show based on state
@@ -413,6 +426,8 @@ export default function HomePage() {
             onRun={handleRun}
             disabled={false}
             geojsonData={geojsonData}
+            initialConfig={savedConfig ?? undefined}
+            onConfigChange={handleConfigChange}
           />
         )}
 
