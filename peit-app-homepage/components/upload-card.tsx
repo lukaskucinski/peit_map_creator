@@ -3,7 +3,7 @@
 import type React from "react"
 import type { FeatureCollection } from "geojson"
 import { useState, useCallback } from "react"
-import { Upload, FileCheck, X, AlertCircle, Pencil } from "lucide-react"
+import { Upload, Globe, Check, X, AlertCircle, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { validateFile, formatFileSize, getAllowedTypesDescription } from "@/lib/validation"
@@ -115,8 +115,11 @@ export function UploadCard({
 
           {/* Content overlay */}
           <div className="relative z-10 flex flex-col items-center text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/20">
-              <FileCheck className="h-7 w-7 text-primary" />
+            <div className="mb-4 relative flex h-14 w-14 items-center justify-center rounded-xl bg-green-500/20">
+              <Globe className="h-7 w-7 text-green-600 dark:text-green-500" />
+              <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 ring-2 ring-background">
+                <Check className="h-3 w-3 text-white" strokeWidth={3} />
+              </div>
             </div>
 
             <h2 className="mb-2 text-xl font-semibold text-foreground">
