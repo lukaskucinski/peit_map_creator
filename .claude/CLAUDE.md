@@ -1995,9 +1995,15 @@ To eliminate perceived delay when clicking "Use This Geometry", geocoding runs i
 - **First vertex**: When user places first point of a polygon/line, geocoding starts immediately
 - **Marker creation**: When user places a standalone point marker, geocoding starts on creation
 - **Edit mode**: When editing existing geometry, geocoding runs on initial load using the centroid
-- **Caching**: Results are cached in component state; "Use This Geometry" uses cached result instantly
+- **Caching**: Results are cached in a ref (not state) to avoid stale closure issues; "Use This Geometry" uses cached result instantly
 - **Fallback**: If geocoding hasn't completed, waits briefly (max 3s) or geocodes synchronously
 - **Clear All**: Resets geocoding state so next drawing session triggers fresh geocode
+
+**Leaflet-Geoman Event Handling:**
+- `pm:vertexadded` fires on the **workingLayer** (the layer being drawn), NOT on the map
+- Must attach listener inside `pm:drawstart` handler via `e.workingLayer.on('pm:vertexadded', ...)`
+- Markers don't fire `pm:vertexadded`; use `pm:create` with `instanceof L.Marker` check instead
+- Refs (not state) used for caching to avoid React closure stale-value issues in callbacks
 
 ### Map Viewer Routes
 

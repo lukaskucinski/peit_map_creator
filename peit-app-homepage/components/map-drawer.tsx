@@ -106,18 +106,10 @@ function GeomanControls({
         })
       }
 
-      // Handler for first vertex placement (triggers background geocoding)
-      const handleVertexAdded = (e: { latlng?: L.LatLng }) => {
-        if (!firstVertexFired.current && onFirstVertex && e.latlng) {
-          firstVertexFired.current = true
-          onFirstVertex(e.latlng.lat, e.latlng.lng)
-        }
-      }
-
       // Handler for marker placement (single point features)
       const handleMarkerCreate = (e: { layer?: L.Layer }) => {
         if (!firstVertexFired.current && onFirstVertex && e.layer) {
-          // Only handle markers - polygons/lines already triggered via vertexadded
+          // Only handle markers - polygons/lines triggered via workingLayer vertexadded
           if (e.layer instanceof L.Marker) {
             const latlng = e.layer.getLatLng()
             firstVertexFired.current = true
@@ -131,10 +123,18 @@ function GeomanControls({
       map.on("pm:remove", onFeatureChange)
       map.on("pm:cut", onFeatureChange)
 
-      // Set up event listeners for first vertex (background geocoding)
-      map.on("pm:drawstart", () => {
-        // Listen for vertex added on the working layer
-        map.on("pm:vertexadded", handleVertexAdded)
+      // Listen for drawstart to attach vertexadded listener to the WORKING LAYER
+      // Key: pm:vertexadded fires on the workingLayer, not on the map itself
+      map.on("pm:drawstart", (e: { shape?: string; workingLayer?: L.Layer }) => {
+        // Attach vertexadded listener to the working layer (the layer being drawn)
+        if (e.workingLayer) {
+          e.workingLayer.on('pm:vertexadded', (vertexEvent: { latlng?: L.LatLng }) => {
+            if (!firstVertexFired.current && onFirstVertex && vertexEvent.latlng) {
+              firstVertexFired.current = true
+              onFirstVertex(vertexEvent.latlng.lat, vertexEvent.latlng.lng)
+            }
+          })
+        }
       })
 
       // Listen for marker creation separately (markers don't fire vertexadded)
@@ -148,7 +148,7 @@ function GeomanControls({
       map.off("pm:remove", onFeatureChange)
       map.off("pm:cut", onFeatureChange)
       map.off("pm:drawstart")
-      map.off("pm:vertexadded")
+      // Note: workingLayer vertexadded listeners are automatically cleaned up when layer is removed
       // Cleanup Geoman controls on unmount
       if (map.pm) {
         map.pm.removeControls()
@@ -404,7 +404,9 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
   // Background geocoding - triggers on first vertex placed
   const triggerBackgroundGeocode = useCallback(async (lat: number, lon: number) => {
     // Only geocode once per drawing session
-    if (hasGeocodedRef.current || geocodingInProgress.current) return
+    if (hasGeocodedRef.current || geocodingInProgress.current) {
+      return
+    }
 
     geocodingInProgress.current = true
     hasGeocodedRef.current = true
