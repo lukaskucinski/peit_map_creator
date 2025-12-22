@@ -187,6 +187,17 @@
     .legend-items::-webkit-scrollbar-thumb:hover {
         background: #555;
     }
+
+    /* Mobile: panel collapsed by default (only when not explicitly opened) */
+    @media (max-width: 768px) {
+        #side-panel:not(.panel-open) {
+            transform: translateX(-350px);
+        }
+
+        body:not(.panel-open-left) .leaflet-left {
+            left: 0 !important;
+        }
+    }
 </style>
 
 <div id="side-panel">
@@ -242,9 +253,18 @@
     function togglePanel() {
         var panel = document.getElementById('side-panel');
         var icon = document.getElementById('toggle-icon');
+        var isMobile = window.innerWidth <= 768;
 
         panel.classList.toggle('collapsed');
         document.body.classList.toggle('panel-collapsed');
+
+        // On mobile, track explicit open state to override CSS default
+        if (isMobile) {
+            var isOpen = !panel.classList.contains('collapsed');
+            panel.classList.toggle('panel-open', isOpen);
+            document.body.classList.toggle('panel-open-left', isOpen);
+        }
+
         icon.textContent = panel.classList.contains('collapsed') ? '►' : '◄';
     }
 
@@ -281,4 +301,18 @@
             updateLegendVisibility();
         }, 500);
     });
+
+    // Initialize panel state based on screen size (mobile = collapsed)
+    function initializePanelState() {
+        var isMobile = window.innerWidth <= 768;
+        var icon = document.getElementById('toggle-icon');
+
+        if (isMobile) {
+            // On mobile, CSS handles the initial collapsed state via :not(.panel-open)
+            // Just update the icon to show correct direction
+            icon.textContent = '►';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initializePanelState);
 </script>
