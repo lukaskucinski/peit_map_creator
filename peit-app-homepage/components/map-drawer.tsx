@@ -117,10 +117,12 @@ function GeomanControls({
       // Handler for marker placement (single point features)
       const handleMarkerCreate = (e: { layer?: L.Layer }) => {
         if (!firstVertexFired.current && onFirstVertex && e.layer) {
-          const marker = e.layer as L.Marker
-          const latlng = marker.getLatLng()
-          firstVertexFired.current = true
-          onFirstVertex(latlng.lat, latlng.lng)
+          // Only handle markers - polygons/lines already triggered via vertexadded
+          if (e.layer instanceof L.Marker) {
+            const latlng = e.layer.getLatLng()
+            firstVertexFired.current = true
+            onFirstVertex(latlng.lat, latlng.lng)
+          }
         }
       }
 
