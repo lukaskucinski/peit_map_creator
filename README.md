@@ -1,278 +1,229 @@
-# APPEIT Map Creator
+# PEIT Map Creator
 
-A Python tool that replicates the NTIA's APPEIT (ArcGIS Pro Permitting and Environmental Information Tool) functionality by querying ArcGIS FeatureServers and generating interactive Leaflet web maps showing environmental layer intersections.
+A powerful geospatial tool that replicates NTIA's APPEIT (ArcGIS Pro Permitting and Environmental Information Tool) functionality without requiring an ArcGIS Pro license. Query ESRI-hosted FeatureServer REST APIs and generate interactive web maps showing environmental features that intersect with your project area.
 
 ## Live Demo
 
-Try the web version: **[PEIT Map Creator](https://peit-map-creator.com)**
+**[peit-map-creator.com](https://peit-map-creator.com)** - Try the web version instantly, no installation required.
 
-## Overview
+## Features
 
-This tool eliminates the need for an ArcGIS Pro license by directly querying ESRI-hosted FeatureServer REST APIs and creating dynamic, interactive web maps that display environmental features intersecting with a user-provided polygon.
+### Core Capabilities
+- **No ArcGIS License Required** - Direct REST API queries to ESRI FeatureServers
+- **Multiple Input Formats** - Supports Shapefile, KML, KMZ, GeoPackage, GeoJSON, and FileGDB
+- **All Geometry Types** - Points, lines, and polygons with automatic buffering for non-polygon inputs
+- **Draw Your Own** - Interactive map drawing tool to create custom project areas
+- **Smart Query Optimization** - Automatic polygon vs envelope query selection based on geometry characteristics
+- **State-Based Filtering** - Only queries relevant layers based on which states your geometry intersects
 
-### Key Features
+### Interactive Maps
+- **Leaflet-Based** - Fast, responsive web maps that work offline
+- **Multiple Base Maps** - Street, Light, Dark, and Satellite imagery options
+- **Marker Clustering** - Automatic clustering for large point datasets
+- **Dual Panel UI** - Left panel (legend/about) and right panel (layer controls)
+- **Search Functionality** - Filter layers by name, description, or group
+- **Right-Click Coordinates** - Google Maps-style coordinate copy
 
-- **No ArcGIS License Required**: Direct REST API queries to ESRI FeatureServers
-- **Multiple Input Formats**: Supports SHP, KML, KMZ, GPKG, GeoJSON, and GDB files
-- **Interactive Web Maps**: Generates Leaflet-based HTML maps with layer controls
-- **Smart Rendering**: Only downloads and displays features that intersect the input polygon
-- **Point Clustering**: Automatically clusters large numbers of point features for better performance
-- **Multiple Base Maps**: Includes OpenStreetMap, CartoDB, and ESRI Satellite imagery
-- **Separate Data Files**: Outputs clean GeoJSON files for each layer
-- **Comprehensive Metadata**: Includes summary statistics and query information
+### Reports & Downloads
+- **PDF Reports** - Professional formatted reports with hyperlinked resource areas
+- **Excel Reports** - Tabular data export for analysis
+- **GeoJSON Export** - Individual layer files
+- **Shapefile Export** - Browser-based conversion
+- **KMZ Export** - Google Earth compatible format
+- **Bulk Download** - ZIP file with all outputs
 
-## Installation
+### Advanced Features
+- **Unique Value Symbology** - Attribute-based styling for categorized features
+- **Pattern Fills** - Hatched/striped polygon fills matching ArcGIS Pro symbology
+- **Result Clipping** - Clip features to configurable buffer distance
+- **Geometry Simplification** - Automatic simplification for complex polygons
 
-### Prerequisites
+## Deployment Options
 
-- **Python 3.8+** (tested with Python 3.12)
-- **Anaconda** or **Miniconda** (recommended)
+### 1. Web Application (Recommended)
 
-### Setup
+The easiest way to use PEIT Map Creator:
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/lukaskucinski/appeit_map_creator.git
-   cd appeit_map_creator
-   ```
+1. Visit **[peit-map-creator.com](https://peit-map-creator.com)**
+2. Upload a geospatial file or draw your project area
+3. Configure buffer distance and project details
+4. Process and receive your interactive map with reports
 
-2. **Create and activate conda environment** (if using Anaconda):
-   ```bash
-   conda create -n claude python=3.12
-   conda activate claude
-   ```
+**Web Features:**
+- User accounts with map history
+- Shareable map URLs (7-day retention)
+- Real-time processing status via SSE
+- Rate limiting: 20 runs/day per user
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Local CLI
 
-### Dependencies
+Run the tool locally for unlimited processing:
 
-The following Python packages will be installed:
+```bash
+# Clone repository
+git clone https://github.com/lukaskucinski/peit_map_creator.git
+cd peit_map_creator
 
-- `geopandas>=0.14.0` - Geospatial data processing
-- `folium>=0.15.0` - Interactive Leaflet map generation
-- `requests>=2.31.0` - HTTP requests to ArcGIS REST APIs
-- `shapely>=2.0.0` - Geometry operations
-- `pyproj>=3.6.0` - Coordinate system transformations
-- `fiona>=1.9.0` - File format support
-- `matplotlib>=3.8.0` - Plotting support
-- `branca>=0.7.0` - HTML/JavaScript templating
+# Create conda environment
+conda create -n peit python=3.12
+conda activate peit
 
-## Configuration
+# Install dependencies
+pip install -r requirements.txt
 
-Environmental layers are defined in [config/layers_config.json](config/layers_config.json). The default configuration includes:
-
-1. **RCRA Sites** - Resource Conservation and Recovery Act regulated facilities
-2. **NPDES Sites** - National Pollutant Discharge Elimination System sites
-3. **Navigable Waterways** - USACE Navigable Waterway Network
-4. **Historic Places** - National Register of Historic Places (Points)
-
-### Adding Additional Layers
-
-Edit `config/layers_config.json` to add more FeatureServer layers:
-
-```json
-{
-  "name": "Layer Name",
-  "url": "https://services.arcgis.com/.../FeatureServer",
-  "layer_id": 0,
-  "color": "#HEX_COLOR",
-  "icon": "font-awesome-icon-name",
-  "icon_color": "red|blue|green|purple|orange|darkred|lightred|beige|darkblue|darkgreen|cadetblue|darkpurple|white|pink|lightblue|lightgreen|gray|black|lightgray",
-  "description": "Layer description",
-  "geometry_type": "point|line|polygon"
-}
+# Run with your input file
+python peit_map_creator.py
 ```
 
-### Settings
-
-Modify the `settings` section in `config/layers_config.json`:
-
-- `max_features_per_layer`: Maximum features to request (default: 1000)
-- `enable_clustering`: Enable marker clustering for point features (default: true)
-- `cluster_threshold`: Minimum features before clustering activates (default: 50)
-- `default_zoom`: Initial map zoom level (default: 10)
-- `tile_layer`: Default base map (default: "OpenStreetMap")
-
-## Usage
-
-### Basic Usage
-
-```python
-python appeit_map_creator.py
-```
-
-By default, the script will process the file specified in the `__main__` section:
-
+Edit `peit_map_creator.py` to specify your input file:
 ```python
 if __name__ == "__main__":
-    INPUT_FILE = r"C:\Users\lukas\Downloads\pa045_mpb.gpkg"
+    INPUT_FILE = r"path/to/your/polygon.gpkg"
     output_dir = main(INPUT_FILE)
 ```
 
-### Custom Usage
-
-Modify the script or import the functions:
-
-```python
-from appeit_map_creator import main
-
-# Process a custom input file
-output_dir = main(
-    input_file="path/to/your/polygon.shp",
-    output_name="custom_output_name"  # Optional
-)
-```
-
-### Jupyter-Style Cell Execution
-
-The script is organized into 7 cells that can be run independently:
-
-1. **Cell 1**: Imports and Configuration Setup
-2. **Cell 2**: Input Polygon Reader Function
-3. **Cell 3**: ArcGIS FeatureServer Query Function
-4. **Cell 4**: Process All Layers Function
-5. **Cell 5**: Create Leaflet Map with Folium
-6. **Cell 6**: Generate Output Files and Structure
-7. **Cell 7**: Main Execution Workflow
-
-## Output Structure
-
-Each run creates a timestamped directory in `outputs/`:
+## Architecture
 
 ```
-outputs/
-└── appeit_map_20250106_143022/
-    ├── index.html              # Interactive Leaflet map (open in browser)
-    ├── metadata.json           # Summary statistics and query info
-    └── data/
-        ├── input_polygon.geojson
-        ├── rcra_sites.geojson
-        ├── npdes_sites.geojson
-        ├── navigable_waterways.geojson
-        └── historic_places.geojson
+peit_map_creator/
+├── peit_map_creator.py          # CLI entry point
+├── modal_app.py                 # Modal.com serverless backend
+│
+├── peit-app-homepage/           # Next.js web frontend
+│   ├── app/                     # App Router pages
+│   ├── components/              # React components
+│   └── lib/                     # API client and utilities
+│
+├── config/
+│   └── layers_config.json       # Layer definitions and settings
+│
+├── geometry_input/              # Geometry processing pipeline
+│   ├── load_input.py            # File loading and type detection
+│   ├── dissolve.py              # Geometry merging and repair
+│   ├── buffering.py             # CRS projection and buffering
+│   ├── pipeline.py              # Workflow orchestration
+│   └── clipping.py              # Result geometry clipping
+│
+├── core/
+│   ├── arcgis_query.py          # FeatureServer queries
+│   ├── layer_processor.py       # Batch layer processing
+│   ├── map_builder.py           # Folium map generation
+│   └── output_generator.py      # File output handling
+│
+├── utils/
+│   ├── logger.py                # Dual-output logging
+│   ├── geometry_converters.py   # ESRI JSON to GeoJSON
+│   ├── pdf_generator.py         # PDF report generation
+│   ├── xlsx_generator.py        # Excel report generation
+│   └── ...                      # Additional utilities
+│
+├── templates/                   # Jinja2 HTML templates
+├── static/                      # Bundled JavaScript
+├── fonts/                       # DejaVu fonts for PDF Unicode
+└── outputs/                     # Generated maps and data
 ```
 
-### Output Files
+## Configuration
 
-- **index.html**: Self-contained interactive map with layer controls, clustering, and popups
-- **metadata.json**: Contains query statistics, feature counts, and processing times
-- **data/*.geojson**: Individual GeoJSON files for each layer (only intersecting features)
+### Layer Configuration
 
-## How It Works
+Layers are defined in `config/layers_config.json`. Example layer entry:
 
-### Workflow
-
-1. **Read Input Polygon**
-   - Supports multiple formats (SHP, KML, KMZ, GPKG, GeoJSON, GDB)
-   - Auto-detects and reprojects to WGS84 (EPSG:4326)
-   - Handles multi-feature files by creating union
-
-2. **Query FeatureServers**
-   - Sends spatial intersection queries to each configured FeatureServer
-   - Uses ArcGIS REST API with parameters:
-     - `geometry`: Input polygon as GeoJSON
-     - `spatialRel`: esriSpatialRelIntersects
-     - `outFields`: * (all attributes)
-     - `f`: geojson (output format)
-   - Only downloads features that intersect the input polygon
-
-3. **Create Interactive Map**
-   - Initializes Leaflet map centered on input polygon
-   - Adds multiple base map options
-   - Renders features with layer-specific styling:
-     - **Points**: Custom markers with Font Awesome icons
-     - **Lines**: Colored polylines with hover effects
-     - **Polygons**: Filled areas with borders
-   - Applies clustering for large point datasets
-   - Creates popups with all feature attributes
-
-4. **Generate Output**
-   - Saves HTML map file
-   - Exports separate GeoJSON files for each layer
-   - Creates metadata JSON with statistics
-
-### Handling Large Datasets
-
-- **Server Limits**: Most ArcGIS FeatureServers limit results to 1000-2000 features
-- **Warning System**: Displays warnings when server limits are exceeded
-- **Clustering**: Automatically clusters point features when count exceeds threshold
-- **Pagination**: Future enhancement to handle multi-page results
-
-## Testing
-
-### Test File
-
-Use the included test file to verify functionality:
-
-```
-C:\Users\lukas\Downloads\pa045_mpb.gpkg
+```json
+{
+  "name": "RCRA Sites",
+  "enabled": true,
+  "url": "https://services.arcgis.com/.../FeatureServer",
+  "layer_id": 0,
+  "color": "#FF0000",
+  "icon": "recycle",
+  "icon_color": "red",
+  "description": "Resource Conservation and Recovery Act facilities",
+  "geometry_type": "point",
+  "group": "EPA Programs",
+  "area_name_field": "FACILITY_NAME",
+  "states": ["Vermont", "New Hampshire"]
+}
 ```
 
-This Vermont project area test polygon should intersect with multiple environmental layers.
+### Geometry Settings
 
-### Expected Results
+Configure processing behavior in the `geometry_settings` section:
 
-- **RCRA Sites**: Should find regulated facilities
-- **NPDES Sites**: Should find discharge permit sites
-- **Navigable Waterways**: May find waterways depending on location
-- **Historic Places**: May find historic sites depending on location
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: `ModuleNotFoundError: No module named 'geopandas'`
-- **Solution**: Run `pip install -r requirements.txt` in your conda environment
-
-**Issue**: Empty map with no features
-- **Solution**: Verify your input polygon is in a valid projection and covers an area with environmental features
-
-**Issue**: "Request failed" errors
-- **Solution**: Check internet connection and verify FeatureServer URLs are accessible
-
-**Issue**: Clustering not working
-- **Solution**: Verify `enable_clustering: true` in config and feature count exceeds `cluster_threshold`
-
-### Debug Mode
-
-Add print statements or use Python debugger to trace execution:
-
-```python
-import pdb; pdb.set_trace()
+```json
+{
+  "geometry_settings": {
+    "buffer_distance_feet": 500,
+    "buffer_point_geometries": true,
+    "buffer_line_geometries": true,
+    "clip_results_to_buffer": true,
+    "clip_buffer_miles": 1.0,
+    "state_filter_enabled": true,
+    "polygon_query_enabled": true,
+    "polygon_query_max_vertices": 1000,
+    "max_input_area_sq_miles": 5000
+  }
+}
 ```
 
-## Limitations
+### Adding New Layers
 
-1. **Server Query Limits**: Most FeatureServers limit results to 1000-2000 features per query
-2. **No Offline Mode**: Requires internet connection to query FeatureServers
-3. **Single Polygon Input**: Currently processes one polygon at a time
-4. **No Attribute Filtering**: Downloads all attributes (future enhancement planned)
+1. Find the ArcGIS FeatureServer REST API URL
+2. Test in browser: `{url}/0/query?where=1=1&f=json`
+3. Add entry to `layers_config.json` with appropriate configuration
+4. No code changes required
 
-## Future Enhancements
+## Output
 
-- [ ] Batch processing for multiple input polygons
-- [ ] Pagination support for large datasets (>1000 features)
-- [ ] Attribute filtering and selection
-- [ ] Export to additional formats (KML, Shapefile, GeoPackage)
-- [ ] Custom styling rules per layer
-- [ ] Offline caching of FeatureServer queries
-- [ ] Integration with additional data sources
-- [ ] Command-line interface (CLI) with arguments
-- [ ] Progress bars for long-running queries
-- [ ] Retry logic with exponential backoff
+Each run creates a timestamped directory:
+
+```
+outputs/peit_map_20250122_143022/
+├── index.html                      # Interactive map
+├── metadata.json                   # Processing statistics
+├── PEIT_Report_20250122_143022.pdf # PDF report
+├── PEIT_Report_20250122_143022.xlsx# Excel report
+└── data/
+    ├── input_polygon.geojson
+    ├── rcra_sites.geojson
+    └── ...
+```
+
+## Technology Stack
+
+### Backend
+- **Python 3.12** with GeoPandas, Shapely, Folium
+- **Modal.com** for serverless processing
+- **FastAPI** with SSE for real-time progress
+
+### Frontend
+- **Next.js 16** with App Router
+- **Tailwind CSS** + shadcn/ui
+- **Supabase** for authentication
+- **Vercel** for hosting and blob storage
+
+### Key Libraries
+- `geopandas` - Geospatial data processing
+- `folium` - Leaflet map generation
+- `fpdf2` - PDF report generation
+- `openpyxl` - Excel report generation
+- `@geoman-io/leaflet-geoman-free` - Map drawing tools
+
+## Known Limitations
+
+1. **Server Feature Limits** - Most FeatureServers return max 1000-2000 features
+2. **Internet Required** - No offline mode for FeatureServer queries
+3. **Area Limits** - Web version limited to 5,000 sq mi input areas
+4. **Data Retention** - Web-generated maps expire after 7 days
 
 ## Contributing
 
 Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
@@ -280,17 +231,17 @@ This project is open source and available under the MIT License.
 
 ## Acknowledgments
 
-- **NTIA**: For the original APPEIT tool concept and layer definitions
-- **ESRI**: For providing public FeatureServer REST APIs
-- **Folium**: For excellent Python-to-Leaflet mapping capabilities
-- **GeoPandas**: For powerful geospatial data processing
+- **NTIA** - Original APPEIT tool concept and layer definitions
+- **ESRI** - Public FeatureServer REST APIs
+- **Folium** - Python-to-Leaflet mapping
+- **GeoPandas** - Geospatial data processing
 
-## Contact
+## Links
 
-For questions, issues, or suggestions:
-
-- **GitHub**: https://github.com/lukaskucinski/appeit_map_creator
-- **Issues**: https://github.com/lukaskucinski/appeit_map_creator/issues
+- **Web App**: [peit-map-creator.com](https://peit-map-creator.com)
+- **GitHub**: [github.com/lukaskucinski/peit_map_creator](https://github.com/lukaskucinski/peit_map_creator)
+- **Issues**: [GitHub Issues](https://github.com/lukaskucinski/peit_map_creator/issues)
+- **Support**: [Buy Me a Coffee](https://buymeacoffee.com/kucimaps)
 
 ## References
 
