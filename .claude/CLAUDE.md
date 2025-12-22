@@ -1260,6 +1260,13 @@ The generated HTML map includes several interactive features:
 - **State management**: Group checkboxes remember individual layer states when toggled
 - **Auto-adjusts**: Right-side Leaflet controls shift 350px when panel is expanded
 
+#### Mobile Responsiveness
+- On screens ≤768px wide, both panels are collapsed by default to maximize map visibility
+- Users can still expand panels by clicking the toggle buttons
+- Desktop behavior unchanged (panels open by default)
+- Leaflet controls adjust position based on panel state
+- CSS media queries handle initial visual state; JavaScript syncs body classes and toggle icons
+
 ### Map Controls
 - **Base Layer Control**: Custom-named base maps (top-right)
   - **Street Map** (OpenStreetMap)
@@ -1285,6 +1292,7 @@ The generated HTML map includes several interactive features:
   - Name field shown in bold below layer name (uses `area_name_field` from config, falls back to first field containing 'name')
   - URLs are automatically converted to clickable links
   - Long URLs are truncated for display
+  - **Mobile sizing**: On screens ≤768px, popups constrained to 50vh height and 85vw width
 - **Clustering**: Point layers with ≥50 features automatically cluster
 - **Hover Effects**: Lines and polygons highlight on mouseover
 - **Tooltips**: Non-clustered features show tooltips on hover

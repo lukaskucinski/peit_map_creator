@@ -296,6 +296,21 @@
     .layer-panel-content::-webkit-scrollbar-thumb:hover {
         background: #555;
     }
+
+    /* Mobile: panel collapsed by default (only when not explicitly opened) */
+    @media (max-width: 768px) {
+        #layer-control-panel:not(.panel-open) {
+            transform: translateX(350px);
+        }
+
+        body:not(.panel-open-right) .leaflet-right {
+            right: 0 !important;
+        }
+
+        body:not(.panel-open-right) .leaflet-control-download {
+            right: 10px !important;
+        }
+    }
 </style>
 
 <div id="layer-control-panel">
@@ -501,9 +516,18 @@
     function toggleLayerPanel() {
         var panel = document.getElementById('layer-control-panel');
         var icon = document.getElementById('layer-toggle-icon');
+        var isMobile = window.innerWidth <= 768;
 
         panel.classList.toggle('collapsed');
         document.body.classList.toggle('panel-right-collapsed');
+
+        // On mobile, track explicit open state to override CSS default
+        if (isMobile) {
+            var isOpen = !panel.classList.contains('collapsed');
+            panel.classList.toggle('panel-open', isOpen);
+            document.body.classList.toggle('panel-open-right', isOpen);
+        }
+
         // Fixed: arrow points in direction panel will move when clicked
         icon.textContent = panel.classList.contains('collapsed') ? '◄' : '►';
     }
@@ -740,5 +764,20 @@
         setTimeout(function() {
             restoreLayerOrder();
         }, 600);
+
+        // Initialize right panel state based on screen size (mobile = collapsed)
+        initializeRightPanelState();
     });
+
+    // Initialize right panel state based on screen size (mobile = collapsed)
+    function initializeRightPanelState() {
+        var isMobile = window.innerWidth <= 768;
+        var icon = document.getElementById('layer-toggle-icon');
+
+        if (isMobile) {
+            // On mobile, CSS handles the initial collapsed state via :not(.panel-open)
+            // Just update the icon to show correct direction
+            icon.textContent = '◄';
+        }
+    }
 </script>
