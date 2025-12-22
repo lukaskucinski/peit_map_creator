@@ -71,7 +71,7 @@ def get_category_resource_areas() -> Dict[str, List[str]]:
         'EPA Programs': ['1.4', '1.9', '1.11'],
         'Federal/Tribal Land': ['1.7', '1.8'],
         'Historic Places': ['1.8'],
-        'Floodplains/Wetlands': ['1.5'],
+        'Floodplains': ['1.4', '1.5'],
         'Infrastructure': ['1.1'],
         'Critical Habitats': ['1.6', '1.10']
     }
