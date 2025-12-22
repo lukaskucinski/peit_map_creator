@@ -71,24 +71,19 @@ export interface LocationData {
 }
 
 /**
- * Reverse geocode a GeoJSON FeatureCollection's centroid to get location data.
+ * Reverse geocode a coordinate point to get location data.
  * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
  *
- * @param geojson - The FeatureCollection to geocode
+ * @param lat - Latitude
+ * @param lon - Longitude
  * @returns Location data or null on failure
  */
-export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promise<LocationData | null> {
+export async function reverseGeocodePoint(lat: number, lon: number): Promise<LocationData | null> {
   try {
-    // Calculate centroid of the geometry
-    const centroid = turf.centroid(geojson)
-    const [lon, lat] = centroid.geometry.coordinates
-
-    // Query Nominatim reverse geocoding API
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
       {
         headers: {
-          // Nominatim requires a User-Agent header
           'User-Agent': 'PEITMapCreator/1.0 (https://peit-map-creator.com)'
         }
       }
@@ -106,7 +101,6 @@ export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promis
       return null
     }
 
-    // Extract location components
     const city = data.address.city || data.address.town || data.address.village ||
                  data.address.municipality || data.address.hamlet || ''
     const county = (data.address.county || '').replace(/\s+County$/i, '')
@@ -114,6 +108,24 @@ export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promis
     const stateAbbr = STATE_ABBREVIATIONS[state] || ''
 
     return { city, county, state, stateAbbr }
+  } catch (error) {
+    console.warn('Geocoding failed:', error)
+    return null
+  }
+}
+
+/**
+ * Reverse geocode a GeoJSON FeatureCollection's centroid to get location data.
+ * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ *
+ * @param geojson - The FeatureCollection to geocode
+ * @returns Location data or null on failure
+ */
+export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promise<LocationData | null> {
+  try {
+    const centroid = turf.centroid(geojson)
+    const [lon, lat] = centroid.geometry.coordinates
+    return reverseGeocodePoint(lat, lon)
   } catch (error) {
     console.warn('Geocoding failed:', error)
     return null

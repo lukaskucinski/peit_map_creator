@@ -1983,10 +1983,21 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 - `calculatePolygonAreaSqMiles()`: Calculate area of polygon features using Turf.js
 - `estimateBufferedAreaSqMiles()`: Estimate area after applying buffer to all geometry types
 - `validateGeometryArea()`: Validate area against limits (5,000 sq mi max, 2,500 sq mi warning)
+- `reverseGeocodePoint()`: Geocode a single lat/lon coordinate to get location data
+- `reverseGeocodeGeometry()`: Geocode a GeoJSON FeatureCollection's centroid
 
 **Area Validation Constants:**
 - `MAX_AREA_SQ_MILES`: 5,000 sq mi - Maximum allowed area
 - `WARN_AREA_SQ_MILES`: 2,500 sq mi - Warning threshold for large areas
+
+**Background Geocoding:**
+To eliminate perceived delay when clicking "Use This Geometry", geocoding runs in the background:
+- **First vertex**: When user places first point of a polygon/line, geocoding starts immediately
+- **Marker creation**: When user places a standalone point marker, geocoding starts on creation
+- **Edit mode**: When editing existing geometry, geocoding runs on initial load using the centroid
+- **Caching**: Results are cached in component state; "Use This Geometry" uses cached result instantly
+- **Fallback**: If geocoding hasn't completed, waits briefly (max 3s) or geocodes synchronously
+- **Clear All**: Resets geocoding state so next drawing session triggers fresh geocode
 
 ### Map Viewer Routes
 

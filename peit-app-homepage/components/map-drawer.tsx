@@ -9,9 +9,10 @@ import "@geoman-io/leaflet-geoman-free"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { X, Check, Trash2, Search, Layers, AlertCircle, Loader2 } from "lucide-react"
-import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary, reverseGeocodeGeometry, type LocationData } from "@/lib/geojson-utils"
+import { layersToGeoJSON, validateDrawnGeometry, getGeometrySummary, reverseGeocodeGeometry, reverseGeocodePoint, type LocationData } from "@/lib/geojson-utils"
 import type { FeatureCollection } from "geojson"
 import type { FeatureGroup as LeafletFeatureGroup } from "leaflet"
+import * as turf from "@turf/turf"
 
 // Fix Leaflet default icon paths (needed for markers)
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
@@ -58,12 +59,15 @@ interface MapDrawerProps {
 // Component to initialize Geoman drawing controls and handle events
 function GeomanControls({
   featureGroupRef,
-  onFeatureChange
+  onFeatureChange,
+  onFirstVertex
 }: {
   featureGroupRef: React.RefObject<LeafletFeatureGroup | null>
   onFeatureChange: () => void
+  onFirstVertex?: (lat: number, lon: number) => void
 }) {
   const map = useMap()
+  const firstVertexFired = useRef(false)
 
   useEffect(() => {
     if (!map || !featureGroupRef.current) return
@@ -102,10 +106,37 @@ function GeomanControls({
         })
       }
 
+      // Handler for first vertex placement (triggers background geocoding)
+      const handleVertexAdded = (e: { latlng?: L.LatLng }) => {
+        if (!firstVertexFired.current && onFirstVertex && e.latlng) {
+          firstVertexFired.current = true
+          onFirstVertex(e.latlng.lat, e.latlng.lng)
+        }
+      }
+
+      // Handler for marker placement (single point features)
+      const handleMarkerCreate = (e: { layer?: L.Layer }) => {
+        if (!firstVertexFired.current && onFirstVertex && e.layer) {
+          const marker = e.layer as L.Marker
+          const latlng = marker.getLatLng()
+          firstVertexFired.current = true
+          onFirstVertex(latlng.lat, latlng.lng)
+        }
+      }
+
       // Set up event listeners for feature changes
       map.on("pm:create", onFeatureChange)
       map.on("pm:remove", onFeatureChange)
       map.on("pm:cut", onFeatureChange)
+
+      // Set up event listeners for first vertex (background geocoding)
+      map.on("pm:drawstart", () => {
+        // Listen for vertex added on the working layer
+        map.on("pm:vertexadded", handleVertexAdded)
+      })
+
+      // Listen for marker creation separately (markers don't fire vertexadded)
+      map.on("pm:create", handleMarkerCreate)
     }, 100)
 
     return () => {
@@ -114,12 +145,14 @@ function GeomanControls({
       map.off("pm:create", onFeatureChange)
       map.off("pm:remove", onFeatureChange)
       map.off("pm:cut", onFeatureChange)
+      map.off("pm:drawstart")
+      map.off("pm:vertexadded")
       // Cleanup Geoman controls on unmount
       if (map.pm) {
         map.pm.removeControls()
       }
     }
-  }, [map, featureGroupRef, onFeatureChange])
+  }, [map, featureGroupRef, onFeatureChange, onFirstVertex])
 
   return null
 }
@@ -342,6 +375,11 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
   const initialBasemapSet = useRef(false)
   const initialGeometryLoaded = useRef(false)
 
+  // Background geocoding state
+  const [cachedLocationData, setCachedLocationData] = useState<LocationData | null>(null)
+  const geocodingInProgress = useRef(false)
+  const hasGeocodedRef = useRef(false)
+
   // Set default basemap based on theme (only once on initial mount)
   useEffect(() => {
     if (!initialBasemapSet.current && resolvedTheme) {
@@ -361,17 +399,52 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
     }
   }, [])
 
-  // Handle initial geometry loaded
+  // Background geocoding - triggers on first vertex placed
+  const triggerBackgroundGeocode = useCallback(async (lat: number, lon: number) => {
+    // Only geocode once per drawing session
+    if (hasGeocodedRef.current || geocodingInProgress.current) return
+
+    geocodingInProgress.current = true
+    hasGeocodedRef.current = true
+
+    try {
+      const location = await reverseGeocodePoint(lat, lon)
+      setCachedLocationData(location)
+    } catch (error) {
+      console.warn('Background geocoding failed:', error)
+    } finally {
+      geocodingInProgress.current = false
+    }
+  }, [])
+
+  // Handle initial geometry loaded - geocode centroid for edit mode
   const handleInitialGeometryLoaded = useCallback(() => {
     initialGeometryLoaded.current = true
     updateFeatureCount()
-  }, [updateFeatureCount])
+
+    // Trigger background geocode from centroid of initial geometry
+    if (initialGeometry && !hasGeocodedRef.current && featureGroupRef.current) {
+      const geojson = layersToGeoJSON(featureGroupRef.current)
+      if (geojson.features.length > 0) {
+        try {
+          const centroid = turf.centroid(geojson)
+          const [lon, lat] = centroid.geometry.coordinates
+          triggerBackgroundGeocode(lat, lon)
+        } catch (error) {
+          console.warn('Failed to calculate centroid for initial geometry:', error)
+        }
+      }
+    }
+  }, [updateFeatureCount, initialGeometry, triggerBackgroundGeocode])
 
   const handleClear = useCallback(() => {
     if (featureGroupRef.current) {
       featureGroupRef.current.clearLayers()
       setFeatureCount(0)
       setValidationError(null)
+      // Reset geocoding state so next drawing session can trigger new geocode
+      hasGeocodedRef.current = false
+      setCachedLocationData(null)
     }
   }, [])
 
@@ -388,10 +461,26 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
       return
     }
 
-    // Geocode to get location data for filename and project ID
-    setIsGeneratingFilename(true)
-    const locationData = await reverseGeocodeGeometry(geojson)
-    setIsGeneratingFilename(false)
+    // Use cached location data if available, otherwise geocode now
+    let locationData = cachedLocationData
+
+    if (!locationData && !geocodingInProgress.current) {
+      // No cached data and no geocoding in progress - geocode synchronously
+      setIsGeneratingFilename(true)
+      locationData = await reverseGeocodeGeometry(geojson)
+      setIsGeneratingFilename(false)
+    } else if (geocodingInProgress.current) {
+      // Geocoding still in progress - wait for it with a brief spinner
+      setIsGeneratingFilename(true)
+      // Poll for completion (background geocode typically takes <1s)
+      let attempts = 0
+      while (geocodingInProgress.current && attempts < 30) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
+      }
+      locationData = cachedLocationData
+      setIsGeneratingFilename(false)
+    }
 
     // Generate filename from location data
     let filename = 'drawn_geometry.geojson'
@@ -411,7 +500,7 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
     const file = new File([blob], filename, { type: "application/geo+json" })
 
     onComplete(file, locationData)
-  }, [onComplete])
+  }, [onComplete, cachedLocationData])
 
   const currentGeojson = featureGroupRef.current ? layersToGeoJSON(featureGroupRef.current) : null
   const summary = currentGeojson ? getGeometrySummary(currentGeojson) : "No shapes drawn"
@@ -444,7 +533,7 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
             attribution={BASE_MAPS[baseMap].attribution}
           />
           <FeatureGroup ref={featureGroupRef}>
-            <GeomanControls featureGroupRef={featureGroupRef} onFeatureChange={updateFeatureCount} />
+            <GeomanControls featureGroupRef={featureGroupRef} onFeatureChange={updateFeatureCount} onFirstVertex={triggerBackgroundGeocode} />
             {initialGeometry && !initialGeometryLoaded.current && (
               <InitialGeometryLoader
                 featureGroupRef={featureGroupRef}
