@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
 
@@ -74,6 +75,8 @@ export function AuthModal({
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>(defaultTab)
 
   const supabase = createClient()
 
@@ -81,11 +84,18 @@ export function AuthModal({
     setEmail("")
     setPassword("")
     setConfirmPassword("")
+    setTermsAccepted(false)
     setError(null)
     setMessage(null)
   }
 
   const handleOAuthSignIn = async (provider: "google" | "github") => {
+    // For sign-up tab, require terms acceptance before OAuth redirect
+    if (activeTab === "signup" && !termsAccepted) {
+      setError("You must accept the Terms of Service and Privacy Policy")
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -129,6 +139,12 @@ export function AuthModal({
     setError(null)
     setMessage(null)
 
+    if (!termsAccepted) {
+      setError("You must accept the Terms of Service and Privacy Policy")
+      setLoading(false)
+      return
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords don't match")
       setLoading(false)
@@ -166,7 +182,7 @@ export function AuthModal({
         onOpenChange(isOpen)
       }}
     >
-      <DialogContent className="sm:max-w-md h-[580px]">
+      <DialogContent className="sm:max-w-md h-[600px]">
         <DialogHeader>
           <DialogTitle>PEIT Map Creator</DialogTitle>
           <DialogDescription>
@@ -174,7 +190,7 @@ export function AuthModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab} className="w-full flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger
               value="signin"
@@ -212,6 +228,47 @@ export function AuthModal({
             </Button>
           </div>
 
+          {/* Terms checkbox for OAuth sign-up - only shown on signup tab */}
+          {activeTab === "signup" && (
+            <div className="flex items-start space-x-2 mt-3">
+              <Checkbox
+                id="terms-oauth"
+                checked={termsAccepted}
+                onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                disabled={loading}
+                className="mt-0.5"
+              />
+              <label
+                htmlFor="terms-oauth"
+                className="text-sm leading-relaxed text-muted-foreground"
+              >
+                I agree to the{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+          )}
+
+          {/* Show error for OAuth terms validation */}
+          {activeTab === "signup" && error && (
+            <p className="text-sm text-destructive mt-2">{error}</p>
+          )}
+
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -224,7 +281,7 @@ export function AuthModal({
           </div>
 
           {/* Form section with fixed height to prevent jumping */}
-          <div className="h-[280px]">
+          <div className="h-[240px]">
             <TabsContent value="signin" className="mt-0 h-full">
               <form onSubmit={handleEmailSignIn} className="space-y-3">
                 <div className="space-y-1">
@@ -295,7 +352,6 @@ export function AuthModal({
                     disabled={loading}
                   />
                 </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
                 {message && <p className="text-sm text-green-600">{message}</p>}
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

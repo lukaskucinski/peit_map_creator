@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import type { FeatureCollection } from "geojson"
 import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 import { UploadCard } from "@/components/upload-card"
 import { HowItWorks } from "@/components/how-it-works"
 import { ConfigPanel, type ProcessingConfig } from "@/components/config-panel"
@@ -406,9 +407,9 @@ export default function HomePage() {
   const showProcessingStatus = appState.step === 'processing' || appState.step === 'complete' || appState.step === 'error'
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      <main className="container mx-auto px-4 py-12 md:py-20">
+      <main className="container mx-auto px-4 py-12 md:py-20 flex-1">
         {/* Upload Card */}
         {showUploadCard && (
           <UploadCard
@@ -470,6 +471,8 @@ export default function HomePage() {
         {/* How It Works section - hidden during processing/complete */}
         {showHowItWorks && <HowItWorks />}
       </main>
+
+      <Footer />
 
       {/* Auth Modal - for sign up/sign in from ProcessingStatus */}
       <AuthModal
