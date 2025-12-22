@@ -215,7 +215,7 @@ export function JobHistoryList({ jobs, userId }: JobHistoryListProps) {
                   </Tooltip>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
                 <AlertDialog>
                   <Tooltip>
                     <TooltipTrigger asChild>
