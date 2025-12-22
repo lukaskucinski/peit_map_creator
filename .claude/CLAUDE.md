@@ -1780,12 +1780,18 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Responsive mobile layout
 - Shows Sign In/Sign Up buttons or UserMenu based on auth state
 
+**`components/footer.tsx`**
+- Minimal footer with Terms of Service and Privacy Policy links
+- Copyright notice with dynamic year
+- Centered layout, muted text styling
+- Responsive (stacks vertically on mobile)
+
 ### Authentication (Supabase)
 
 User authentication via Supabase with OAuth and email/password options.
 
 **Auth Components:**
-- `components/auth/auth-modal.tsx`: Sign in/sign up dialog with Google, GitHub OAuth and email/password
+- `components/auth/auth-modal.tsx`: Sign in/sign up dialog with Google, GitHub OAuth and email/password. **Terms acceptance required**: On sign-up tab, users must accept Terms of Service and Privacy Policy checkbox before signing up (applies to both OAuth and email sign-up).
 - `components/auth/user-menu.tsx`: Avatar dropdown with Map History, Account Settings, Sign Out. Uses OAuth provider avatar and display name from `user.user_metadata`. Uses Tooltip + DropdownMenu composition with `<span>` wrapper to avoid nested button hydration errors.
 
 **Account Components:**
@@ -1799,6 +1805,8 @@ User authentication via Supabase with OAuth and email/password options.
 - `app/auth/callback/route.ts`: OAuth callback handler
 - `app/dashboard/page.tsx`: Map History page (authenticated users only)
 - `app/account/page.tsx`: Account settings page (profile info, theme settings, account deletion)
+- `app/terms/page.tsx`: Terms of Service page (static, public)
+- `app/privacy/page.tsx`: Privacy Policy page (static, public)
 
 **Supabase Client Files (`lib/supabase/`):**
 - `client.ts`: Browser client for client components
