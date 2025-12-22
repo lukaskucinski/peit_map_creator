@@ -377,8 +377,8 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
   const initialBasemapSet = useRef(false)
   const initialGeometryLoaded = useRef(false)
 
-  // Background geocoding state
-  const [cachedLocationData, setCachedLocationData] = useState<LocationData | null>(null)
+  // Background geocoding state (using refs to avoid stale closure issues)
+  const cachedLocationDataRef = useRef<LocationData | null>(null)
   const geocodingInProgress = useRef(false)
   const hasGeocodedRef = useRef(false)
 
@@ -411,7 +411,7 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
 
     try {
       const location = await reverseGeocodePoint(lat, lon)
-      setCachedLocationData(location)
+      cachedLocationDataRef.current = location  // Write to ref, not state
     } catch (error) {
       console.warn('Background geocoding failed:', error)
     } finally {
@@ -446,7 +446,7 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
       setValidationError(null)
       // Reset geocoding state so next drawing session can trigger new geocode
       hasGeocodedRef.current = false
-      setCachedLocationData(null)
+      cachedLocationDataRef.current = null
     }
   }, [])
 
@@ -463,8 +463,8 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
       return
     }
 
-    // Use cached location data if available, otherwise geocode now
-    let locationData = cachedLocationData
+    // Read from ref - always gets current value (avoids stale closure issue)
+    let locationData = cachedLocationDataRef.current
 
     if (!locationData && !geocodingInProgress.current) {
       // No cached data and no geocoding in progress - geocode synchronously
@@ -480,7 +480,7 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
         await new Promise(resolve => setTimeout(resolve, 100))
         attempts++
       }
-      locationData = cachedLocationData
+      locationData = cachedLocationDataRef.current
       setIsGeneratingFilename(false)
     }
 
@@ -502,7 +502,7 @@ export function MapDrawer({ onComplete, onCancel, initialGeometry }: MapDrawerPr
     const file = new File([blob], filename, { type: "application/geo+json" })
 
     onComplete(file, locationData)
-  }, [onComplete, cachedLocationData])
+  }, [onComplete])
 
   const currentGeojson = featureGroupRef.current ? layersToGeoJSON(featureGroupRef.current) : null
   const summary = currentGeojson ? getGeometrySummary(currentGeojson) : "No shapes drawn"
