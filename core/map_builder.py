@@ -663,6 +663,18 @@ def create_web_map(
                 max-height: 600px;
                 overflow-y: auto;
             }
+
+            /* Mobile: constrain popup size to not overwhelm the screen */
+            @media (max-width: 768px) {
+                .leaflet-popup-content {
+                    max-height: 50vh;
+                    max-width: 80vw;
+                }
+
+                .leaflet-popup-content-wrapper {
+                    max-width: 85vw;
+                }
+            }
         </style>
     """)
     m.get_root().html.add_child(popup_css_fix)
