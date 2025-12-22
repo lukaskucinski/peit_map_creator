@@ -1802,8 +1802,26 @@ User authentication via Supabase with OAuth and email/password options.
 - Refreshes Supabase auth sessions on each request
 - Runs on all routes except static assets
 
-**Database:**
-- `jobs` table with RLS policies filtering by `user_id`
+**Database Tables:**
+
+**`jobs` table** - Stores job processing records with RLS policies filtering by `user_id`.
+
+**`user_stats` table** - Aggregated map creation statistics per user, auto-updated via triggers.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `user_id` | UUID (PK) | References auth.users(id), cascades on delete |
+| `maps_created` | INTEGER | Total maps started by user |
+| `maps_completed` | INTEGER | Maps that finished successfully |
+| `maps_failed` | INTEGER | Maps that failed during processing |
+| `total_features_processed` | BIGINT | Sum of features across completed maps |
+| `first_map_at` | TIMESTAMPTZ | User's first map creation timestamp |
+| `last_map_at` | TIMESTAMPTZ | User's most recent map creation timestamp |
+| `updated_at` | TIMESTAMPTZ | Last stats update timestamp |
+
+- Trigger `trigger_update_user_stats` fires on INSERT/UPDATE/DELETE of `jobs` table
+- Stats updated when: job created, job claimed, job completed, job failed, job deleted
+- RLS policy ensures users can only view their own stats
 
 **Profile Display:**
 Avatar and display name come directly from OAuth provider (`user.user_metadata`). No custom profile editing - users see their Google/GitHub profile automatically.
