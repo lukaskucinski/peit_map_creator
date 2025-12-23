@@ -28,6 +28,10 @@ interface ProcessingStatusProps {
   showCompletionTime?: boolean
   onDownload?: () => void
   onProcessAnother?: () => void
+  // Auth callbacks for rate limit errors (anonymous users)
+  isAuthenticated?: boolean
+  onSignUp?: () => void
+  onSignIn?: () => void
 }
 
 export function ProcessingStatus({
@@ -43,6 +47,9 @@ export function ProcessingStatus({
   showCompletionTime = true,
   onDownload,
   onProcessAnother,
+  isAuthenticated = false,
+  onSignUp,
+  onSignIn,
 }: ProcessingStatusProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [startTime] = useState(Date.now())
@@ -95,6 +102,12 @@ export function ProcessingStatus({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Check if this is a rate limit error for anonymous users
+  const isAnonymousRateLimitError = isError &&
+    !isAuthenticated &&
+    errorMessage?.toLowerCase().includes('anonymous') &&
+    errorMessage?.toLowerCase().includes('sign up')
+
   // Error state
   if (isError) {
     return (
@@ -107,7 +120,7 @@ export function ProcessingStatus({
               </div>
 
               <h2 className="mb-2 text-xl font-semibold text-foreground">
-                Processing Failed
+                {isAnonymousRateLimitError ? "Daily Limit Reached" : "Processing Failed"}
               </h2>
 
               <p className="mb-4 text-sm text-muted-foreground max-w-md">
@@ -118,14 +131,41 @@ export function ProcessingStatus({
                 Elapsed: {formatTime(elapsedTime)}
               </p>
 
-              <Button
-                onClick={onProcessAnother}
-                variant="outline"
-                className="gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Try Again
-              </Button>
+              {/* Show sign up/sign in buttons for anonymous rate limit errors */}
+              {isAnonymousRateLimitError && onSignUp && onSignIn ? (
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={onSignUp}>
+                      Sign Up
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={onSignIn}
+                      className="hover:bg-muted-foreground/10"
+                    >
+                      Sign In
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={onProcessAnother}
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 hover:bg-muted-foreground/10"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Try Again Tomorrow
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={onProcessAnother}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Try Again
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
