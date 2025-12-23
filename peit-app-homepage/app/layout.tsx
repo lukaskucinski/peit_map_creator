@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: "/favicon-48x48.png",
+        sizes: "48x48",
+        type: "image/png",
+      },
+      {
         url: "/icon-light-48x48.png",
         sizes: "48x48",
         media: "(prefers-color-scheme: light)",
@@ -30,6 +35,7 @@ export const metadata: Metadata = {
         type: "image/svg+xml",
       },
     ],
+    apple: "/apple-icon.png",
   },
   openGraph: {
     title: "PEIT Map Creator - Permitting and Environmental Information Tool",

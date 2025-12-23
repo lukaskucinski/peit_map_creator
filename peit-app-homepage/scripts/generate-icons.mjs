@@ -100,13 +100,21 @@ async function main() {
   const lightIcon48 = generateCroppedSvg(48, 'transparent', 'black');
   await renderPng(lightIcon48, path.join(publicDir, 'icon-light-48x48.png'));
 
-  // 180x180 Apple icon (purple bg with white icon for Apple devices)
-  const appleIcon = generateSvg(180, '#7c3aed', 'white');
+  // Favicon for Google Search / universal use: black icon on white background
+  const favicon48 = generateCroppedSvg(48, 'white', 'black');
+  await renderPng(favicon48, path.join(publicDir, 'favicon-48x48.png'));
+
+  // 180x180 Apple icon (white bg with black icon to match app branding)
+  const appleIcon = generateSvg(180, 'white', 'black');
   await renderPng(appleIcon, path.join(publicDir, 'apple-icon.png'));
 
   // OG image for social sharing
   const ogImage = generateOgSvg();
   await renderPng(ogImage, path.join(publicDir, 'og-image.png'));
+
+  // High-res 800x800 PNG for favicon.ico conversion (crisp source)
+  const hiRes = generateCroppedSvg(800, 'white', 'black');
+  await renderPng(hiRes, path.join(publicDir, 'icon-800x800.png'));
 
   console.log('\nAll icons generated successfully!');
 }
