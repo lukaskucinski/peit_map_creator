@@ -176,13 +176,18 @@ export default function HomePage() {
       setUser(currentUser)
       prevUserRef.current = currentUser
 
-      // If user is already logged in on page load AND we have pending jobs,
-      // this might be returning from an OAuth redirect - claim the jobs
+      // If user is already logged in on page load, this might be returning from an OAuth redirect
       if (currentUser && !isRestoringState) {
-        const storedState = getCompleteState()
-        const storedJobs = getPendingJobs()
-        if (storedState?.jobId || storedJobs.length > 0) {
-          await claimPendingJobs(currentUser.id)
+        // First check if we need to restore error state (user signed in from error screen)
+        const restored = restoreErrorState()
+
+        // If not restoring error state, check for pending jobs to claim
+        if (!restored) {
+          const storedState = getCompleteState()
+          const storedJobs = getPendingJobs()
+          if (storedState?.jobId || storedJobs.length > 0) {
+            await claimPendingJobs(currentUser.id)
+          }
         }
       }
     })
