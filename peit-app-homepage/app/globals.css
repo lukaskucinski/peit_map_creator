@@ -127,3 +127,36 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Mobile-friendly Leaflet-Geoman drawing action buttons */
+/* Makes Finish/Remove Last Vertex/Cancel stack vertically on mobile */
+/* Only applies to multi-action tools (Polygon/Polyline with 3 buttons) */
+@media (max-width: 768px) {
+  /* Position actions vertically for multi-action containers only */
+  .leaflet-pm-toolbar .button-container.active .leaflet-pm-actions-container.multi-action {
+    top: 0;
+    left: calc(100% + 4px);
+    display: flex;
+    flex-direction: column;
+    white-space: nowrap;
+  }
+
+  /* Stack action buttons vertically for multi-action containers */
+  .leaflet-pm-toolbar .leaflet-pm-actions-container.multi-action .leaflet-pm-action {
+    display: block;
+    border-right: none !important;
+    border-bottom: 1px solid #eee;
+    border-radius: 0 !important;
+  }
+
+  /* Round corners on first and last items for vertical layout */
+  /* Match single-option tools: rounded on right side, sharp on left */
+  .leaflet-pm-toolbar .leaflet-pm-actions-container.multi-action .leaflet-pm-action:first-child {
+    border-radius: 0 3px 0 0 !important;
+  }
+
+  .leaflet-pm-toolbar .leaflet-pm-actions-container.multi-action .leaflet-pm-action:last-child {
+    border-radius: 0 0 3px 0 !important;
+    border-bottom: none;
+  }
+}
