@@ -465,6 +465,15 @@ export default function HomePage() {
             showCompletionTime={!wasRestoredFromStorage}
             onDownload={handleDownload}
             onProcessAnother={handleProcessAnother}
+            isAuthenticated={!!user}
+            onSignUp={() => {
+              setAuthModalTab("signup")
+              setAuthModalOpen(true)
+            }}
+            onSignIn={() => {
+              setAuthModalTab("signin")
+              setAuthModalOpen(true)
+            }}
           />
         )}
 
