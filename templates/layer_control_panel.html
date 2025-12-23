@@ -383,7 +383,7 @@
                     </div>
                     <!-- Category entries (vertical layout) -->
                     {% for symbol in layer.category_symbols %}
-                    <div class="layer-item-child" data-layer-name="{{ layer.name }}">
+                    <div class="layer-item-child" data-layer-name="{{ layer.name }}" data-label="{{ symbol.label }}">
                         {% if symbol.geometry_type == 'line' %}
                         <!-- Line symbology: colored line -->
                         <svg width="20" height="14" style="margin-right: 6px; vertical-align: middle;">
@@ -688,28 +688,47 @@
             return;
         }
 
-        // Filter layers and hide all children initially
+        // Track which parent layers have matching children (for subcategory search)
+        var parentsWithMatchingChildren = new Set();
+
+        // First pass: Find children that match the search term
+        childItems.forEach(function(child) {
+            var label = (child.dataset.label || '').toLowerCase();
+            if (label.includes(term)) {
+                parentsWithMatchingChildren.add(child.dataset.layerName);
+            }
+        });
+
+        // Hide all children initially
         childItems.forEach(function(child) {
             child.style.display = 'none';
         });
 
+        // Filter parent layers
         layerItems.forEach(function(item) {
             // Add null/undefined checks to prevent errors on elements without data attributes
             var name = (item.dataset.layerName || '').toLowerCase();
             var description = (item.dataset.description || '').toLowerCase();
             var group = (item.dataset.group || '').toLowerCase();
+            var layerName = item.dataset.layerName;
 
-            var matches = name.includes(term) || description.includes(term) || group.includes(term);
+            // Match if: parent matches OR has matching children
+            var parentMatches = name.includes(term) || description.includes(term) || group.includes(term);
+            var hasMatchingChild = parentsWithMatchingChildren.has(layerName);
 
-            if (matches) {
+            if (parentMatches || hasMatchingChild) {
                 item.style.display = 'flex';
                 hasVisibleLayers = true;
-                // Show child items for matching layers
-                var layerName = item.dataset.layerName;
+
+                // Show children based on match type
                 if (layerName) {
                     childItems.forEach(function(child) {
                         if (child.dataset.layerName === layerName) {
-                            child.style.display = 'flex';
+                            var childLabel = (child.dataset.label || '').toLowerCase();
+                            // Show child if: parent matched (show all children) OR this specific child matched
+                            if (parentMatches || childLabel.includes(term)) {
+                                child.style.display = 'flex';
+                            }
                         }
                     });
                 }
