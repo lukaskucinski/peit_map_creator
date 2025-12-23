@@ -118,11 +118,17 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, lo
         // Mark as auto-set to prevent future auto-setting
         setHasAutoSetBuffer(true)
       }
+
+      // Safeguard: if geometry is NOT polygon but buffer is 0, auto-correct to default
+      // This handles edge case where restored config from polygon session is used with line/point file
+      if (geomType !== 'polygon' && bufferDistanceFeet === 0) {
+        setBufferDistanceFeet(DEFAULT_BUFFER_FEET)
+      }
     } else {
       setDetectedGeomType(null)
       setHasAutoSetBuffer(false)
     }
-  }, [geojsonData, hasAutoSetBuffer, initialConfig?.bufferDistanceFeet])
+  }, [geojsonData, hasAutoSetBuffer, initialConfig?.bufferDistanceFeet, bufferDistanceFeet])
 
   // Notify parent of config changes
   useEffect(() => {
@@ -320,7 +326,7 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, lo
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0 ft</span>
+              <span>1 ft</span>
               <span>26,400 ft (5 mi)</span>
             </div>
             {detectedGeomType && (

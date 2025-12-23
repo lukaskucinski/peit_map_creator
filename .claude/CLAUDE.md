@@ -1746,8 +1746,9 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
   - Minimum: 1ft (prevents empty geometries from 0ft buffer on points/lines)
   - Maximum: 26,400ft (5 miles)
   - Default: 500ft
-  - Slider step: 100ft increments (0, 100, 200... but clamped to minimum 1ft)
+  - Slider step: 100ft increments (slider label shows 1ft minimum)
   - Clickable value: Click the ft value to manually enter exact buffer distance
+  - Auto-correction: If buffer is 0 for non-polygon geometry (e.g., restored from previous polygon session), auto-corrects to 500ft
 - Clip buffer distance slider with tooltip
   - Minimum: 0.1 mi (cannot be 0)
   - Maximum: 5.0 mi
