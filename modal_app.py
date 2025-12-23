@@ -28,11 +28,11 @@ supabase_secret = modal.Secret.from_name("supabase-service", required_keys=["SUP
 
 # Modal Dict for rate limiting (anonymous users - IP-based)
 rate_limit_dict = modal.Dict.from_name("peit-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY_ANONYMOUS = 1  # Anonymous users (IP-based)
+MAX_RUNS_PER_DAY_ANONYMOUS = 2  # Anonymous users (IP-based)
 
 # Modal Dict for authenticated user rate limiting (user_id-based)
 user_rate_limit_dict = modal.Dict.from_name("peit-user-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY_AUTHENTICATED = 15  # Authenticated users
+MAX_RUNS_PER_DAY_AUTHENTICATED = 10  # Authenticated users
 
 # Modal Dict for tracking active jobs per IP
 active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
