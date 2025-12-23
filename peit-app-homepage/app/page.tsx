@@ -22,8 +22,12 @@ import {
   saveCompleteState,
   getCompleteState,
   clearCompleteState,
+  saveErrorState,
+  getErrorState,
+  clearErrorState,
   type StoredCompleteState,
 } from "@/lib/pending-jobs"
+import { geojsonToFile } from "@/lib/geojson-utils"
 import { ClaimJobPrompt } from "@/components/claim-job-prompt"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@supabase/supabase-js"
@@ -85,6 +89,51 @@ export default function HomePage() {
     setIsRestoringState(false)
   }, [])
 
+  // Restore error state from sessionStorage (after OAuth redirect from error state)
+  const restoreErrorState = useCallback(() => {
+    const errorState = getErrorState()
+    if (!errorState) return false
+
+    // For drawn geometries, we can fully restore by regenerating the File
+    if (errorState.geometrySource === 'draw' && errorState.geojsonData) {
+      const geojson = errorState.geojsonData as FeatureCollection
+      const file = geojsonToFile(geojson, errorState.filename || 'drawn_geometry.geojson')
+
+      setAppState({ step: 'configure', file })
+      setSavedConfig(errorState.config)
+      setGeojsonData(geojson)
+      setGeometrySource('draw')
+      setLocationData(errorState.locationData ?? null)
+      clearErrorState()
+      return true
+    }
+
+    // For uploaded files, we can't restore the File object
+    // But we can restore config and show the upload screen with a message
+    // The user will need to re-select the file
+    if (errorState.geometrySource === 'upload') {
+      // Create a placeholder file with the original name to show in upload card
+      // This won't work for actual processing, but helps the UX
+      const placeholderFile = new File([], errorState.filename, { type: 'application/octet-stream' })
+
+      setAppState({ step: 'configure', file: placeholderFile })
+      setSavedConfig(errorState.config)
+      setGeojsonData(null) // Need to re-parse after user re-selects file
+      setGeometrySource('upload')
+      setLocationData(errorState.locationData ?? null)
+      clearErrorState()
+
+      // Show a toast to inform user they need to re-select the file
+      toast({
+        title: "Please re-select your file",
+        description: `Your settings have been restored. Re-select "${errorState.filename}" to continue.`,
+      })
+      return true
+    }
+
+    return false
+  }, [toast])
+
   // Claim pending jobs for a newly authenticated user
   // Note: This function doesn't depend on appState to avoid closure issues
   // It gets job IDs from localStorage and sessionStorage instead
@@ -127,13 +176,18 @@ export default function HomePage() {
       setUser(currentUser)
       prevUserRef.current = currentUser
 
-      // If user is already logged in on page load AND we have pending jobs,
-      // this might be returning from an OAuth redirect - claim the jobs
+      // If user is already logged in on page load, this might be returning from an OAuth redirect
       if (currentUser && !isRestoringState) {
-        const storedState = getCompleteState()
-        const storedJobs = getPendingJobs()
-        if (storedState?.jobId || storedJobs.length > 0) {
-          await claimPendingJobs(currentUser.id)
+        // First check if we need to restore error state (user signed in from error screen)
+        const restored = restoreErrorState()
+
+        // If not restoring error state, check for pending jobs to claim
+        if (!restored) {
+          const storedState = getCompleteState()
+          const storedJobs = getPendingJobs()
+          if (storedState?.jobId || storedJobs.length > 0) {
+            await claimPendingJobs(currentUser.id)
+          }
         }
       }
     })
@@ -154,8 +208,13 @@ export default function HomePage() {
         setClaimPromptReady(false)
         setClaimPromptOpen(false)
 
-        // Claim any pending jobs
-        await claimPendingJobs(newUser.id)
+        // Check if we need to restore error state (user signed in from error screen)
+        const restored = restoreErrorState()
+
+        // Claim any pending jobs (if not restoring error state)
+        if (!restored) {
+          await claimPendingJobs(newUser.id)
+        }
       }
 
       // Detect sign-out event - reset to upload state
@@ -172,7 +231,7 @@ export default function HomePage() {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase, claimPendingJobs, isRestoringState])
+  }, [supabase, claimPendingJobs, restoreErrorState, isRestoringState])
 
   // Show claim prompt with delay - triggered by mouse movement (desktop) or timeout (mobile)
   useEffect(() => {
@@ -311,6 +370,15 @@ export default function HomePage() {
       if (result.success) {
         setAppState({ step: 'complete', file, config })
       } else {
+        // Save error state for mock mode too (consistent behavior)
+        saveErrorState({
+          filename: file.name,
+          config,
+          geojsonData: geojsonData,
+          geometrySource: geometrySource,
+          locationData: locationData,
+        })
+
         setAppState({
           step: 'error',
           file,
@@ -357,6 +425,15 @@ export default function HomePage() {
           xlsxUrl: result.xlsxUrl,
         })
       } else {
+        // Save error state to sessionStorage for recovery after OAuth redirect
+        saveErrorState({
+          filename: file.name,
+          config,
+          geojsonData: geojsonData,
+          geometrySource: geometrySource,
+          locationData: locationData,
+        })
+
         setAppState({
           step: 'error',
           file,
@@ -365,7 +442,7 @@ export default function HomePage() {
         })
       }
     }
-  }, [appState, user])
+  }, [appState, user, geojsonData, geometrySource, locationData])
 
   // Handle download
   const handleDownload = useCallback(async () => {
@@ -382,10 +459,11 @@ export default function HomePage() {
     }
   }, [appState])
 
-  // Handle process another
+  // Handle process another (from complete state - starts fresh)
   const handleProcessAnother = useCallback(() => {
     // Clear the stored complete state
     clearCompleteState()
+    clearErrorState()
     setAppState({ step: 'upload' })
     setProgressUpdates([])
     setWasRestoredFromStorage(false)
@@ -393,6 +471,25 @@ export default function HomePage() {
     setClaimPromptOpen(false)
     setSavedConfig(null) // Clear saved config for new process
   }, [])
+
+  // Handle try again (from error state - preserves file and config)
+  const handleTryAgain = useCallback(() => {
+    if (appState.step === 'error') {
+      // Restore to configure with the preserved file and config
+      setAppState({ step: 'configure', file: appState.file })
+      setSavedConfig(appState.config)
+      // geojsonData, geometrySource, locationData are already in state - don't clear them
+    } else {
+      // Fallback to fresh upload
+      setAppState({ step: 'upload' })
+      setSavedConfig(null)
+    }
+    clearErrorState()
+    setProgressUpdates([])
+    setWasRestoredFromStorage(false)
+    setClaimPromptReady(false)
+    setClaimPromptOpen(false)
+  }, [appState])
 
   // Handle config changes from ConfigPanel
   const handleConfigChange = useCallback((config: Partial<ProcessingConfig>) => {
@@ -465,6 +562,7 @@ export default function HomePage() {
             showCompletionTime={!wasRestoredFromStorage}
             onDownload={handleDownload}
             onProcessAnother={handleProcessAnother}
+            onTryAgain={handleTryAgain}
             isAuthenticated={!!user}
             onSignUp={() => {
               setAuthModalTab("signup")

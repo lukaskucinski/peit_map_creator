@@ -28,6 +28,8 @@ interface ProcessingStatusProps {
   showCompletionTime?: boolean
   onDownload?: () => void
   onProcessAnother?: () => void
+  // Try again callback for error state (preserves file/config)
+  onTryAgain?: () => void
   // Auth callbacks for rate limit errors (anonymous users)
   isAuthenticated?: boolean
   onSignUp?: () => void
@@ -47,6 +49,7 @@ export function ProcessingStatus({
   showCompletionTime = true,
   onDownload,
   onProcessAnother,
+  onTryAgain,
   isAuthenticated = false,
   onSignUp,
   onSignIn,
@@ -147,7 +150,7 @@ export function ProcessingStatus({
                     </Button>
                   </div>
                   <Button
-                    onClick={onProcessAnother}
+                    onClick={onTryAgain ?? onProcessAnother}
                     variant="ghost"
                     size="sm"
                     className="gap-2 hover:bg-muted-foreground/10"
@@ -157,14 +160,24 @@ export function ProcessingStatus({
                   </Button>
                 </div>
               ) : (
-                <Button
-                  onClick={onProcessAnother}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Try Again
-                </Button>
+                <div className="flex flex-col gap-3 items-center">
+                  <Button
+                    onClick={onTryAgain ?? onProcessAnother}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Try Again
+                  </Button>
+                  {onProcessAnother && onTryAgain && (
+                    <button
+                      onClick={onProcessAnother}
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                      or start fresh with a different file
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </CardContent>

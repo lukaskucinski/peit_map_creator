@@ -226,3 +226,104 @@ export function clearCompleteState(): void {
     // Silently fail
   }
 }
+
+// ============================================================================
+// Error State Storage (sessionStorage)
+// Used to preserve file/config when auth redirects occur from error state
+// ============================================================================
+
+const ERROR_STATE_KEY = "peit_error_state"
+
+/**
+ * Serializable error state for storage
+ * Note: File objects cannot be serialized, so we store metadata + GeoJSON for drawn geometries
+ */
+export interface StoredErrorState {
+  filename: string
+  config: {
+    projectName: string
+    projectId: string
+    bufferDistanceFeet: number
+    clipBufferMiles: number
+  }
+  // For drawn geometries, we can regenerate the File from GeoJSON
+  // For uploaded files, user will need to re-select the file
+  geojsonData?: object | null
+  geometrySource: "upload" | "draw"
+  // LocationData structure from geojson-utils.ts
+  locationData?: {
+    city: string
+    county: string
+    state: string
+    stateAbbr: string
+  } | null
+  timestamp: number
+}
+
+/**
+ * Save the error state to sessionStorage
+ * This preserves configuration across OAuth redirects from error state
+ */
+export function saveErrorState(
+  state: Omit<StoredErrorState, "timestamp">
+): void {
+  if (!isSessionStorageAvailable()) return
+
+  try {
+    const stored: StoredErrorState = {
+      ...state,
+      timestamp: Date.now(),
+    }
+    window.sessionStorage.setItem(ERROR_STATE_KEY, JSON.stringify(stored))
+  } catch {
+    // Silently fail (e.g., if storage is full due to large GeoJSON)
+  }
+}
+
+/**
+ * Get the stored error state from sessionStorage
+ * Returns null if not found or expired (older than 1 hour)
+ */
+export function getErrorState(): StoredErrorState | null {
+  if (!isSessionStorageAvailable()) return null
+
+  try {
+    const stored = window.sessionStorage.getItem(ERROR_STATE_KEY)
+    if (!stored) return null
+
+    const parsed = JSON.parse(stored) as StoredErrorState
+
+    // Validate required fields
+    if (
+      !parsed.filename ||
+      !parsed.config ||
+      typeof parsed.timestamp !== "number"
+    ) {
+      return null
+    }
+
+    // Expire after 1 hour (to prevent stale state)
+    const oneHour = 60 * 60 * 1000
+    if (Date.now() - parsed.timestamp > oneHour) {
+      clearErrorState()
+      return null
+    }
+
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Clear the stored error state
+ */
+export function clearErrorState(): void {
+  if (!isSessionStorageAvailable()) return
+
+  try {
+    window.sessionStorage.removeItem(ERROR_STATE_KEY)
+  } catch {
+    // Silently fail
+  }
+}
