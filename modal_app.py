@@ -26,9 +26,13 @@ vercel_blob_secret = modal.Secret.from_name("vercel-blob", required_keys=["BLOB_
 # Supabase secret for job tracking (optional - jobs work without it)
 supabase_secret = modal.Secret.from_name("supabase-service", required_keys=["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
 
-# Modal Dict for rate limiting
+# Modal Dict for rate limiting (anonymous users - IP-based)
 rate_limit_dict = modal.Dict.from_name("peit-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY = 20
+MAX_RUNS_PER_DAY_ANONYMOUS = 1  # Anonymous users (IP-based)
+
+# Modal Dict for authenticated user rate limiting (user_id-based)
+user_rate_limit_dict = modal.Dict.from_name("peit-user-rate-limits", create_if_missing=True)
+MAX_RUNS_PER_DAY_AUTHENTICATED = 20  # Authenticated users
 
 # Modal Dict for tracking active jobs per IP
 active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
@@ -493,12 +497,12 @@ def fastapi_app():
         allow_headers=["*"],
     )
 
-    def check_rate_limit(ip: str) -> bool:
-        """Check if IP has exceeded daily rate limit."""
+    def check_anonymous_rate_limit(ip: str) -> bool:
+        """Check if anonymous user (IP) has exceeded daily rate limit (4/day)."""
         key = f"{ip}:{datetime.now().strftime('%Y-%m-%d')}"
         try:
             count = rate_limit_dict.get(key, 0)
-            if count >= MAX_RUNS_PER_DAY:
+            if count >= MAX_RUNS_PER_DAY_ANONYMOUS:
                 return False
             rate_limit_dict[key] = count + 1
             return True
@@ -506,14 +510,36 @@ def fastapi_app():
             # If Dict is unavailable, allow the request
             return True
 
-    def get_remaining_runs(ip: str) -> int:
-        """Get remaining runs for today."""
+    def get_anonymous_remaining_runs(ip: str) -> int:
+        """Get remaining runs for anonymous user (IP) today."""
         key = f"{ip}:{datetime.now().strftime('%Y-%m-%d')}"
         try:
             count = rate_limit_dict.get(key, 0)
-            return max(0, MAX_RUNS_PER_DAY - count)
+            return max(0, MAX_RUNS_PER_DAY_ANONYMOUS - count)
         except Exception:
-            return MAX_RUNS_PER_DAY
+            return MAX_RUNS_PER_DAY_ANONYMOUS
+
+    def check_user_rate_limit(user_id: str) -> bool:
+        """Check if authenticated user has exceeded daily rate limit (20/day)."""
+        key = f"{user_id}:{datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            count = user_rate_limit_dict.get(key, 0)
+            if count >= MAX_RUNS_PER_DAY_AUTHENTICATED:
+                return False
+            user_rate_limit_dict[key] = count + 1
+            return True
+        except Exception:
+            # If Dict is unavailable, allow the request
+            return True
+
+    def get_user_remaining_runs(user_id: str) -> int:
+        """Get remaining runs for authenticated user today."""
+        key = f"{user_id}:{datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            count = user_rate_limit_dict.get(key, 0)
+            return max(0, MAX_RUNS_PER_DAY_AUTHENTICATED - count)
+        except Exception:
+            return MAX_RUNS_PER_DAY_AUTHENTICATED
 
     def check_concurrent_limit(ip: str) -> bool:
         """Check if IP has too many active jobs. Returns True if allowed."""
@@ -569,14 +595,26 @@ def fastapi_app():
         return {"status": "healthy", "service": "peit-processor"}
 
     @web_app.get("/api/rate-limit")
-    async def get_rate_limit_endpoint(request: Request):
-        """Get rate limit status for the requesting IP."""
+    async def get_rate_limit_endpoint(request: Request, user_id: str = None):
+        """Get rate limit status. Pass user_id query param for authenticated user limits."""
         client_ip = request.client.host if request.client else "unknown"
-        remaining = get_remaining_runs(client_ip)
         global_remaining = get_global_remaining_runs()
+
+        if user_id:
+            # Authenticated user - return user-based limits
+            remaining = get_user_remaining_runs(user_id)
+            max_runs = MAX_RUNS_PER_DAY_AUTHENTICATED
+            limit_type = "per_user"
+        else:
+            # Anonymous user - return IP-based limits
+            remaining = get_anonymous_remaining_runs(client_ip)
+            max_runs = MAX_RUNS_PER_DAY_ANONYMOUS
+            limit_type = "per_ip"
+
         return {
             "remaining_runs": remaining,
-            "max_runs_per_day": MAX_RUNS_PER_DAY,
+            "max_runs_per_day": max_runs,
+            "limit_type": limit_type,
             "global_remaining_runs": global_remaining,
             "max_global_runs_per_day": MAX_GLOBAL_RUNS_PER_DAY,
             "resets_at": "midnight UTC",
@@ -611,17 +649,31 @@ def fastapi_app():
                 }
             )
 
-        # Per-IP rate limit check
-        if not check_rate_limit(client_ip):
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "error": "Rate limit exceeded",
-                    "message": f"Maximum {MAX_RUNS_PER_DAY} runs per day. Please try again tomorrow.",
-                    "limit_type": "per_ip",
-                    "remaining_runs": 0,
-                }
-            )
+        # Tiered rate limit check: authenticated users (20/day) vs anonymous (4/day)
+        if user_id:
+            # Authenticated user - check user-based limit (20/day)
+            if not check_user_rate_limit(user_id):
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "error": "Rate limit exceeded",
+                        "message": f"Maximum {MAX_RUNS_PER_DAY_AUTHENTICATED} runs per day for authenticated users. Please try again tomorrow.",
+                        "limit_type": "per_user",
+                        "remaining_runs": 0,
+                    }
+                )
+        else:
+            # Anonymous user - check IP-based limit (4/day)
+            if not check_anonymous_rate_limit(client_ip):
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "error": "Rate limit exceeded",
+                        "message": f"Maximum {MAX_RUNS_PER_DAY_ANONYMOUS} runs per day for anonymous users. Sign up for {MAX_RUNS_PER_DAY_AUTHENTICATED} runs per day.",
+                        "limit_type": "per_ip",
+                        "remaining_runs": 0,
+                    }
+                )
 
         # Validate file BEFORE acquiring concurrent job slot
         # This prevents slot leaks when validation fails

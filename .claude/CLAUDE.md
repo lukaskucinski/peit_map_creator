@@ -2189,8 +2189,9 @@ When anonymous users create maps, the jobs are stored with `user_id = NULL`. If 
 
 | Protection | Implementation |
 |------------|----------------|
-| Daily rate limit (per-IP) | 20 runs per day per IP address |
-| Daily rate limit (global) | 200 runs per day across all users |
+| Daily rate limit (authenticated) | 20 runs per day per user_id |
+| Daily rate limit (anonymous) | 4 runs per day per IP address |
+| Daily rate limit (global) | 50 runs per day across all users |
 | Concurrent limit | 3 simultaneous jobs per IP |
 | Input geometry area limit | 5000 sq miles maximum |
 | File size | 5MB (validated after upload) |
@@ -2200,19 +2201,22 @@ When anonymous users create maps, the jobs are stored with `user_id = NULL`. If 
 | Job IDs | 16-char UUIDs (prevents URL enumeration) |
 | Data retention | 7-day auto-cleanup |
 
-**Rate Limiting:**
-- **Per-IP Storage**: Modal Dict (`peit-rate-limits`) with key format `{ip}:{date}`
+**Tiered Rate Limiting:**
+- **Authenticated Users**: 20 runs/day tracked by `user_id` (Modal Dict `peit-user-rate-limits`)
+- **Anonymous Users**: 4 runs/day tracked by IP address (Modal Dict `peit-rate-limits`)
+- **Per-User Storage**: Key format `{user_id}:{date}`
+- **Per-IP Storage**: Key format `{ip}:{date}`
 - **Global Storage**: Modal Dict (`peit-global-rate-limit`) with key format `global:{date}`
 - **Concurrent Jobs**: Modal Dict (`peit-active-jobs`) with key format `active:{ip}`
 - **Reset**: Daily limits reset at midnight UTC; concurrent slots reset when jobs complete
-- **Order of Checks**: Global limit → Per-IP limit → File validation → Concurrent limit
+- **Order of Checks**: Global limit → User/IP limit (based on auth) → File validation → Concurrent limit
 - **Logging**: Slot acquire/release events logged with `[RATE LIMIT]` prefix for debugging
 
 **Global Rate Limit:**
 - Prevents service abuse regardless of IP address rotation
-- Checked BEFORE per-IP limit to fail fast
+- Checked BEFORE user/IP limit to fail fast
 - Returns 429 with `limit_type: "global"` when exceeded
-- Configurable via `MAX_GLOBAL_RUNS_PER_DAY` constant (default: 200)
+- Configurable via `MAX_GLOBAL_RUNS_PER_DAY` constant (default: 50)
 
 **Input Geometry Area Limit:**
 - Maximum input area: 5000 sq miles (configurable in `geometry_settings.max_input_area_sq_miles`)
@@ -2308,7 +2312,8 @@ def cleanup_old_results():
 
 ### Configuration
 ```python
-MAX_RUNS_PER_DAY = 20
+MAX_RUNS_PER_DAY_AUTHENTICATED = 20  # Authenticated users (user_id-based)
+MAX_RUNS_PER_DAY_ANONYMOUS = 4       # Anonymous users (IP-based)
 MAX_CONCURRENT_JOBS_PER_IP = 3
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_REQUEST_SIZE = 6 * 1024 * 1024  # 6MB (with overhead)
@@ -2339,6 +2344,7 @@ modal deploy modal_app.py
 
 ### Volume Storage
 - **peit-results**: Temporary storage for generated ZIP files
-- **peit-rate-limits**: Daily rate limit counters per IP
+- **peit-rate-limits**: Daily rate limit counters per IP (anonymous users)
+- **peit-user-rate-limits**: Daily rate limit counters per user_id (authenticated users)
 - **peit-active-jobs**: Active job counters per IP
 - Results auto-cleanup after 7 days via scheduled cron job
