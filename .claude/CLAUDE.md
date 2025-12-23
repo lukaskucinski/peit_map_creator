@@ -1885,6 +1885,20 @@ SessionStorage preserves the "Processing Complete" screen across OAuth redirects
 
 This ensures users see the upload page (not stale complete state) when navigating home from any page.
 
+**Error State Preservation:**
+When processing fails (rate limit, network error, etc.), file and configuration are preserved for retry:
+
+- **"Try Again" button** (`handleTryAgain` in `app/page.tsx`): Returns to configure step with file and config preserved (does NOT reset to upload)
+- **"Start Fresh" link**: Calls `handleProcessAnother` to reset completely for users who want a different file
+- **Auth redirect from error state**: Error state saved to sessionStorage; on sign-in, restored to configure step
+  - For drawn geometries: Fully restored (File regenerated from saved GeoJSON)
+  - For uploaded files: Config restored, user prompted to re-select file
+
+Storage functions in `lib/pending-jobs.ts`:
+- `saveErrorState()`: Saves filename, config, GeoJSON (for drawn), geometrySource, locationData
+- `getErrorState()`: Retrieves error state (expires after 1 hour)
+- `clearErrorState()`: Clears stored error state
+
 Key files:
 - `lib/pending-jobs.ts`: localStorage/sessionStorage utilities
 - `components/claim-job-prompt.tsx`: Sign-up prompt dialog
