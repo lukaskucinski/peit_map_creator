@@ -374,6 +374,60 @@ export async function claimJobs(
 }
 
 /**
+ * Nominatim response structure for reverse geocoding
+ */
+export interface NominatimResponse {
+  lat: string
+  lon: string
+  display_name: string
+  address?: {
+    city?: string
+    town?: string
+    village?: string
+    municipality?: string
+    county?: string
+    state?: string
+    country?: string
+    country_code?: string
+  }
+  error?: string
+}
+
+/**
+ * Reverse geocode coordinates via backend proxy
+ *
+ * This proxies requests through our Modal backend to avoid CORS issues
+ * with Nominatim's public API (which doesn't include CORS headers).
+ *
+ * @param lat - Latitude coordinate
+ * @param lon - Longitude coordinate
+ * @returns Nominatim response or null on error
+ */
+export async function reverseGeocode(
+  lat: number,
+  lon: number
+): Promise<NominatimResponse | null> {
+  if (!API_URL) return null
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/reverse-geocode?lat=${lat}&lon=${lon}`
+    )
+    if (!response.ok) return null
+
+    const data = await response.json()
+    if (data.error) {
+      console.warn("Geocoding error:", data.error)
+      return null
+    }
+    return data
+  } catch (error) {
+    console.warn("Reverse geocode failed:", error)
+    return null
+  }
+}
+
+/**
  * Delete a job and all associated data (map, reports, storage)
  *
  * @param jobId - The job ID to delete

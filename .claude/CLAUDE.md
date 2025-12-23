@@ -2019,8 +2019,8 @@ Users can draw custom geometries on an interactive map instead of uploading a fi
 - `calculatePolygonAreaSqMiles()`: Calculate area of polygon features using Turf.js
 - `estimateBufferedAreaSqMiles()`: Estimate area after applying buffer to all geometry types
 - `validateGeometryArea()`: Validate area against limits (5,000 sq mi max, 2,500 sq mi warning)
-- `reverseGeocodePoint()`: Geocode a single lat/lon coordinate to get location data
-- `reverseGeocodeGeometry()`: Geocode a GeoJSON FeatureCollection's centroid
+- `reverseGeocodePoint()`: Geocode a single lat/lon coordinate via backend proxy (avoids CORS)
+- `reverseGeocodeGeometry()`: Geocode a GeoJSON FeatureCollection's centroid via backend proxy
 
 **Area Validation Constants:**
 - `MAX_AREA_SQ_MILES`: 5,000 sq mi - Maximum allowed area
@@ -2064,6 +2064,7 @@ TypeScript client for the Modal backend:
 - `processFile()`: Upload and process file with SSE progress streaming
 - `claimJobs()`: Claim unclaimed jobs for authenticated user
 - `deleteJob()`: Delete a job and all associated storage (requires ownership)
+- `reverseGeocode()`: Proxy reverse geocoding to Nominatim via backend (avoids CORS)
 
 ### File Validation (`lib/validation.ts`)
 - **Allowed Extensions**: `.geojson`, `.json`, `.gpkg`, `.kml`, `.kmz`, `.zip`
@@ -2161,6 +2162,12 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 
 **`GET /api/health`**
 - Health check endpoint
+
+**`GET /api/reverse-geocode`**
+- Proxies reverse geocoding requests to Nominatim (avoids browser CORS issues)
+- Query params: `lat` (float), `lon` (float)
+- Returns Nominatim JSON response with address details
+- Uses httpx async client with proper User-Agent header
 
 **`GET /api/rate-limit`**
 - Returns remaining runs for current IP

@@ -75,6 +75,7 @@ peit_image = (
         "vercel>=0.3.5",
         "supabase>=2.10.0",
         "certifi",  # Python SSL certificates for httpx
+        "httpx>=0.27.0",  # Async HTTP client for geocoding proxy
     )
     .run_commands("update-ca-certificates || true")  # Update system CA store
     # Add local directories to the container
@@ -593,6 +594,46 @@ def fastapi_app():
     async def health_check():
         """Health check endpoint."""
         return {"status": "healthy", "service": "peit-processor"}
+
+    @web_app.get("/api/reverse-geocode")
+    async def reverse_geocode(lat: float, lon: float):
+        """Proxy reverse geocoding to Nominatim.
+
+        This endpoint proxies requests to Nominatim's reverse geocoding API
+        to avoid CORS issues when calling from the browser. Nominatim's public
+        API doesn't include CORS headers, so browser requests fail.
+
+        Args:
+            lat: Latitude coordinate
+            lon: Longitude coordinate
+
+        Returns:
+            Nominatim response JSON or error message
+        """
+        import httpx
+
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "format": "json",
+            "addressdetails": 1
+        }
+        headers = {
+            "User-Agent": "PEITMapCreator/1.0 (https://peit-map-creator.com)"
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params, headers=headers, timeout=10.0)
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    return {"error": f"Nominatim returned status {response.status_code}"}
+        except httpx.TimeoutException:
+            return {"error": "Geocoding request timed out"}
+        except Exception as e:
+            return {"error": str(e)}
 
     @web_app.get("/api/rate-limit")
     async def get_rate_limit_endpoint(request: Request, user_id: str = None):

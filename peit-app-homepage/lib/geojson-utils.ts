@@ -72,7 +72,7 @@ export interface LocationData {
 
 /**
  * Reverse geocode a coordinate point to get location data.
- * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ * Uses backend proxy to Nominatim API (avoids CORS issues).
  *
  * @param lat - Latitude
  * @param lon - Longitude
@@ -80,29 +80,16 @@ export interface LocationData {
  */
 export async function reverseGeocodePoint(lat: number, lon: number): Promise<LocationData | null> {
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-      {
-        headers: {
-          'User-Agent': 'PEITMapCreator/1.0 (https://peit-map-creator.com)'
-        }
-      }
-    )
+    // Import dynamically to avoid circular dependency
+    const { reverseGeocode } = await import('@/lib/api')
+    const data = await reverseGeocode(lat, lon)
 
-    if (!response.ok) {
-      console.warn('Geocoding request failed:', response.status)
-      return null
-    }
-
-    const data = await response.json()
-
-    if (!data.address) {
-      console.warn('No address data in geocoding response')
+    if (!data || !data.address) {
       return null
     }
 
     const city = data.address.city || data.address.town || data.address.village ||
-                 data.address.municipality || data.address.hamlet || ''
+                 data.address.municipality || ''
     const county = (data.address.county || '').replace(/\s+County$/i, '')
     const state = data.address.state || ''
     const stateAbbr = STATE_ABBREVIATIONS[state] || ''
@@ -116,7 +103,7 @@ export async function reverseGeocodePoint(lat: number, lon: number): Promise<Loc
 
 /**
  * Reverse geocode a GeoJSON FeatureCollection's centroid to get location data.
- * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ * Uses backend proxy to Nominatim API (avoids CORS issues).
  *
  * @param geojson - The FeatureCollection to geocode
  * @returns Location data or null on failure
@@ -134,7 +121,7 @@ export async function reverseGeocodeGeometry(geojson: FeatureCollection): Promis
 
 /**
  * Reverse geocode a GeoJSON FeatureCollection's centroid to generate a location-based filename.
- * Uses OpenStreetMap Nominatim API (free, same as map drawer's geocoder).
+ * Uses backend proxy to Nominatim API (avoids CORS issues).
  *
  * @param geojson - The FeatureCollection to geocode
  * @returns A filename like "seattle_king_wa.geojson" or "drawn_geometry.geojson" on failure
