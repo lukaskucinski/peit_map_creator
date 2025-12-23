@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import type { FeatureCollection } from "geojson"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -63,12 +64,45 @@ export default function HomePage() {
   const [claimPromptReady, setClaimPromptReady] = useState(false) // Track if claim prompt is ready to show (waiting for trigger)
   const supabase = createClient()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
   // Track the previous user state for detecting sign-in events
   const prevUserRef = useRef<User | null>(null)
 
+  // Handle reset signal from header logo navigation (?reset=1)
+  // This ensures clicking the logo always returns to a fresh upload state
+  useEffect(() => {
+    if (searchParams.get('reset') === '1') {
+      // Clear sessionStorage states (same as handleProcessAnother)
+      clearCompleteState()
+      clearErrorState()
+      // NOTE: Do NOT clear pending jobs (localStorage) - those persist for future sign-in
+
+      // Reset all React state
+      setAppState({ step: 'upload' })
+      setProgressUpdates([])
+      setWasRestoredFromStorage(false)
+      setClaimPromptReady(false)
+      setClaimPromptOpen(false)
+      setSavedConfig(null)
+      setGeojsonData(null)
+      setGeometrySource('upload')
+      setLocationData(null)
+      setIsRestoringState(false)
+
+      // Clean up URL (remove query param) - prevents re-triggering on refresh
+      router.replace('/', { scroll: false })
+    }
+  }, [searchParams, router])
+
   // Restore complete state from sessionStorage on mount (survives OAuth redirect)
   useEffect(() => {
+    // Skip restoration if reset param is present (user clicked logo to go home)
+    if (searchParams.get('reset') === '1') {
+      return
+    }
+
     const storedState = getCompleteState()
     if (storedState) {
       // Create a dummy File object for display purposes
@@ -88,7 +122,7 @@ export default function HomePage() {
       setWasRestoredFromStorage(true)
     }
     setIsRestoringState(false)
-  }, [])
+  }, [searchParams])
 
   // Restore error state from sessionStorage (after OAuth redirect from error state)
   const restoreErrorState = useCallback(() => {

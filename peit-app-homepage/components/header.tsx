@@ -88,7 +88,7 @@ export function Header() {
     <>
       <header className="border-b border-border bg-card">
         <div className="flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2" onClick={handleLogoClick}>
+          <Link href="/?reset=1" className="flex items-center gap-2" onClick={handleLogoClick}>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <LandcoverIcon className="h-6 w-6 text-primary-foreground" />
             </div>
