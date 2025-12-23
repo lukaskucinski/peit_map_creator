@@ -1734,6 +1734,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Base map selector (Street, Light, Dark, Satellite)
 - Converts drawn geometries to GeoJSON file for processing pipeline
 - **Initial geometry loading**: Accepts `initialGeometry` prop to pre-populate feature group for editing existing drawings
+- **Mobile CSS customizations**: On mobile (≤768px), drawing action buttons (Finish, Remove Last Vertex, Cancel) stack vertically below the tool icon instead of horizontally. Defined in `app/globals.css`.
 
 **`components/map-drawer-dynamic.tsx`**
 - Dynamic import wrapper with `ssr: false` for Leaflet compatibility

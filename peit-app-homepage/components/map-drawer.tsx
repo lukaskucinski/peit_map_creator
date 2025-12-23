@@ -106,6 +106,38 @@ function GeomanControls({
         })
       }
 
+      // Mobile optimizations for drawing tools
+      const applyMobileOptimizations = () => {
+        if (window.innerWidth <= 768) {
+          // Shorten "Remove Last Vertex" to "Remove Last" for better fit
+          const actions = document.querySelectorAll('.leaflet-pm-action')
+          actions.forEach((action) => {
+            if (action.textContent === 'Remove Last Vertex') {
+              action.textContent = 'Remove Last'
+            }
+          })
+
+          // Add class to action containers with 3+ actions (Polygon/Polyline tools)
+          // so CSS can target them specifically for vertical layout
+          const containers = document.querySelectorAll('.leaflet-pm-actions-container')
+          containers.forEach((container) => {
+            const actionCount = container.querySelectorAll('.leaflet-pm-action').length
+            if (actionCount >= 3) {
+              container.classList.add('multi-action')
+            } else {
+              container.classList.remove('multi-action')
+            }
+          })
+        }
+      }
+
+      // Run on init and window resize
+      applyMobileOptimizations()
+      window.addEventListener('resize', applyMobileOptimizations)
+
+      // Store reference for cleanup
+      ;(map as unknown as { _mobileOptimizations?: () => void })._mobileOptimizations = applyMobileOptimizations
+
       // Handler for marker placement (single point features)
       const handleMarkerCreate = (e: { layer?: L.Layer }) => {
         if (!firstVertexFired.current && onFirstVertex && e.layer) {
@@ -148,6 +180,11 @@ function GeomanControls({
       map.off("pm:remove", onFeatureChange)
       map.off("pm:cut", onFeatureChange)
       map.off("pm:drawstart")
+      // Cleanup resize listener for mobile optimizations
+      const mobileOptimizations = (map as unknown as { _mobileOptimizations?: () => void })._mobileOptimizations
+      if (mobileOptimizations) {
+        window.removeEventListener('resize', mobileOptimizations)
+      }
       // Note: workingLayer vertexadded listeners are automatically cleaned up when layer is removed
       // Cleanup Geoman controls on unmount
       if (map.pm) {
