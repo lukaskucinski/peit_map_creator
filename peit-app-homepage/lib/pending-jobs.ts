@@ -236,7 +236,9 @@ const ERROR_STATE_KEY = "peit_error_state"
 
 /**
  * Serializable error state for storage
- * Note: File objects cannot be serialized, so we store metadata + GeoJSON for drawn geometries
+ * Note: File objects cannot be serialized directly, so we store:
+ * - GeoJSON for drawn geometries (can regenerate File)
+ * - Base64 file data for uploaded files (restores full file)
  */
 export interface StoredErrorState {
   filename: string
@@ -247,7 +249,6 @@ export interface StoredErrorState {
     clipBufferMiles: number
   }
   // For drawn geometries, we can regenerate the File from GeoJSON
-  // For uploaded files, user will need to re-select the file
   geojsonData?: object | null
   geometrySource: "upload" | "draw"
   // LocationData structure from geojson-utils.ts
@@ -257,26 +258,98 @@ export interface StoredErrorState {
     state: string
     stateAbbr: string
   } | null
+  // For uploaded files, store the actual file contents as base64
+  fileData?: {
+    base64: string
+    type: string
+    lastModified: number
+  } | null
   timestamp: number
+}
+
+/**
+ * Convert a File to a base64 string
+ */
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // Remove data URL prefix (e.g., "data:application/octet-stream;base64,")
+      const base64 = result.split(",")[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * Convert a base64 string back to a File object
+ */
+export function base64ToFile(
+  base64: string,
+  filename: string,
+  type: string,
+  lastModified: number
+): File {
+  const binaryString = atob(base64)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return new File([bytes], filename, { type, lastModified })
 }
 
 /**
  * Save the error state to sessionStorage
  * This preserves configuration across OAuth redirects from error state
+ *
+ * @param state - The error state to save (without timestamp and fileData)
+ * @param file - Optional File object to store as base64 (for uploaded files)
  */
-export function saveErrorState(
-  state: Omit<StoredErrorState, "timestamp">
-): void {
+export async function saveErrorState(
+  state: Omit<StoredErrorState, "timestamp" | "fileData">,
+  file?: File
+): Promise<void> {
   if (!isSessionStorageAvailable()) return
 
-  try {
-    const stored: StoredErrorState = {
-      ...state,
-      timestamp: Date.now(),
+  let fileData: StoredErrorState["fileData"] = null
+
+  // Only store file data for uploaded files (drawn geometries use geojsonData)
+  if (file && state.geometrySource === "upload") {
+    try {
+      const base64 = await fileToBase64(file)
+      fileData = {
+        base64,
+        type: file.type || "application/octet-stream",
+        lastModified: file.lastModified,
+      }
+    } catch (e) {
+      // If file conversion fails, continue without file data
+      console.warn("Failed to convert file to base64:", e)
     }
+  }
+
+  const stored: StoredErrorState = {
+    ...state,
+    fileData,
+    timestamp: Date.now(),
+  }
+
+  try {
     window.sessionStorage.setItem(ERROR_STATE_KEY, JSON.stringify(stored))
   } catch {
-    // Silently fail (e.g., if storage is full due to large GeoJSON)
+    // Quota exceeded - try without file data as fallback
+    if (fileData) {
+      console.warn("Storage quota exceeded, storing without file data")
+      const withoutFile: StoredErrorState = { ...stored, fileData: null }
+      try {
+        window.sessionStorage.setItem(ERROR_STATE_KEY, JSON.stringify(withoutFile))
+      } catch {
+        // Silently fail if even without file data it doesn't fit
+      }
+    }
   }
 }
 
