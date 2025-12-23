@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Dialog,
@@ -79,6 +79,13 @@ export function AuthModal({
   const [activeTab, setActiveTab] = useState<string>(defaultTab)
 
   const supabase = createClient()
+
+  // Sync activeTab with defaultTab when modal opens
+  useEffect(() => {
+    if (open) {
+      setActiveTab(defaultTab)
+    }
+  }, [open, defaultTab])
 
   const resetForm = () => {
     setEmail("")
