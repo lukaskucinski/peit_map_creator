@@ -1256,7 +1256,7 @@ The generated HTML map includes several interactive features:
 - **Toggle button**: 20px wide arrow icon (◄/►) to expand/collapse panel
 - **Smart visibility**: Only shows groups that contain intersected layers
 - **Default state**: All layers visible, all groups expanded, panel open
-- **Search functionality**: Real-time filtering across all metadata
+- **Search functionality**: Real-time filtering across layer name, description, group, and subcategory labels (for layers with unique value symbology)
 - **State management**: Group checkboxes remember individual layer states when toggled
 - **Auto-adjusts**: Right-side Leaflet controls shift 350px when panel is expanded
 
