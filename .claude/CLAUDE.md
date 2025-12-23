@@ -1822,6 +1822,11 @@ User authentication via Supabase with OAuth and email/password options.
 
 **`jobs` table** - Stores job processing records with RLS policies filtering by `user_id`.
 
+| Column | Type | Description |
+|--------|------|-------------|
+| `input_area_sq_miles` | REAL | Square mileage of input geometry (after buffering) |
+| `execution_time_seconds` | REAL (generated) | Auto-computed from `completed_at - created_at` |
+
 **`user_stats` table** - Aggregated map creation statistics per user, auto-updated via triggers.
 
 | Column | Type | Description |

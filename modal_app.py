@@ -236,6 +236,7 @@ def process_file_task(
         )
 
         # Validate input geometry area against limit
+        actual_area = None  # Will be set after geometry processing if available
         max_area = geometry_settings.get('max_input_area_sq_miles', MAX_INPUT_AREA_SQ_MILES)
         if input_geometry_metadata and input_geometry_metadata.get('buffer_area'):
             actual_area = input_geometry_metadata['buffer_area'].get('area_sq_miles_approx', 0)
@@ -381,6 +382,7 @@ def process_file_task(
                     'completed_at': datetime.now().isoformat(),
                     'total_features': summary["total_features"],
                     'layers_with_data': summary["layers_with_data"],
+                    'input_area_sq_miles': round(actual_area, 2) if actual_area else None,
                     'map_url': f'https://peit-map-creator.com/maps/{job_id}',
                     'pdf_url': pdf_blob_url,
                     'xlsx_url': xlsx_blob_url,
@@ -410,6 +412,7 @@ def process_file_task(
                 supabase.table('jobs').update({
                     'status': 'failed',
                     'completed_at': datetime.now().isoformat(),
+                    'input_area_sq_miles': round(actual_area, 2) if actual_area else None,
                     'error_message': str(e)[:500],  # Truncate long errors
                 }).eq('id', job_id).execute()
             except Exception as db_error:
