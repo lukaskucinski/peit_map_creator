@@ -1893,12 +1893,14 @@ When processing fails (rate limit, network error, etc.), file and configuration 
 - **"Start Fresh" link**: Calls `handleProcessAnother` to reset completely for users who want a different file
 - **Auth redirect from error state**: Error state saved to sessionStorage; on sign-in, restored to configure step
   - For drawn geometries: Fully restored (File regenerated from saved GeoJSON)
-  - For uploaded files: Config restored, user prompted to re-select file
+  - For uploaded files: Fully restored (File contents stored as base64, then decoded back to File)
+  - Fallback: If base64 storage fails (quota exceeded), config restored, user prompted to re-select file
 
 Storage functions in `lib/pending-jobs.ts`:
-- `saveErrorState()`: Saves filename, config, GeoJSON (for drawn), geometrySource, locationData
+- `saveErrorState()`: Async function that saves filename, config, GeoJSON (for drawn), geometrySource, locationData, and file contents as base64 (for uploaded files)
 - `getErrorState()`: Retrieves error state (expires after 1 hour)
 - `clearErrorState()`: Clears stored error state
+- `base64ToFile()`: Converts base64 string back to File object
 
 Key files:
 - `lib/pending-jobs.ts`: localStorage/sessionStorage utilities

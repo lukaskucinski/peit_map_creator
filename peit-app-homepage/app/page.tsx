@@ -25,6 +25,7 @@ import {
   saveErrorState,
   getErrorState,
   clearErrorState,
+  base64ToFile,
   type StoredCompleteState,
 } from "@/lib/pending-jobs"
 import { geojsonToFile } from "@/lib/geojson-utils"
@@ -108,26 +109,48 @@ export default function HomePage() {
       return true
     }
 
-    // For uploaded files, we can't restore the File object
-    // But we can restore config and show the upload screen with a message
-    // The user will need to re-select the file
+    // For uploaded files, try to restore from stored base64 data
     if (errorState.geometrySource === 'upload') {
-      // Create a placeholder file with the original name to show in upload card
-      // This won't work for actual processing, but helps the UX
-      const placeholderFile = new File([], errorState.filename, { type: 'application/octet-stream' })
+      let file: File
+      let needsReselect = false
 
-      setAppState({ step: 'configure', file: placeholderFile })
+      // Try to restore full file from stored base64 data
+      if (errorState.fileData?.base64) {
+        file = base64ToFile(
+          errorState.fileData.base64,
+          errorState.filename,
+          errorState.fileData.type,
+          errorState.fileData.lastModified
+        )
+      } else {
+        // Fallback: create placeholder file (user must re-select)
+        file = new File([], errorState.filename, { type: 'application/octet-stream' })
+        needsReselect = true
+      }
+
+      setAppState({ step: 'configure', file })
       setSavedConfig(errorState.config)
-      setGeojsonData(null) // Need to re-parse after user re-selects file
       setGeometrySource('upload')
       setLocationData(errorState.locationData ?? null)
       clearErrorState()
 
-      // Show a toast to inform user they need to re-select the file
-      toast({
-        title: "Please re-select your file",
-        description: `Your settings have been restored. Re-select "${errorState.filename}" to continue.`,
-      })
+      if (needsReselect) {
+        // Show a toast to inform user they need to re-select the file
+        toast({
+          title: "Please re-select your file",
+          description: `Your settings have been restored. Re-select "${errorState.filename}" to continue.`,
+        })
+        setGeojsonData(null)
+      } else {
+        // Re-parse the restored file for area estimation
+        parseGeospatialFile(file)
+          .then((parsed) => {
+            setGeojsonData(parsed)
+          })
+          .catch(() => {
+            setGeojsonData(null)
+          })
+      }
       return true
     }
 
@@ -371,13 +394,13 @@ export default function HomePage() {
         setAppState({ step: 'complete', file, config })
       } else {
         // Save error state for mock mode too (consistent behavior)
-        saveErrorState({
+        await saveErrorState({
           filename: file.name,
           config,
           geojsonData: geojsonData,
           geometrySource: geometrySource,
           locationData: locationData,
-        })
+        }, file)
 
         setAppState({
           step: 'error',
@@ -426,13 +449,13 @@ export default function HomePage() {
         })
       } else {
         // Save error state to sessionStorage for recovery after OAuth redirect
-        saveErrorState({
+        await saveErrorState({
           filename: file.name,
           config,
           geojsonData: geojsonData,
           geometrySource: geometrySource,
           locationData: locationData,
-        })
+        }, file)
 
         setAppState({
           step: 'error',
