@@ -1195,6 +1195,28 @@ Check `outputs/peit_map_TIMESTAMP/metadata.json` for new fields:
 8. **Layer control search not working**: Verify JavaScript is enabled, check for console errors
 9. **Base maps showing overlay layers**: Check that CSS is hiding `.leaflet-control-layers-overlays`
 
+### Layer Flickering Fix (December 2024)
+
+**Issue:** Some maps (~50%) exhibited layer flickering on hover and side panel disappearing on first load. Manual zoom in/out consistently fixed the issue.
+
+**Root Causes:**
+1. **Layer flickering:** Leaflet's SVG renderer not fully synchronized on initial load; hover `highlight_function` triggers DOM updates that expose incomplete render state
+2. **Panel disappearing:** CSS `transform` transitions on side panels created stacking context conflicts with Leaflet's SVG pane during GPU compositing
+
+**Solution Implemented:**
+
+1. **CSS Isolation for Side Panels** (`templates/side_panel.html`, `templates/layer_control_panel.html`):
+   - Added `will-change: transform`, `backface-visibility: hidden`, and `contain: layout style` to force stable GPU compositing layers
+   - Added explicit `position: relative; z-index: 1` to panel content areas
+
+2. **Forced SVG Redraw** (`core/map_builder.py`):
+   - Added `forceLayerRedraw()` function that fires `viewreset` event, toggles SVG display, and calls `invalidateSize()`
+   - Called at 800ms and 1500ms after page load
+
+3. **Proper Initialization Timing**:
+   - Wrapped initialization in double `requestAnimationFrame` to ensure browser has completed initial paint
+   - Improved timing sequence: RAF → RAF → 400ms (layer control) → 800ms (first redraw) → 1500ms (safety retry)
+
 ## Logging System
 
 ### Console Output (INFO Level)
