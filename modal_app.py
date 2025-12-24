@@ -32,7 +32,7 @@ MAX_RUNS_PER_DAY_ANONYMOUS = 2  # Anonymous users (IP-based)
 
 # Modal Dict for authenticated user rate limiting (user_id-based)
 user_rate_limit_dict = modal.Dict.from_name("peit-user-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY_AUTHENTICATED = 10  # Authenticated users
+MAX_RUNS_PER_DAY_AUTHENTICATED = 20  # Authenticated users
 
 # Modal Dict for tracking active jobs per IP
 active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
@@ -163,7 +163,7 @@ def process_file_task(
     project_name: str = "",
     project_id: str = "",
     buffer_distance_feet: int = 500,
-    clip_buffer_miles: float = 1.0,
+    clip_buffer_miles: float = 0.2,
 ) -> dict:
     """
     Process a geospatial file and generate PEIT outputs.
@@ -670,7 +670,7 @@ def fastapi_app():
         project_name: str = Form(""),
         project_id: str = Form(""),
         buffer_distance_feet: int = Form(500),
-        clip_buffer_miles: float = Form(1.0),
+        clip_buffer_miles: float = Form(0.2),
     ):
         """
         Process a geospatial file and stream progress via SSE.

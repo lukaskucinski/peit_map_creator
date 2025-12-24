@@ -16,6 +16,11 @@
         font-family: Arial, sans-serif;
         display: flex;
         flex-direction: column;
+        /* GPU compositing layer isolation to prevent Leaflet SVG interference */
+        will-change: transform;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        contain: layout style;
     }
 
     #layer-control-panel.collapsed {
@@ -75,6 +80,9 @@
         padding: 20px;
         overflow-y: auto;
         flex: 1;
+        /* Explicit stacking context to prevent z-index collapse */
+        position: relative;
+        z-index: 1;
     }
 
     /* Search section */

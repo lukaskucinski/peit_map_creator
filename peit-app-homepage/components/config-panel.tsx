@@ -45,9 +45,9 @@ const MIN_BUFFER_FEET = 1
 const SLIDER_MIN_BUFFER_FEET = 0 // Slider uses 0 for round increments, but value is clamped to MIN_BUFFER_FEET
 const MAX_BUFFER_FEET = 26400 // 5 miles in feet
 
-const DEFAULT_CLIP_MILES = 1.0
+const DEFAULT_CLIP_MILES = 0.2
 const MIN_CLIP_MILES = 0.1
-const MAX_CLIP_MILES = 5.0
+const MAX_CLIP_MILES = 0.5
 
 // Tooltip content for each configuration option
 const TOOLTIPS = {
@@ -379,7 +379,7 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, lo
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>0.1 mi</span>
-            <span>5.0 mi</span>
+            <span>0.5 mi</span>
           </div>
         </div>
 

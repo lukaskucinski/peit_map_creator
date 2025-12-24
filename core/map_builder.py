@@ -1583,14 +1583,58 @@ def create_web_map(
         }}
     }}
 
-    // Initialize when DOM is ready with longer delay to ensure plugins are loaded
-    // Identifier script runs at 300ms, so we wait 500ms to ensure it completes
-    if (document.readyState === 'loading') {{
-        document.addEventListener('DOMContentLoaded', function() {{
-            setTimeout(initializeLayerControl, 500);
+    // Force SVG layer redraw to fix rendering issues on initial page load
+    // This addresses the flickering/disappearing layer issue that manual zoom fixes
+    function forceLayerRedraw() {{
+        if (!window.mapObject) {{
+            console.log('forceLayerRedraw: mapObject not ready');
+            return;
+        }}
+
+        try {{
+            console.log('forceLayerRedraw: Forcing SVG layer redraw...');
+
+            // Method 1: Fire viewreset event to trigger internal Leaflet SVG redraw
+            window.mapObject.fire('viewreset');
+
+            // Method 2: Force SVG DOM repaint by toggling display
+            var svg = document.querySelector('.leaflet-overlay-pane svg');
+            if (svg) {{
+                svg.style.display = 'none';
+                void svg.offsetHeight; // Trigger reflow
+                svg.style.display = '';
+                console.log('forceLayerRedraw: SVG repaint triggered');
+            }}
+
+            // Method 3: Invalidate size to force internal recalculation
+            window.mapObject.invalidateSize({{animate: false, pan: false}});
+
+            console.log('forceLayerRedraw: Complete');
+        }} catch (error) {{
+            console.error('forceLayerRedraw error:', error);
+        }}
+    }}
+
+    // Initialize when DOM is ready using double requestAnimationFrame for proper timing
+    // This ensures browser has completed initial paint before we run layer initialization
+    function initializeWithProperTiming() {{
+        // Double RAF ensures browser has painted before we run our code
+        requestAnimationFrame(function() {{
+            requestAnimationFrame(function() {{
+                // Identifier script runs at 300ms, so we wait 400ms to ensure it completes
+                setTimeout(initializeLayerControl, 400);
+                // Force redraw at 800ms (after layer control init)
+                setTimeout(forceLayerRedraw, 800);
+                // Safety retry at 1500ms in case first attempt was too early
+                setTimeout(forceLayerRedraw, 1500);
+            }});
         }});
+    }}
+
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', initializeWithProperTiming);
     }} else {{
-        setTimeout(initializeLayerControl, 500);
+        initializeWithProperTiming();
     }}
 
     // Comprehensive page refresh detection for all navigation scenarios
