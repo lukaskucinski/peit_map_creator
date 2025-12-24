@@ -63,7 +63,7 @@ export default async function AccountPage() {
         <div className="max-w-2xl mx-auto">
           {/* Back button */}
           <Button variant="ghost" className="mb-6 gap-2" asChild>
-            <a href="/">
+            <a href="/?reset=1">
               <ArrowLeft className="h-4 w-4" />
               Back to Home
             </a>
