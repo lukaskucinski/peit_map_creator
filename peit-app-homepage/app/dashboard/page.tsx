@@ -49,7 +49,7 @@ export default async function DashboardPage() {
               </p>
             </div>
             <Button asChild>
-              <a href="/" className="gap-2">
+              <a href="/?reset=1" className="gap-2">
                 <Plus className="h-4 w-4" />
                 New Map
               </a>

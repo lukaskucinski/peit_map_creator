@@ -1955,11 +1955,13 @@ Anonymous users can process files and later claim jobs by signing up:
 **Navigation State Management:**
 SessionStorage preserves the "Processing Complete" screen across OAuth redirects, but must be cleared on intentional navigation to prevent stale state:
 - Header logo click (`components/header.tsx`): Navigates to `/?reset=1` which triggers state reset in `app/page.tsx`. The `?reset=1` query parameter signals the HomePage to clear sessionStorage and reset all React state to 'upload'. URL is then cleaned up via `router.replace('/')`.
+- Dashboard "+ New Map" button (`app/dashboard/page.tsx`): Uses `href="/?reset=1"` to ensure fresh upload state
+- Account "Back to Home" button (`app/account/page.tsx`): Uses `href="/?reset=1"` to ensure fresh upload state
 - Sign out (`components/auth/user-menu.tsx`): Calls `clearCompleteState()` before signing out and redirecting to home
 - Sign out event (`app/page.tsx`): `onAuthStateChange` listens for `SIGNED_OUT` event and resets `appState` to 'upload'
 - "Process Another" button (`app/page.tsx`): Calls `clearCompleteState()` when starting a new run
 
-This ensures users see the upload page (not stale complete state) when navigating home from any page.
+**IMPORTANT:** All navigation links that should return users to a fresh upload state MUST use `/?reset=1` instead of just `/`. This includes any "+ New Map", "Back to Home", or similar navigation elements.
 
 **Why `?reset=1` for header logo:**
 Client-side navigation via Next.js Link doesn't remount the HomePage component - it only re-renders with existing state. The `?reset=1` query parameter provides a reliable signal that triggers a useEffect to clear storage and reset state, ensuring the logo click always works regardless of the current page state.
