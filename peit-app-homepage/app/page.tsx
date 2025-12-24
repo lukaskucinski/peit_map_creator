@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import type { FeatureCollection } from "geojson"
 import { Header } from "@/components/header"
@@ -46,7 +46,7 @@ type AppState =
   | { step: 'complete'; file: File; config: ProcessingConfig; jobId?: string; downloadUrl?: string; mapUrl?: string; pdfUrl?: string; xlsxUrl?: string }
   | { step: 'error'; file: File; config: ProcessingConfig; message: string }
 
-export default function HomePage() {
+function HomePageContent() {
   const [appState, setAppState] = useState<AppState>({ step: 'upload' })
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
   const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null)
@@ -661,5 +661,24 @@ export default function HomePage() {
         }}
       />
     </div>
+  )
+}
+
+// Wrap in Suspense boundary for useSearchParams (required by Next.js 14+ for static generation)
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <main className="container mx-auto px-4 py-12 md:py-20 flex-1">
+          <div className="flex items-center justify-center">
+            <div className="animate-pulse text-muted-foreground">Loading...</div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
   )
 }
