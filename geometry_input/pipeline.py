@@ -21,7 +21,7 @@ import geopandas as gpd
 from pyproj import CRS
 from shapely.geometry import Polygon, MultiPolygon, GeometryCollection
 from shapely.ops import unary_union
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 from geometry_input.load_input import (
     load_geometry_file,
@@ -90,7 +90,8 @@ def _process_mixed_geometries(gdf: gpd.GeoDataFrame,
         original_crs: Original CRS of the data
 
     Returns:
-        Tuple of (unified_polygon, buffer_info, was_buffered)
+        Tuple of (unified_polygon, buffer_info, was_buffered, original_gdf)
+        - original_gdf: GeoDataFrame with pre-buffer geometry (for display), or None if only polygons
     """
     logger.info("Processing mixed geometry types (FeatureCollection)...")
 
@@ -108,6 +109,7 @@ def _process_mixed_geometries(gdf: gpd.GeoDataFrame,
     all_polygons = []
     buffer_applied = False
     buffer_info = {}
+    original_geometries = []  # Store pre-buffer geometries for display
 
     # Process polygons (no buffering needed)
     if separated['polygon']:
@@ -116,20 +118,22 @@ def _process_mixed_geometries(gdf: gpd.GeoDataFrame,
         all_polygons.append(polygon_union)
         logger.info(f"  - Added {len(separated['polygon'])} polygon(s) directly")
 
-    # Buffer and add points
+    # Buffer and add points (preserve original for display)
     if separated['point']:
         point_union = unary_union(separated['point'])
         point_union = repair_invalid_geometry(point_union)
+        original_geometries.append(point_union)  # Save original point(s)
 
         logger.info(f"  - Buffering {len(separated['point'])} point(s) by {buffer_distance_feet} ft...")
         buffered_points = buffer_geometry_feet(point_union, buffer_distance_feet, CRS.from_epsg(4326))
         all_polygons.append(buffered_points)
         buffer_applied = True
 
-    # Buffer and add lines
+    # Buffer and add lines (preserve original for display)
     if separated['line']:
         line_union = unary_union(separated['line'])
         line_union = repair_invalid_geometry(line_union)
+        original_geometries.append(line_union)  # Save original line(s)
 
         logger.info(f"  - Buffering {len(separated['line'])} line(s) by {buffer_distance_feet} ft...")
         buffered_lines = buffer_geometry_feet(line_union, buffer_distance_feet, CRS.from_epsg(4326))
@@ -149,12 +153,23 @@ def _process_mixed_geometries(gdf: gpd.GeoDataFrame,
 
     logger.info(f"  ✓ Combined into single {unified.geom_type}")
 
-    return unified, buffer_info, buffer_applied
+    # Create original geometry GeoDataFrame for display (only if we have points/lines)
+    original_gdf = None
+    if original_geometries:
+        # Combine original geometries (may be mixed Point + LineString)
+        if len(original_geometries) == 1:
+            original_geom = original_geometries[0]
+        else:
+            original_geom = GeometryCollection(original_geometries)
+        original_gdf = gpd.GeoDataFrame([{'geometry': original_geom}], crs='EPSG:4326')
+        logger.info(f"  ✓ Preserved original geometry for display: {original_geom.geom_type}")
+
+    return unified, buffer_info, buffer_applied, original_gdf
 
 
 def process_input_geometry(file_path: str,
                           buffer_distance_feet: float = 500,
-                          apply_simplification: bool = False) -> Tuple[gpd.GeoDataFrame, dict]:
+                          apply_simplification: bool = False) -> Tuple[gpd.GeoDataFrame, dict, Optional[gpd.GeoDataFrame]]:
     """
     Process input geometry file and return standardized GeoDataFrame in EPSG:4326.
 
@@ -176,22 +191,24 @@ def process_input_geometry(file_path: str,
         apply_simplification: Whether to simplify complex geometries (default False)
 
     Returns:
-        Tuple of (GeoDataFrame, metadata_dict)
+        Tuple of (GeoDataFrame, metadata_dict, original_gdf)
         - GeoDataFrame: Single-row GeoDataFrame with processed geometry in EPSG:4326
         - metadata_dict: Tracking information about transformations applied
+        - original_gdf: GeoDataFrame with pre-buffer geometry for display, or None if no buffer applied
 
     Raises:
         FileNotFoundError: If input file doesn't exist
         ValueError: If geometry is invalid or unsupported
 
     Example:
-        >>> polygon_gdf, metadata = process_input_geometry(
+        >>> polygon_gdf, metadata, original_gdf = process_input_geometry(
         ...     'path/to/point.gpkg',
         ...     buffer_distance_feet=1000
         ... )
         >>> print(metadata['geometry_type'])  # 'point'
         >>> print(metadata['buffer_applied'])  # True
         >>> print(polygon_gdf.crs)  # EPSG:4326
+        >>> print(original_gdf is not None)  # True - original point for display
     """
     logger.info("="*80)
     logger.info("GEOMETRY PROCESSING PIPELINE")
@@ -212,12 +229,15 @@ def process_input_geometry(file_path: str,
     geom_type = detect_geometry_type(gdf)
     metadata['detected_geometry_type'] = geom_type
 
+    # Track original geometry for display (only set when buffer is applied)
+    original_gdf = None
+
     # Step 5: Handle mixed geometries specially (FeatureCollection with different types)
     if geom_type == 'mixed':
         logger.info("Mixed geometry types detected - processing each type separately")
 
         # Use special mixed geometry processing
-        dissolved_geom, buffer_info, buffer_applied = _process_mixed_geometries(
+        dissolved_geom, buffer_info, buffer_applied, original_gdf = _process_mixed_geometries(
             gdf, buffer_distance_feet, gdf.crs
         )
 
@@ -268,6 +288,10 @@ def process_input_geometry(file_path: str,
                 temp_gdf = gpd.GeoDataFrame([{'geometry': dissolved_geom}], crs=gdf.crs)
                 temp_gdf = temp_gdf.to_crs('EPSG:4326')
                 dissolved_geom = temp_gdf.geometry.iloc[0]
+
+            # Preserve original geometry for display BEFORE buffering
+            original_gdf = gpd.GeoDataFrame([{'geometry': dissolved_geom}], crs='EPSG:4326')
+            logger.info(f"  ✓ Preserved original geometry for display: {dissolved_geom.geom_type}")
 
             # Apply buffer
             original_crs = CRS.from_epsg(4326)
@@ -339,15 +363,17 @@ def process_input_geometry(file_path: str,
     if metadata.get('buffer_area'):
         area_sq_miles = metadata['buffer_area'].get('area_sq_miles_approx', 0)
         logger.info(f"  ✓ Geometry area: ~{area_sq_miles:.2f} sq miles")
+    if original_gdf is not None:
+        logger.info(f"  ✓ Original geometry preserved for display")
     logger.info("="*80)
 
-    return output_gdf, metadata
+    return output_gdf, metadata, original_gdf
 
 
 def process_input_geometry_simple(file_path: str,
                                   buffer_distance_feet: float = 500) -> gpd.GeoDataFrame:
     """
-    Simplified version that returns only the GeoDataFrame (no metadata).
+    Simplified version that returns only the GeoDataFrame (no metadata or original geometry).
 
     Use this when you don't need tracking metadata, only the processed geometry.
 
@@ -358,5 +384,5 @@ def process_input_geometry_simple(file_path: str,
     Returns:
         Single-row GeoDataFrame with processed geometry in EPSG:4326
     """
-    gdf, _ = process_input_geometry(file_path, buffer_distance_feet)
+    gdf, _, _ = process_input_geometry(file_path, buffer_distance_feet)
     return gdf

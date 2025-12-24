@@ -235,7 +235,7 @@ def process_file_task(
 
         # Process input geometry
         geometry_settings = load_geometry_settings(config)
-        polygon_gdf, input_geometry_metadata = process_input_geometry(
+        polygon_gdf, input_geometry_metadata, original_gdf = process_input_geometry(
             str(input_file),
             buffer_distance_feet=geometry_settings["buffer_distance_feet"]
         )
@@ -311,7 +311,8 @@ def process_file_task(
             project_name=project_name,
             xlsx_relative_path=xlsx_blob_url,  # Use blob URL instead of filename
             pdf_relative_path=pdf_blob_url,    # Use blob URL instead of filename
-            clip_boundary=clip_boundary
+            clip_boundary=clip_boundary,
+            original_geometry_gdf=original_gdf
         )
 
         # Save map HTML

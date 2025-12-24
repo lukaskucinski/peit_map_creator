@@ -274,6 +274,25 @@
         var legendItems = document.querySelectorAll('.legend-item');
         legendItems.forEach(function(legendItem) {
             var layerName = legendItem.dataset.layerName;
+            var layerType = legendItem.dataset.layerType;
+
+            // Handle User Inputs group items by data-layer-type
+            if (layerType === 'original-input') {
+                var originalToggle = document.getElementById('original-geometry-toggle');
+                if (originalToggle) {
+                    legendItem.style.display = originalToggle.checked ? 'flex' : 'none';
+                }
+                return;
+            }
+
+            if (layerType === 'buffered-input' || layerType === 'input-polygon') {
+                var inputToggle = document.getElementById('input-geometry-toggle');
+                if (inputToggle) {
+                    legendItem.style.display = inputToggle.checked ? 'flex' : 'none';
+                }
+                return;
+            }
+
             if (!layerName) return;
 
             // Find corresponding checkbox in layer control

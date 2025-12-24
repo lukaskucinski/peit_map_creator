@@ -90,11 +90,12 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
         # Step 1: Read input polygon (use new pipeline if available)
         input_geometry_metadata = {}
+        original_gdf = None  # Original geometry for display (only set when buffer applied)
 
         if USE_NEW_PIPELINE:
             logger.info("Using enhanced geometry processing pipeline")
             geometry_settings = load_geometry_settings(config)
-            polygon_gdf, input_geometry_metadata = process_input_geometry(
+            polygon_gdf, input_geometry_metadata, original_gdf = process_input_geometry(
                 input_file,
                 buffer_distance_feet=geometry_settings['buffer_distance_feet']
             )
@@ -127,7 +128,8 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
             project_name=None,
             xlsx_relative_path=xlsx_filename,
             pdf_relative_path=pdf_filename,
-            clip_boundary=clip_boundary
+            clip_boundary=clip_boundary,
+            original_geometry_gdf=original_gdf
         )
 
         # Calculate total execution time (before generate_output so it's included in metadata.json)
@@ -147,7 +149,8 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
         output_path, xlsx_file, pdf_file = generate_output(
             map_obj, polygon_gdf, layer_results, metadata, config, output_name,
             input_geometry_metadata=input_geometry_metadata,
-            clip_summary=clip_summary
+            clip_summary=clip_summary,
+            original_geometry_gdf=original_gdf
         )
 
         logger.info("")
@@ -177,7 +180,7 @@ def main(input_file: str, output_name: Optional[str] = None) -> Optional[Path]:
 
 if __name__ == "__main__":
     # Example: Process the Vermont Project Area test file
-    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\indiana_large_square_poly.kmz"
+    INPUT_FILE = r"C:\Users\lukas\Downloads\peit_testing_inputs\alabama_sites_statewide.kmz"
 
     # Run the workflow
     output_dir = main(INPUT_FILE)

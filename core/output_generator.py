@@ -30,7 +30,8 @@ def generate_output(
     config: Dict,
     output_name: Optional[str] = None,
     input_geometry_metadata: Optional[Dict] = None,
-    clip_summary: Optional[Dict] = None
+    clip_summary: Optional[Dict] = None,
+    original_geometry_gdf: Optional[gpd.GeoDataFrame] = None
 ) -> Tuple[Path, Optional[str], Optional[str]]:
     """
     Generate output directory with HTML map, GeoJSON data files, XLSX and PDF reports.
@@ -38,7 +39,7 @@ def generate_output(
     Creates a timestamped output directory containing:
     - index.html: Interactive Leaflet map
     - metadata.json: Summary statistics and query information
-    - data/: GeoJSON files for input polygon and all layers
+    - data/: GeoJSON files for input polygon, original geometry (if buffered), and all layers
     - PEIT_Report_YYYYMMDD_HHMMSS.xlsx: Summary report with hyperlinked resource areas
     - PEIT_Report_YYYYMMDD_HHMMSS.pdf: PDF version with cover page and BMP links
 
@@ -60,6 +61,8 @@ def generate_output(
         Metadata about input geometry processing (from new pipeline)
     clip_summary : Optional[Dict]
         Summary of geometry clipping statistics
+    original_geometry_gdf : Optional[gpd.GeoDataFrame]
+        Original pre-buffer geometry for display (points/lines before buffering)
 
     Returns:
     --------
@@ -102,10 +105,16 @@ def generate_output(
 
     logger.info(f"Output directory: {output_path}")
 
-    # Save input polygon
+    # Save input polygon (buffered if buffer was applied)
     logger.info("  - Saving input polygon...")
     polygon_file = data_path / 'input_polygon.geojson'
     polygon_gdf.to_file(polygon_file, driver='GeoJSON')
+
+    # Save original geometry if buffer was applied (pre-buffer points/lines)
+    if original_geometry_gdf is not None:
+        logger.info("  - Saving original geometry (pre-buffer)...")
+        original_file = data_path / 'original_geometry.geojson'
+        original_geometry_gdf.to_file(original_file, driver='GeoJSON')
 
     # Save each layer's features
     for layer_name, gdf in layer_results.items():
@@ -178,7 +187,10 @@ def generate_output(
     logger.info(f"Files saved to: {output_path}")
     logger.info("  - index.html (interactive map)")
     logger.info("  - metadata.json (summary statistics)")
-    logger.info(f"  - data/ ({len(layer_results) + 1} GeoJSON files)")
+    geojson_count = len(layer_results) + 1  # +1 for input_polygon
+    if original_geometry_gdf is not None:
+        geojson_count += 1  # +1 for original_geometry
+    logger.info(f"  - data/ ({geojson_count} GeoJSON files)")
     if xlsx_relative_path:
         logger.info(f"  - {xlsx_relative_path} (PEIT report - XLSX)")
     if pdf_relative_path:
