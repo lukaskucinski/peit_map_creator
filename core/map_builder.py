@@ -127,6 +127,86 @@ def calculate_optimal_bounds(
         return tuple(input_bounds)
 
 
+def _add_original_geometry_to_map(m: folium.Map, original_gdf: gpd.GeoDataFrame, geom_type: str) -> None:
+    """
+    Add original input geometry to map with appropriate styling.
+
+    Handles different geometry types:
+    - Points: Orange star markers
+    - Lines: Orange dashed lines
+    - Mixed (GeometryCollection): Renders each sub-geometry with appropriate style
+
+    Parameters:
+    -----------
+    m : folium.Map
+        Folium map to add geometry to
+    original_gdf : gpd.GeoDataFrame
+        GeoDataFrame containing the original (pre-buffer) geometry
+    geom_type : str
+        Detected geometry type: 'point', 'line', or 'mixed'
+    """
+    geom = original_gdf.geometry.iloc[0]
+
+    if geom_type == 'line':
+        # Dashed orange line
+        folium.GeoJson(
+            original_gdf,
+            style_function=lambda x: {
+                'color': '#FF8C00',
+                'weight': 3,
+                'dashArray': '10, 5',
+                'className': 'appeit-original-input',
+                'interactive': False
+            }
+        ).add_to(m)
+
+    elif geom_type == 'point':
+        # Star markers for points
+        _add_point_markers(m, geom)
+
+    elif geom_type == 'mixed':
+        # GeometryCollection - iterate through sub-geometries
+        for sub_geom in geom.geoms:
+            sub_type = sub_geom.geom_type
+            if sub_type in ['Point', 'MultiPoint']:
+                _add_point_markers(m, sub_geom)
+            elif sub_type in ['LineString', 'MultiLineString']:
+                sub_gdf = gpd.GeoDataFrame([{'geometry': sub_geom}], crs='EPSG:4326')
+                folium.GeoJson(
+                    sub_gdf,
+                    style_function=lambda x: {
+                        'color': '#FF8C00',
+                        'weight': 3,
+                        'dashArray': '10, 5',
+                        'className': 'appeit-original-input',
+                        'interactive': False
+                    }
+                ).add_to(m)
+
+
+def _add_point_markers(m: folium.Map, geom) -> None:
+    """
+    Add orange star markers for point geometries.
+
+    Parameters:
+    -----------
+    m : folium.Map
+        Folium map to add markers to
+    geom : shapely geometry
+        Point or MultiPoint geometry
+    """
+    if geom.geom_type == 'Point':
+        coords = [(geom.y, geom.x)]
+    else:  # MultiPoint
+        coords = [(p.y, p.x) for p in geom.geoms]
+
+    for lat, lon in coords:
+        folium.Marker(
+            [lat, lon],
+            icon=folium.Icon(icon='star', prefix='fa', color='orange')
+        ).add_to(m)
+
+
 def create_web_map(
     polygon_gdf: gpd.GeoDataFrame,
     layer_results: Dict[str, gpd.GeoDataFrame],
@@ -136,7 +216,8 @@ def create_web_map(
     project_name: Optional[str] = None,
     xlsx_relative_path: Optional[str] = None,
     pdf_relative_path: Optional[str] = None,
-    clip_boundary: Optional[BaseGeometry] = None
+    clip_boundary: Optional[BaseGeometry] = None,
+    original_geometry_gdf: Optional[gpd.GeoDataFrame] = None
 ) -> folium.Map:
     """
     Create an interactive Leaflet map with all layers.
@@ -172,6 +253,10 @@ def create_web_map(
     clip_boundary : Optional[BaseGeometry]
         Clip boundary geometry for optimal viewport calculation. If provided,
         the map will fit to encompass all visible features up to this boundary.
+    original_geometry_gdf : Optional[gpd.GeoDataFrame]
+        Original input geometry (pre-buffer) for display. Only provided when buffer
+        was applied to points/lines/mixed geometries. When present, both the original
+        geometry and buffered polygon are displayed in a "User Inputs" group.
 
     Returns:
     --------
@@ -230,15 +315,33 @@ def create_web_map(
     folium.TileLayer('CartoDB dark_matter', name='Dark Theme', control=False).add_to(m)
     folium.TileLayer('Esri WorldImagery', name='Satellite Imagery', control=False).add_to(m)
 
-    # Add input polygon with lower z-index to allow clicking through to environmental layers
+    # Determine layer naming based on whether buffer was applied
+    has_original_geometry = original_geometry_gdf is not None
+    base_layer_name = input_filename if input_filename else 'Input Area'
+
+    # Detect original geometry type for UI styling
+    original_geometry_type = None
+    if has_original_geometry:
+        geom = original_geometry_gdf.geometry.iloc[0]
+        geom_type = geom.geom_type
+        if geom_type in ['Point', 'MultiPoint']:
+            original_geometry_type = 'point'
+        elif geom_type in ['LineString', 'MultiLineString']:
+            original_geometry_type = 'line'
+        elif geom_type == 'GeometryCollection':
+            original_geometry_type = 'mixed'
+        logger.info(f"  - Original geometry type: {original_geometry_type}")
+
+    # Add input polygon (buffered area) with lower z-index to allow clicking through to environmental layers
     logger.info("  - Adding input polygon...")
-    layer_name = input_filename if input_filename else 'Input Area'
+    # Add "_buffered" suffix only when original geometry is also displayed
+    buffered_layer_name = f"{base_layer_name}_buffered" if has_original_geometry else base_layer_name
 
     # Note: We don't add tooltip when interactive=False because Leaflet's tooltip
     # focus listener handling fails on non-interactive layers (getElement error)
     folium.GeoJson(
         polygon_gdf,
-        name=layer_name,
+        name=buffered_layer_name,
         style_function=lambda x: {
             'fillColor': '#FFD700',
             'color': '#FF8C00',
@@ -249,6 +352,12 @@ def create_web_map(
         }
         # tooltip removed - conflicts with interactive=False causing getElement error
     ).add_to(m)
+
+    # Add original input geometry (if buffer was applied to points/lines/mixed)
+    # This displays the pre-buffer geometry above the buffered polygon
+    if has_original_geometry:
+        logger.info(f"  - Adding original input geometry ({original_geometry_type})...")
+        _add_original_geometry_to_map(m, original_geometry_gdf, original_geometry_type)
 
     # Store layer variable names for JavaScript reference
     layer_var_names = {}
@@ -738,6 +847,57 @@ def create_web_map(
     # Generate legend HTML for side panel
     logger.info("  - Adding side panel with legend...")
     legend_items_html = ""
+
+    # Add original input geometry legend item (if buffer was applied)
+    # Note: No "User Inputs" header in legend - items are shown directly
+    if has_original_geometry:
+        if original_geometry_type == 'line':
+            legend_items_html += f"""
+                <div class="legend-item" data-layer-type="original-input" id="legend-original-input">
+                    <svg width="20" height="10" style="margin-right: 8px; flex-shrink: 0;">
+                        <line x1="0" y1="5" x2="20" y2="5"
+                              style="stroke:#FF8C00; stroke-width:2; stroke-dasharray:4,2;" />
+                    </svg>
+                    <span>{base_layer_name}</span>
+                </div>
+                """
+        elif original_geometry_type == 'point':
+            legend_items_html += f"""
+                <div class="legend-item" data-layer-type="original-input" id="legend-original-input">
+                    <i class="fa fa-star" style="color: #FF8C00; margin-right: 8px; font-size: 14px;"></i>
+                    <span>{base_layer_name}</span>
+                </div>
+                """
+        elif original_geometry_type == 'mixed':
+            legend_items_html += f"""
+                <div class="legend-item" data-layer-type="original-input" id="legend-original-input">
+                    <i class="fa fa-layer-group" style="color: #FF8C00; margin-right: 8px; font-size: 14px;"></i>
+                    <span>{base_layer_name}</span>
+                </div>
+                """
+
+        # Add buffered polygon legend item (with _buffered suffix)
+        legend_items_html += f"""
+                <div class="legend-item" data-layer-type="buffered-input" id="legend-buffered-input">
+                    <svg width="20" height="15" style="margin-right: 8px; flex-shrink: 0;">
+                        <rect width="20" height="15"
+                              style="fill:#FFD700; fill-opacity:0.4; stroke:#FF8C00; stroke-width:2;" />
+                    </svg>
+                    <span>{buffered_layer_name}</span>
+                </div>
+                """
+    else:
+        # No buffer - just show the input polygon
+        legend_items_html += f"""
+                <div class="legend-item" data-layer-type="input-polygon" id="legend-input-polygon">
+                    <svg width="20" height="15" style="margin-right: 8px; flex-shrink: 0;">
+                        <rect width="20" height="15"
+                              style="fill:#FFD700; fill-opacity:0.4; stroke:#FF8C00; stroke-width:2;" />
+                    </svg>
+                    <span>{base_layer_name}</span>
+                </div>
+                """
+
     for layer_config in config['layers']:
         layer_name = layer_config['name']
 
@@ -1034,7 +1194,11 @@ def create_web_map(
         legend_items=legend_items_html,
         xlsx_file=xlsx_relative_path,
         pdf_file=pdf_relative_path,
-        creation_date=f"{now_central.month}/{now_central.day}/{now_central.year}"
+        creation_date=f"{now_central.month}/{now_central.day}/{now_central.year}",
+        has_original_geometry=has_original_geometry,
+        original_geometry_type=original_geometry_type,
+        input_filename=base_layer_name,
+        buffered_layer_name=buffered_layer_name
     )
     m.get_root().html.add_child(Element(side_panel_html))
 
@@ -1046,7 +1210,10 @@ def create_web_map(
     layer_control_template = env.get_template('layer_control_panel.html')
     layer_control_html = layer_control_template.render(
         groups=control_data['groups'],
-        input_filename=input_filename or 'Input Geometry'
+        input_filename=base_layer_name,  # Use base name (without _buffered suffix)
+        has_original_geometry=has_original_geometry,
+        original_geometry_type=original_geometry_type,
+        buffered_layer_name=buffered_layer_name  # Full name with _buffered suffix if applicable
     )
     m.get_root().html.add_child(Element(layer_control_html))
 
@@ -1229,6 +1396,8 @@ def create_web_map(
 
             // Get all non-base layers from the map
             window.inputPolygonLayer = null;
+            window.originalInputLayer = null;
+            window.originalInputMarkers = [];
             const geojsonLayers = [];     // For lines/polygons (use className)
             const pointLayerObjects = []; // For clusters/featuregroups (use order)
 
@@ -1236,11 +1405,26 @@ def create_web_map(
                 // Skip tile layers (with defensive check)
                 if (typeof L.TileLayer !== 'undefined' && layer instanceof L.TileLayer) return;
 
+                // Check for markers (original input points - star markers)
+                if (typeof L.Marker !== 'undefined' && layer instanceof L.Marker) {{
+                    // Check if this marker has a star icon (our original input marker)
+                    // Folium uses 'color' but Leaflet.awesome-markers uses 'markerColor'
+                    if (layer.options && layer.options.icon && layer.options.icon.options) {{
+                        var iconOpts = layer.options.icon.options;
+                        var markerColor = iconOpts.markerColor || iconOpts.color;
+                        if (iconOpts.icon === 'star' && markerColor === 'orange') {{
+                            window.originalInputMarkers.push(layer);
+                            console.log('Found original input marker (star), markerColor:', markerColor);
+                        }}
+                    }}
+                    return;
+                }}
+
                 // Identify input polygon by className 'appeit-input-polygon'
                 if (typeof L.GeoJSON !== 'undefined' && layer instanceof L.GeoJSON) {{
                 const layerElements = Object.values(layer._layers || {{}});
 
-                // Check if this is the input polygon
+                // Check if this is the input polygon (buffered)
                 const hasInputClass = layerElements.some(function(l) {{
                     return l._path &&
                            l._path.classList &&
@@ -1250,6 +1434,19 @@ def create_web_map(
                 if (hasInputClass) {{
                     window.inputPolygonLayer = layer;
                     console.log('Found input polygon by className');
+                    return;
+                }}
+
+                // Check if this is the original input geometry (pre-buffer line)
+                const hasOriginalClass = layerElements.some(function(l) {{
+                    return l._path &&
+                           l._path.classList &&
+                           l._path.classList.contains('appeit-original-input');
+                }});
+
+                if (hasOriginalClass) {{
+                    window.originalInputLayer = layer;
+                    console.log('Found original input layer by className');
                     return;
                 }}
 
@@ -1312,6 +1509,21 @@ def create_web_map(
         }});
 
         console.log('Layer control initialized with', Object.keys(mapLayers).length, 'layers');
+
+        // Hide original input geometry by default (user can toggle it on via checkbox)
+        if (window.originalInputLayer && window.mapObject) {{
+            window.mapObject.removeLayer(window.originalInputLayer);
+            console.log('Hid original input layer (default off)');
+        }}
+        if (window.originalInputMarkers && window.originalInputMarkers.length > 0) {{
+            window.originalInputMarkers.forEach(function(marker) {{
+                window.mapObject.removeLayer(marker);
+            }});
+            console.log('Hid original input markers (default off)');
+        }}
+        // Dispatch event to sync legend visibility
+        document.dispatchEvent(new CustomEvent('layerVisibilityChanged'));
+
         }} catch (error) {{
             console.error('Error in initializeLayerControl:', error);
         }}

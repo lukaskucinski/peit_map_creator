@@ -112,11 +112,57 @@
         box-shadow: 0 0 0 2px rgba(0, 120, 168, 0.1);
     }
 
-    /* Input geometry section */
+    /* User Inputs group section */
     .input-geometry-section {
         margin-bottom: 12px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #ddd;
+    }
+
+    .user-inputs-header {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .user-inputs-header:hover {
+        background: #f8f9fa;
+    }
+
+    .user-inputs-header input[type="checkbox"] {
+        margin-right: 8px;
+        cursor: pointer;
+        width: 16px;
+        height: 16px;
+    }
+
+    .user-inputs-header label {
+        flex: 1;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .user-inputs-title {
+        font-weight: bold;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .input-geometry-section.collapsed .user-inputs-content {
+        display: none;
+    }
+
+    .input-geometry-section .user-inputs-chevron {
+        font-size: 10px;
+        color: #666;
+        transition: transform 0.2s;
+    }
+
+    .input-geometry-section.collapsed .user-inputs-chevron {
+        transform: rotate(-90deg);
     }
 
     .input-geometry-section .layer-label {
@@ -330,9 +376,44 @@
             </div>
         </div>
 
-        <!-- Input Geometry Toggle Section -->
-        <div class="input-geometry-section">
-            <div class="layer-item">
+        <!-- User Inputs Group -->
+        <div class="input-geometry-section user-inputs-group">
+            <div class="user-inputs-header" onclick="toggleUserInputsExpand()">
+                <input type="checkbox"
+                       id="user-inputs-group-toggle"
+                       checked
+                       onclick="event.stopPropagation(); toggleUserInputsGroup(this.checked)">
+                <label onclick="event.stopPropagation(); document.getElementById('user-inputs-group-toggle').click();">
+                    <span class="user-inputs-title">User Inputs</span>
+                </label>
+                <span class="user-inputs-chevron">▼</span>
+            </div>
+
+            <div class="user-inputs-content">
+            {% if has_original_geometry %}
+            <!-- Original Input Geometry (pre-buffer) - hidden by default -->
+            <div class="layer-item" data-layer-type="original-input" data-layer-name="{{ input_filename }}">
+                <input type="checkbox"
+                       id="original-geometry-toggle"
+                       class="layer-checkbox"
+                       onchange="toggleOriginalGeometry(this.checked)">
+                <label for="original-geometry-toggle" class="layer-label">
+                    {% if original_geometry_type == 'line' %}
+                    <svg width="20" height="10" style="margin-right: 8px; vertical-align: middle;">
+                        <line x1="0" y1="5" x2="20" y2="5"
+                              style="stroke:#FF8C00; stroke-width:2; stroke-dasharray:4,2;" />
+                    </svg>
+                    {% elif original_geometry_type == 'point' %}
+                    <i class="fa fa-star" style="color: #FF8C00; margin-right: 8px; font-size: 14px;"></i>
+                    {% elif original_geometry_type == 'mixed' %}
+                    <i class="fa fa-layer-group" style="color: #FF8C00; margin-right: 8px; font-size: 14px;"></i>
+                    {% endif %}
+                    <span>{{ input_filename }}</span>
+                </label>
+            </div>
+
+            <!-- Buffered Project Area -->
+            <div class="layer-item" data-layer-type="buffered-input" data-layer-name="{{ buffered_layer_name }}">
                 <input type="checkbox"
                        id="input-geometry-toggle"
                        class="layer-checkbox"
@@ -341,10 +422,28 @@
                 <label for="input-geometry-toggle" class="layer-label">
                     <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
                         <rect width="20" height="15"
-                              style="fill:#FFD700; stroke:#FF8C00; stroke-width:2; opacity:0.4;" />
+                              style="fill:#FFD700; stroke:#FF8C00; stroke-width:3; fill-opacity:0.4;" />
+                    </svg>
+                    <span>{{ buffered_layer_name }}</span>
+                </label>
+            </div>
+            {% else %}
+            <!-- Single Input Polygon (no buffer applied) -->
+            <div class="layer-item" data-layer-type="input-polygon" data-layer-name="{{ input_filename }}">
+                <input type="checkbox"
+                       id="input-geometry-toggle"
+                       class="layer-checkbox"
+                       checked
+                       onchange="toggleInputGeometry(this.checked)">
+                <label for="input-geometry-toggle" class="layer-label">
+                    <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
+                        <rect width="20" height="15"
+                              style="fill:#FFD700; stroke:#FF8C00; stroke-width:3; fill-opacity:0.4;" />
                     </svg>
                     <span>{{ input_filename }}</span>
                 </label>
+            </div>
+            {% endif %}
             </div>
         </div>
 
@@ -488,6 +587,7 @@
 
     // Restore layer z-order based on list position
     // Layers at TOP of list should render on TOP visually
+    // Order: Original input (highest) > Buffered polygon > Environmental layers
     function restoreLayerOrder() {
         if (!window.mapObject) return;
 
@@ -502,12 +602,27 @@
             }
         }
 
-        // Input polygon is first in list (above environmental layers),
-        // so bring it to front last to ensure it renders on top
+        // Input polygon (buffered) is above environmental layers
         var inputToggle = document.getElementById('input-geometry-toggle');
         if (window.inputPolygonLayer && inputToggle && inputToggle.checked) {
             if (window.inputPolygonLayer.bringToFront) {
                 window.inputPolygonLayer.bringToFront();
+            }
+        }
+
+        // Original input geometry is at the very top (above buffered polygon)
+        var originalToggle = document.getElementById('original-geometry-toggle');
+        if (originalToggle && originalToggle.checked) {
+            if (window.originalInputLayer && window.originalInputLayer.bringToFront) {
+                window.originalInputLayer.bringToFront();
+            }
+            // Bring markers to front too (for point geometries)
+            if (window.originalInputMarkers) {
+                window.originalInputMarkers.forEach(function(marker) {
+                    if (marker.bringToFront) {
+                        marker.bringToFront();
+                    }
+                });
             }
         }
     }
@@ -532,7 +647,7 @@
         icon.textContent = panel.classList.contains('collapsed') ? '◄' : '►';
     }
 
-    // Toggle input geometry visibility
+    // Toggle input geometry visibility (buffered polygon)
     function toggleInputGeometry(visible) {
         if (window.inputPolygonLayer && window.mapObject) {
             if (visible) {
@@ -542,6 +657,32 @@
                 window.mapObject.removeLayer(window.inputPolygonLayer);
             }
         }
+        // Dispatch event for legend sync
+        document.dispatchEvent(new CustomEvent('layerVisibilityChanged'));
+    }
+
+    // Toggle original input geometry visibility (pre-buffer line/point/mixed)
+    function toggleOriginalGeometry(visible) {
+        if (window.originalInputLayer && window.mapObject) {
+            if (visible) {
+                window.mapObject.addLayer(window.originalInputLayer);
+                restoreLayerOrder();  // Restore proper z-order
+            } else {
+                window.mapObject.removeLayer(window.originalInputLayer);
+            }
+        }
+        // Also toggle individual markers if they exist (for point geometries)
+        if (window.originalInputMarkers && window.mapObject) {
+            window.originalInputMarkers.forEach(function(marker) {
+                if (visible) {
+                    window.mapObject.addLayer(marker);
+                } else {
+                    window.mapObject.removeLayer(marker);
+                }
+            });
+        }
+        // Dispatch event for legend sync
+        document.dispatchEvent(new CustomEvent('layerVisibilityChanged'));
     }
 
     // Toggle group expand/collapse (visual only)
@@ -550,6 +691,50 @@
         if (groupElement) {
             groupElement.classList.toggle('collapsed');
         }
+    }
+
+    // Toggle User Inputs group expand/collapse
+    function toggleUserInputsExpand() {
+        var userInputsSection = document.querySelector('.input-geometry-section');
+        if (userInputsSection) {
+            userInputsSection.classList.toggle('collapsed');
+        }
+    }
+
+    // Store previous User Inputs layer states for restore
+    var userInputsLayerStates = {};
+
+    // Toggle all User Inputs layers (group checkbox)
+    function toggleUserInputsGroup(isChecked) {
+        var originalToggle = document.getElementById('original-geometry-toggle');
+        var inputToggle = document.getElementById('input-geometry-toggle');
+
+        if (isChecked) {
+            // Restore previous states
+            if (originalToggle && userInputsLayerStates['original'] !== undefined) {
+                originalToggle.checked = userInputsLayerStates['original'];
+                toggleOriginalGeometry(originalToggle.checked);
+            }
+            if (inputToggle && userInputsLayerStates['input'] !== undefined) {
+                inputToggle.checked = userInputsLayerStates['input'];
+                toggleInputGeometry(inputToggle.checked);
+            }
+        } else {
+            // Save current states before turning off
+            if (originalToggle) {
+                userInputsLayerStates['original'] = originalToggle.checked;
+                originalToggle.checked = false;
+                toggleOriginalGeometry(false);
+            }
+            if (inputToggle) {
+                userInputsLayerStates['input'] = inputToggle.checked;
+                inputToggle.checked = false;
+                toggleInputGeometry(false);
+            }
+        }
+
+        // Dispatch event for legend sync
+        document.dispatchEvent(new CustomEvent('layerVisibilityChanged'));
     }
 
     // Toggle all layers in a group
@@ -684,6 +869,11 @@
             groups.forEach(function(group) {
                 group.style.display = 'block';
             });
+            // Also show User Inputs section
+            var userInputsSection = document.querySelector('.input-geometry-section');
+            if (userInputsSection) {
+                userInputsSection.style.display = 'block';
+            }
             document.getElementById('no-results').style.display = 'none';
             return;
         }
@@ -746,6 +936,22 @@
                 group.style.display = 'none';
             }
         });
+
+        // Handle User Inputs group visibility
+        var userInputsSection = document.querySelector('.input-geometry-section');
+        if (userInputsSection) {
+            var userInputsItems = userInputsSection.querySelectorAll('.layer-item');
+            var hasVisibleUserInputs = false;
+            userInputsItems.forEach(function(item) {
+                if (item.style.display === 'flex') {
+                    hasVisibleUserInputs = true;
+                }
+            });
+            userInputsSection.style.display = hasVisibleUserInputs ? 'block' : 'none';
+            if (hasVisibleUserInputs) {
+                hasVisibleLayers = true;
+            }
+        }
 
         // Show/hide no results message
         document.getElementById('no-results').style.display = hasVisibleLayers ? 'none' : 'block';

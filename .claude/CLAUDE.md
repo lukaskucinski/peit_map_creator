@@ -509,6 +509,79 @@ Layers are identified using a hybrid approach to ensure reliability:
 - All layers stored in global `mapLayers` object for visibility toggling
 - Defensive `typeof` checks before all `instanceof` operations to prevent TypeError
 
+### User Inputs Group (Original Geometry Display)
+
+When non-polygon inputs (points, lines, or mixed FeatureCollections) are processed, the original pre-buffer geometry is displayed on the map alongside the buffered polygon in a "User Inputs" group at the top of the layer control panel.
+
+**Behavior:**
+- **Polygon inputs**: Single entry showing `{input_filename}` with gold/orange polygon symbology (no buffer applied)
+- **Point/Line/Mixed inputs**: Two entries:
+  - `{input_filename}` - Original geometry (dashed lines for lines, star icons for points) - **hidden by default**
+  - `{input_filename}_buffered` - Buffered polygon with gold fill
+- **Group checkbox**: Toggles all User Inputs layers on/off (like other layer groups)
+- **Collapsible**: Group can be collapsed/expanded by clicking the header
+- **Searchable**: User Inputs layers appear in search results when filtering by layer name
+- **Legend**: No "User Inputs" header in legend - items shown directly without group label
+
+**Visual Design:**
+- **Header**: Black text (#333) with gray separator line (#ddd), left-aligned matching other layer groups
+- **Symbols**: Stroke width of 3px for better visibility matching map appearance
+- **Line features**: Dashed stroke (`dashArray: '10, 5'`), 3px weight, orange color
+- **Point features**: Star icon (Font Awesome `fa-star`), orange color
+- **Buffered polygon**: Gold fill (#FFD700) with orange stroke (#FF8C00)
+- **Mixed (GeometryCollection)**: Each geometry type uses its respective styling
+- **Interactivity**: Non-interactive (`interactive: false`), clicks pass through to layers below
+- **Z-order**: Original geometry renders ABOVE the buffered polygon (highest in hierarchy)
+
+**Layer Identification:**
+- **Original geometry**: Identified by CSS className `'appeit-original-input'` for lines/polygons and marker options `{icon: 'star', color: 'orange'}` for points
+- **Buffered polygon**: Identified by CSS className `'appeit-input-polygon'`
+
+**UI Structure (layer_control_panel.html):**
+```html
+<!-- User Inputs Group -->
+<div class="input-geometry-section user-inputs-group">
+    <div class="user-inputs-header" onclick="toggleUserInputsExpand()">
+        <input type="checkbox" id="user-inputs-group-toggle" checked
+               onclick="event.stopPropagation(); toggleUserInputsGroup(this.checked)">
+        <label><span class="user-inputs-title">User Inputs</span></label>
+        <span class="user-inputs-chevron">▼</span>
+    </div>
+    <div class="user-inputs-content">
+        <!-- Original geometry (only when buffer applied) - unchecked by default -->
+        {% if has_original_geometry %}
+        <div class="layer-item" data-layer-type="original-input" data-layer-name="{{ input_filename }}">
+            <input type="checkbox" id="original-geometry-toggle">
+            <!-- SVG/icon for line/point/mixed -->
+            <span>{{ input_filename }}</span>
+        </div>
+        <div class="layer-item" data-layer-type="buffered-input" data-layer-name="{{ buffered_layer_name }}">
+            <input type="checkbox" id="input-geometry-toggle" checked>
+            <svg><!-- Gold rectangle with stroke-width:3 --></svg>
+            <span>{{ input_filename }}_buffered</span>
+        </div>
+        {% else %}
+        <div class="layer-item" data-layer-type="input-polygon" data-layer-name="{{ input_filename }}">
+            <input type="checkbox" id="input-geometry-toggle" checked>
+            <svg><!-- Gold rectangle with stroke-width:3 --></svg>
+            <span>{{ input_filename }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+```
+
+**JavaScript Functions:**
+- `toggleUserInputsGroup(isChecked)`: Toggles all User Inputs layers on/off, remembers individual states
+- `toggleUserInputsExpand()`: Toggles collapsed state of User Inputs group
+- `filterLayers()`: Updated to include User Inputs items in search results using `data-layer-name` attributes
+
+**Legend Synchronization:**
+Legend items for User Inputs use `data-layer-type` attribute (`original-input`, `buffered-input`, `input-polygon`) to sync visibility with layer control toggles via `layerVisibilityChanged` events.
+
+**Output Files:**
+When original geometry is present, `data/original_geometry.geojson` is saved alongside `data/input_polygon.geojson`.
+
 ### Navigation State Management
 The tool implements robust page refresh detection to maintain layer visibility state consistency:
 
@@ -1167,7 +1240,8 @@ outputs/peit_map_20250108_143022/
 ├── PEIT_Report_20250108_143022.pdf # Formatted PDF report
 ├── PEIT_Report_20250108_143022.xlsx # Excel spreadsheet with feature data
 └── data/
-    ├── input_polygon.geojson
+    ├── input_polygon.geojson       # Buffered search polygon (or original if polygon input)
+    ├── original_geometry.geojson   # Pre-buffer geometry (only for point/line/mixed inputs)
     ├── rcra_sites.geojson
     ├── npdes_sites.geojson
     ├── navigable_waterways.geojson
