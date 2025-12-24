@@ -338,7 +338,7 @@ This ensures users can draw any combination of geometry types and get proper buf
     "auto_repair_invalid": true,
     "fallback_crs": "EPSG:5070",
     "clip_results_to_buffer": true,
-    "clip_buffer_miles": 1.0,
+    "clip_buffer_miles": 0.2,
     "state_filter_enabled": true
   }
 }
@@ -377,7 +377,7 @@ Enable/disable clipping and adjust the buffer distance via `geometry_settings`:
 {
   "geometry_settings": {
     "clip_results_to_buffer": true,
-    "clip_buffer_miles": 1.0
+    "clip_buffer_miles": 0.2
   }
 }
 ```
@@ -397,7 +397,7 @@ The system tracks clipping statistics at both the per-layer level and globally i
 The tool optimizes layer processing by detecting which US state(s) the input geometry intersects and only querying layers relevant to those states.
 
 **How it works:**
-1. Input geometry is buffered using `clip_buffer_miles` setting (default: 1.0 mile)
+1. Input geometry is buffered using `clip_buffer_miles` setting (default: 0.2 mile)
 2. Buffered geometry is intersected with bundled US state boundaries
 3. Layers with a `states` field are filtered to only those matching intersecting states
 4. Layers without `states` field (national/federal layers) always run
@@ -1195,27 +1195,85 @@ Check `outputs/peit_map_TIMESTAMP/metadata.json` for new fields:
 8. **Layer control search not working**: Verify JavaScript is enabled, check for console errors
 9. **Base maps showing overlay layers**: Check that CSS is hiding `.leaflet-control-layers-overlays`
 
-### Layer Flickering Fix (December 2024)
+### Layer Flickering Issue (December 2024) - UNRESOLVED
 
-**Issue:** Some maps (~50%) exhibited layer flickering on hover and side panel disappearing on first load. Manual zoom in/out consistently fixed the issue.
+**Issue:** Some maps (~50%) exhibit layer flickering on hover and side panel disappearing on first load. Manual zoom in/out consistently fixes it. Page refresh recreates the issue.
 
-**Root Causes:**
-1. **Layer flickering:** Leaflet's SVG renderer not fully synchronized on initial load; hover `highlight_function` triggers DOM updates that expose incomplete render state
-2. **Panel disappearing:** CSS `transform` transitions on side panels created stacking context conflicts with Leaflet's SVG pane during GPU compositing
+**Observed Correlation:**
+The issue correlates with the ratio of clip buffer distance to input buffer distance:
+- 500ft buffer + 1mi clip = issue occurs (ratio ~10.5x)
+- 500ft buffer + 0.1mi clip = no issue (ratio ~1x)
+- 2mi buffer + 1mi clip = no issue (ratio ~0.5x)
 
-**Solution Implemented:**
+**Mitigation Applied:**
+Reduced default clip buffer from 1.0mi to 0.2mi and maximum from 5.0mi to 0.5mi to constrain the ratio and reduce issue occurrence. This is a workaround, not a root cause fix.
+
+**Ruled Out:**
+- Hover `highlight_function` is NOT the cause (diagnostic test: disabling had no effect)
+
+#### Attempted Fixes (All Failed)
 
 1. **CSS Isolation for Side Panels** (`templates/side_panel.html`, `templates/layer_control_panel.html`):
-   - Added `will-change: transform`, `backface-visibility: hidden`, and `contain: layout style` to force stable GPU compositing layers
+   - Added `will-change: transform`, `backface-visibility: hidden`, `contain: layout style` for GPU compositing isolation
    - Added explicit `position: relative; z-index: 1` to panel content areas
+   - **Result:** Panel shows white instead of basemap bleed-through, but core flickering persists
 
-2. **Forced SVG Redraw** (`core/map_builder.py`):
-   - Added `forceLayerRedraw()` function that fires `viewreset` event, toggles SVG display, and calls `invalidateSize()`
+2. **forceLayerRedraw() with viewreset + SVG toggle + invalidateSize**:
+   - Fire `viewreset` event, toggle SVG display property, call `invalidateSize()`
    - Called at 800ms and 1500ms after page load
+   - **Result:** No effect
 
-3. **Proper Initialization Timing**:
-   - Wrapped initialization in double `requestAnimationFrame` to ensure browser has completed initial paint
-   - Improved timing sequence: RAF → RAF → 400ms (layer control) → 800ms (first redraw) → 1500ms (safety retry)
+3. **Simulated User Zoom with Event Cascade**:
+   - Fire `movestart` → micro zoom (0.001 level) → restore → fire `moveend`
+   - Attempted to replicate the event sequence of manual zoom
+   - **Result:** No effect
+
+4. **Synthetic Window Resize Event**:
+   - Dispatch `window.dispatchEvent(new Event('resize'))` + `invalidateSize()`
+   - Same code path as manual window resize
+   - **Result:** No effect
+
+5. **Remove Clip Boundary Constraint from Bounds**:
+   - Modified `calculate_optimal_bounds()` to always return full union bounds
+   - Hypothesis: SVG renderer initialized with incorrect dimensions when bounds constrained
+   - **Result:** No effect (issue persists even with full bounds)
+
+6. **Disable Hover highlight_function**:
+   - Commented out highlight_function entirely
+   - **Result:** No effect (ruled out hover as cause)
+
+#### Hypotheses and Future Fix Ideas
+
+1. **Leaflet SVG Renderer Race Condition**:
+   - SVG may not complete initial render before first paint
+   - Manual zoom triggers internal redraw mechanisms
+   - **To try:** Force SVG redraw via direct DOM manipulation after all layers loaded
+
+2. **Folium Layer Wrapper Interference**:
+   - Folium wraps layers in additional containers that may interfere with Leaflet's layer management
+   - **To try:** Inspect generated HTML for wrapper layer differences between working/broken maps
+
+3. **Canvas Renderer Instead of SVG**:
+   - Leaflet supports Canvas renderer which may handle complex scenes better
+   - **To try:** `L.map('map', { preferCanvas: true })`
+   - **Caveat:** Requires Folium configuration changes, may affect layer styling
+
+4. **Lazy Layer Loading**:
+   - Add layers progressively after initial map render
+   - **To try:** Delay adding complex polygon layers until after basemap tiles load
+
+5. **Browser-Specific SVG Bugs**:
+   - Issue reported on Chrome and Edge (both Chromium-based)
+   - **To try:** Test on Firefox/Safari to narrow down if browser-specific
+
+6. **Compare Working vs Broken Maps**:
+   - Do detailed HTML diff between maps that work and maps that break
+   - Look for differences in layer order, feature counts, CSS classes applied
+
+7. **Leaflet GitHub Issues to Monitor**:
+   - [#5960](https://github.com/Leaflet/Leaflet/issues/5960): SVG renderer loses width/height attributes
+   - [#8361](https://github.com/Leaflet/Leaflet/issues/8361): Controls disappear on hover with many features
+   - [#5207](https://github.com/Leaflet/Leaflet/issues/5207): Layers don't display until window resize
 
 ## Logging System
 
@@ -1851,8 +1909,8 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
   - Auto-correction: If buffer is 0 for non-polygon geometry (e.g., restored from previous polygon session), auto-corrects to 500ft
 - Clip buffer distance slider with tooltip
   - Minimum: 0.1 mi (cannot be 0)
-  - Maximum: 5.0 mi
-  - Default: 1.0 mi
+  - Maximum: 0.5 mi
+  - Default: 0.2 mi
   - Clickable value: Click the mi value to manually enter exact clip distance
 - Real-time area estimation based on geometry and buffer settings
 - Area validation against 5,000 sq mi limit with warning at 2,500 sq mi

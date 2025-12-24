@@ -163,7 +163,7 @@ def process_file_task(
     project_name: str = "",
     project_id: str = "",
     buffer_distance_feet: int = 500,
-    clip_buffer_miles: float = 1.0,
+    clip_buffer_miles: float = 0.2,
 ) -> dict:
     """
     Process a geospatial file and generate PEIT outputs.
@@ -670,7 +670,7 @@ def fastapi_app():
         project_name: str = Form(""),
         project_id: str = Form(""),
         buffer_distance_feet: int = Form(500),
-        clip_buffer_miles: float = Form(1.0),
+        clip_buffer_miles: float = Form(0.2),
     ):
         """
         Process a geospatial file and stream progress via SSE.
