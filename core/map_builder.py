@@ -17,7 +17,7 @@ from folium.plugins import Geocoder
 from folium import Element
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from utils.html_generators import generate_layer_download_sections, generate_layer_data_mapping
@@ -25,6 +25,8 @@ from utils.popup_formatters import format_popup_value
 from utils.layer_control_helpers import organize_layers_by_group, generate_layer_control_data, generate_layer_geojson_data
 from utils.basemap_helpers import get_basemap_config
 from utils.js_bundler import get_leaflet_pattern_js
+from utils.pdf_generator import load_resource_areas, get_category_resource_areas
+from config.config_loader import CONFIG_DIR
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -37,6 +39,48 @@ TEMPLATES_DIR = Path(__file__).parent.parent / 'templates'
 # This eliminates the L.Mixin.Events deprecation warning by injecting
 # a patched version that uses L.Evented.prototype || L.Mixin.Events
 plugins.StripePattern.default_js = []  # Disable external CDN loading
+
+
+def generate_popup_resource_links(
+    group: str,
+    category_resource_areas: Dict[str, List[str]],
+    resource_area_urls: Dict[str, Dict[str, str]]
+) -> str:
+    """
+    Generate HTML hyperlinks for resource area codes based on layer group.
+
+    Parameters:
+    -----------
+    group : str
+        The layer's group/category name (e.g., "Federal/Tribal Land")
+    category_resource_areas : Dict[str, List[str]]
+        Mapping of category names to resource area codes
+    resource_area_urls : Dict[str, Dict[str, str]]
+        Mapping of resource area codes to URLs
+
+    Returns:
+    --------
+    str
+        HTML string like " (<a href='url' target='_blank'>1.7</a>, <a href='url' target='_blank'>1.8</a>)"
+        Returns empty string if no resource areas mapped for the group.
+    """
+    if not group:
+        return ""
+
+    resource_codes = category_resource_areas.get(group, [])
+    if not resource_codes:
+        return ""
+
+    links = []
+    for code in resource_codes:
+        url_data = resource_area_urls.get(code, {})
+        url = url_data.get('url', '')
+        if url:
+            links.append(f"<a href='{url}' target='_blank' style='color: #0066cc;'>{code}</a>")
+        else:
+            links.append(code)
+
+    return f" ({', '.join(links)})"
 
 
 def calculate_optimal_bounds(
@@ -271,6 +315,10 @@ def create_web_map(
     logger.info("Creating Interactive Web Map")
     logger.info("=" * 80)
 
+    # Load resource area mappings for popup links
+    resource_area_urls = load_resource_areas(CONFIG_DIR)
+    category_resource_areas = get_category_resource_areas()
+
     # Calculate optimal map bounds that encompass all visible features
     bounds = calculate_optimal_bounds(polygon_gdf, layer_results, clip_boundary)
     center_lat = (bounds[1] + bounds[3]) / 2
@@ -492,7 +540,10 @@ def create_web_map(
                             break
 
                 # Create popup with all attributes
-                popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
+                resource_links = generate_popup_resource_links(
+                    layer_config.get('group', ''), category_resource_areas, resource_area_urls
+                )
+                popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i>{resource_links}</div>"
                 if name_value:
                     popup_html += f"<div style='font-size: 14px; font-weight: bold; margin: 5px 0;'>{name_value}</div>"
                 popup_html += "<hr style='margin: 5px 0;'>"
@@ -712,7 +763,10 @@ def create_web_map(
                                 break
 
                     # Build popup HTML (same format as point features)
-                    popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i></div>"
+                    resource_links = generate_popup_resource_links(
+                        layer_config.get('group', ''), category_resource_areas, resource_area_urls
+                    )
+                    popup_html = f"<div style='font-size: 10px;'><i>{layer_name}</i>{resource_links}</div>"
                     if name_value:
                         popup_html += f"<div style='font-size: 14px; font-weight: bold; margin: 5px 0;'>{name_value}</div>"
                     popup_html += "<hr style='margin: 5px 0;'>"

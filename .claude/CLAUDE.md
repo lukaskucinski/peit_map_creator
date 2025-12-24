@@ -1362,7 +1362,10 @@ The generated HTML map includes several interactive features:
 
 ### Feature Interactions
 - **Popups**: Click features to view all attributes
-  - Layer name displayed in italics at top
+  - Layer name displayed in italics at top with hyperlinked resource area codes in parentheses
+    - Example: `GSA Federal Real Property (1.7, 1.8)` where codes link to NTIA BMP PDFs
+    - Resource areas derived from layer's `group` field using `get_category_resource_areas()` mapping
+    - Links open in new tabs (`target="_blank"`)
   - Name field shown in bold below layer name (uses `area_name_field` from config, falls back to first field containing 'name')
   - URLs are automatically converted to clickable links
   - Long URLs are truncated for display
@@ -1634,6 +1637,7 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 **Purpose**: Generate interactive Leaflet maps
 
 **Functions**:
+- `generate_popup_resource_links(group, category_resource_areas, resource_area_urls)`: Generate HTML hyperlinks for resource area codes based on layer group for popup display
 - `calculate_optimal_bounds(polygon_gdf, layer_results, clip_boundary)`: Calculate optimal viewport bounds encompassing all visible features
 - `create_web_map(polygon_gdf, layer_results, metadata, config, input_filename, project_name, xlsx_relative_path, pdf_relative_path, clip_boundary)`: Build complete map with dynamic title and embedded favicon
 
