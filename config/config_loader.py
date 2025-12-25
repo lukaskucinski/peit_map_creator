@@ -107,9 +107,13 @@ def load_geometry_settings(config: Dict = None) -> Dict:
         'polygon_query_enabled': True,
         'polygon_query_max_vertices': 1000,
         'polygon_query_simplify_tolerance': 0.0001,
-        'polygon_query_fallback_on_error': True
+        'polygon_query_fallback_on_error': True,
         # Note: bbox fill threshold is now calculated dynamically based on area size
         # Larger areas get stricter thresholds to prefer polygon queries (avoid hitting limits)
+        # Pagination settings - automatically fetch all features when server limit exceeded
+        'pagination_enabled': True,
+        'pagination_max_iterations': 10,  # 10 x 1000 = up to 10,000 features
+        'pagination_total_timeout': 300.0  # 5 minutes max for all pagination requests
     }
 
     # Get geometry_settings from config, or use defaults

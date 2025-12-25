@@ -962,6 +962,11 @@ def create_web_map(
         feature_count = len(layer_results[layer_name])
         geometry_type = layer_config['geometry_type']
 
+        # Check if results are incomplete for this layer
+        layer_meta = metadata.get(layer_name, {})
+        is_incomplete = layer_meta.get('results_incomplete', False)
+        incomplete_suffix = ' <span class="incomplete-warning" title="Results may be incomplete due to server limits">(INCOMPLETE)</span>' if is_incomplete else ''
+
         # Create legend item based on geometry type
         if geometry_type == 'point':
             # Point layer: check for symbology first
@@ -972,7 +977,7 @@ def create_web_map(
                 # Add header entry with total count
                 legend_items_html += f"""
                 <div class="legend-item legend-header" data-layer-name="{layer_name}">
-                    <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
+                    <span style="font-weight: bold;">{layer_name} ({feature_count} total){incomplete_suffix}</span>
                 </div>
                 """
 
@@ -1034,7 +1039,7 @@ def create_web_map(
                 legend_items_html += f"""
                 <div class="legend-item" data-layer-name="{layer_name}">
                     <i class="fa fa-{icon}" style="color: {icon_color}; margin-right: 8px;"></i>
-                    <span>{layer_name} ({feature_count})</span>
+                    <span>{layer_name} ({feature_count}){incomplete_suffix}</span>
                 </div>
                 """
         elif geometry_type == 'line':
@@ -1048,7 +1053,7 @@ def create_web_map(
                 # Layer header (non-collapsible)
                 legend_items_html += f"""
                 <div class="legend-item legend-header" data-layer-name="{layer_name}">
-                    <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
+                    <span style="font-weight: bold;">{layer_name} ({feature_count} total){incomplete_suffix}</span>
                 </div>
                 """
 
@@ -1092,7 +1097,7 @@ def create_web_map(
                     <svg width="30" height="15" style="margin-right: 8px; vertical-align: middle;">
                         <line x1="0" y1="7" x2="30" y2="7" style="stroke:{color}; stroke-width:3;" />
                     </svg>
-                    <span>{layer_name} ({feature_count})</span>
+                    <span>{layer_name} ({feature_count}){incomplete_suffix}</span>
                 </div>
                 """
         elif geometry_type == 'polygon':
@@ -1106,7 +1111,7 @@ def create_web_map(
                 # Layer header (non-collapsible)
                 legend_items_html += f"""
                 <div class="legend-item legend-header" data-layer-name="{layer_name}">
-                    <span style="font-weight: bold;">{layer_name} ({feature_count} total)</span>
+                    <span style="font-weight: bold;">{layer_name} ({feature_count} total){incomplete_suffix}</span>
                 </div>
                 """
 
@@ -1223,7 +1228,7 @@ def create_web_map(
                         </defs>
                         <rect width="20" height="15" style="fill:url(#{pattern_id}); stroke:{border_color}; stroke-width:1;" />
                     </svg>
-                    <span>{layer_name} ({feature_count})</span>
+                    <span>{layer_name} ({feature_count}){incomplete_suffix}</span>
                 </div>
                 """
             else:
@@ -1235,7 +1240,7 @@ def create_web_map(
                     <svg width="20" height="15" style="margin-right: 8px; vertical-align: middle;">
                         <rect width="20" height="15" style="fill:{fill_color}; fill-opacity:{fill_opacity}; stroke:{border_color}; stroke-width:1;" />
                     </svg>
-                    <span>{layer_name} ({feature_count})</span>
+                    <span>{layer_name} ({feature_count}){incomplete_suffix}</span>
                 </div>
                 """
 

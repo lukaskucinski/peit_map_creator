@@ -273,8 +273,12 @@ def process_file_task(
         from utils.xlsx_generator import generate_xlsx_report
         from utils.pdf_generator import generate_pdf_report
 
-        generate_xlsx_report(layer_results, config, temp_output, timestamp, project_name, project_id)
-        generate_pdf_report(layer_results, config, temp_output, timestamp, project_name, project_id)
+        generate_xlsx_report(
+            layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
+        )
+        generate_pdf_report(
+            layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
+        )
 
         # Upload reports to Vercel Blob BEFORE creating web map
         # This way we can embed the actual blob URLs in the map HTML

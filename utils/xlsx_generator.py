@@ -107,7 +107,8 @@ def generate_xlsx_report(
     output_path: Path,
     timestamp: str,
     project_name: str = "",
-    project_id: str = ""
+    project_id: str = "",
+    metadata: Optional[Dict[str, Dict]] = None
 ) -> Optional[Path]:
     """
     Generate an Excel report summarizing intersected environmental features.
@@ -120,6 +121,7 @@ def generate_xlsx_report(
 
     Each resource area code gets its own column with individual hyperlink.
     Empty cells for categories with fewer resource areas.
+    Layers with incomplete results (due to server limits) are marked with "(INCOMPLETE)".
 
     Args:
         layer_results: Dictionary mapping layer names to GeoDataFrames
@@ -128,6 +130,7 @@ def generate_xlsx_report(
         timestamp: Timestamp string for filename (YYYYMMDD_HHMMSS)
         project_name: Optional project name (currently unused, for API compatibility)
         project_id: Optional project ID (currently unused, for API compatibility)
+        metadata: Optional query metadata for detecting incomplete results
 
     Returns:
         Path to generated XLSX file, or None if generation fails
@@ -170,6 +173,13 @@ def generate_xlsx_report(
         # Build layer name -> config mapping for easy lookup
         layer_config_map = {layer['name']: layer for layer in config['layers']}
 
+        # Build set of incomplete layer names for quick lookup
+        incomplete_layers = set()
+        if metadata:
+            for lname, lmeta in metadata.items():
+                if isinstance(lmeta, dict) and lmeta.get('results_incomplete', False):
+                    incomplete_layers.add(lname)
+
         # Track total rows added
         row_count = 0
 
@@ -204,6 +214,11 @@ def generate_xlsx_report(
             # Get resource area codes for this category
             resource_codes = category_resources.get(category, [])
 
+            # Add "(INCOMPLETE)" suffix if results are incomplete
+            display_layer_name = layer_name
+            if layer_name in incomplete_layers:
+                display_layer_name = f"{layer_name} (INCOMPLETE)"
+
             # Add one row per feature
             for idx, row in gdf.iterrows():
                 area_name = row.get(area_name_field, 'N/A')
@@ -213,7 +228,8 @@ def generate_xlsx_report(
                     area_name = 'N/A'
 
                 # Check if layer uses unique value symbology
-                layer_display_name = layer_name
+                # Start with display_layer_name which may include "(INCOMPLETE)" suffix
+                layer_display_name = display_layer_name
                 if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
                     symbology = layer_config['symbology']
                     field = symbology['field']
@@ -231,11 +247,11 @@ def generate_xlsx_report(
                     if not category_label and 'default_category' in symbology:
                         category_label = symbology['default_category']['label']
 
-                    # Append category label to layer name
+                    # Append category label to layer name (preserving INCOMPLETE suffix if present)
                     if category_label:
-                        layer_display_name = f"{layer_name} ({category_label})"
+                        layer_display_name = f"{display_layer_name} ({category_label})"
                     else:
-                        layer_display_name = f"{layer_name} (Unclassified)"
+                        layer_display_name = f"{display_layer_name} (Unclassified)"
 
                 # Build row data with separate columns for each resource area
                 row_data = [category, layer_display_name, str(area_name)]

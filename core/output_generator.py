@@ -164,7 +164,9 @@ def generate_output(
 
     # Generate XLSX report
     logger.info("  - Generating XLSX report...")
-    xlsx_path = generate_xlsx_report(layer_results, config, output_path, timestamp)
+    xlsx_path = generate_xlsx_report(
+        layer_results, config, output_path, timestamp, metadata=metadata
+    )
 
     # Get relative path for template linking (just the filename)
     xlsx_relative_path = None
@@ -173,7 +175,9 @@ def generate_output(
 
     # Generate PDF report
     logger.info("  - Generating PDF report...")
-    pdf_path = generate_pdf_report(layer_results, config, output_path, timestamp)
+    pdf_path = generate_pdf_report(
+        layer_results, config, output_path, timestamp, metadata=metadata
+    )
 
     # Get relative path for template linking (just the filename)
     pdf_relative_path = None
