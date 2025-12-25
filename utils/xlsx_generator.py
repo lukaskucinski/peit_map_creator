@@ -177,7 +177,7 @@ def generate_xlsx_report(
         incomplete_layers = set()
         if metadata:
             for lname, lmeta in metadata.items():
-                if lmeta.get('results_incomplete', False):
+                if isinstance(lmeta, dict) and lmeta.get('results_incomplete', False):
                     incomplete_layers.add(lname)
 
         # Track total rows added

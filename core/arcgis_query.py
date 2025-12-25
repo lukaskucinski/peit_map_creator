@@ -167,6 +167,7 @@ def paginated_query(
     start_time = time.time()
     offset = 0
     iteration = 0
+    result = {}  # Initialize to empty dict to avoid NameError if loop never executes
 
     while iteration < max_iterations:
         # Check total timeout

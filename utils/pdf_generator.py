@@ -482,7 +482,7 @@ def prepare_table_rows(
     incomplete_layers = set()
     if metadata:
         for lname, lmeta in metadata.items():
-            if lmeta.get('results_incomplete', False):
+            if isinstance(lmeta, dict) and lmeta.get('results_incomplete', False):
                 incomplete_layers.add(lname)
 
     for layer_name, gdf in layer_results.items():
