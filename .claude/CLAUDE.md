@@ -275,6 +275,77 @@ Polygon query: enabled (bbox fill 35.0% < 77% threshold for 2915 sq mi)
     ✓ Found 45 intersecting features
 ```
 
+### Pagination for Server Feature Limits
+
+The tool automatically paginates queries when FeatureServers return the `exceededTransferLimit` flag, indicating that more features exist beyond the server's per-request limit (typically 1000-2000 features).
+
+**How It Works:**
+
+1. **Initial Query**: Normal query with spatial filter
+2. **Limit Detection**: If `exceededTransferLimit: true` in response, pagination is triggered
+3. **Metadata Check**: Fetches layer metadata to verify `advancedQueryCapabilities.supportsPagination`
+4. **Paginated Fetching**: Uses `resultOffset` and `resultRecordCount` with `orderByFields` (ObjectID)
+5. **Feature Aggregation**: Combines all pages into single result set
+
+**Configuration:**
+```json
+{
+  "geometry_settings": {
+    "pagination_enabled": true,
+    "pagination_max_iterations": 10,
+    "pagination_total_timeout": 300
+  }
+}
+```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `pagination_enabled` | `true` | Enable automatic pagination when server limit exceeded |
+| `pagination_max_iterations` | `10` | Maximum pages to fetch (10 × 1000 = up to 10,000 features) |
+| `pagination_total_timeout` | `300` | Total seconds allowed for all pagination requests (5 min) |
+
+**Console Output Example:**
+```
+  Querying RCRA Sites...
+    - Using polygon query (156 vertices)
+    - Page 1: 1000 features (more available)
+    - Page 2: 1000 features (more available)
+    - Page 3: 532 features (complete)
+    ✓ Found 2532 intersecting features (3 pages)
+```
+
+**Incomplete Results Handling:**
+
+When pagination is not supported or limits are reached, results are marked as incomplete:
+
+- **Console**: `⚠ WARNING: Results may be INCOMPLETE for this layer`
+- **Legend**: Layer name shows "(INCOMPLETE)" suffix in red
+- **PDF/XLSX Reports**: Layer names marked with "(INCOMPLETE)"
+- **Metadata**: `results_incomplete: true` with `incomplete_reason`
+
+**Incomplete Reasons:**
+- `pagination_not_supported`: FeatureServer doesn't support pagination (FileGDB/shapefile backend)
+- `max_iterations_reached`: Safety limit hit before fetching all features
+- `timeout_exceeded`: Total pagination time exceeded configured timeout
+- `error_during_pagination`: Network or server error during page fetching
+
+**Metadata Tracking:**
+```json
+{
+  "layer_name": "RCRA Sites",
+  "feature_count": 2532,
+  "pagination": {
+    "used": true,
+    "supports_pagination": true,
+    "oid_field": "OBJECTID",
+    "max_record_count": 1000,
+    "pages_fetched": 3,
+    "stopped_reason": null
+  },
+  "results_incomplete": false
+}
+```
+
 ### ESRI JSON to GeoJSON Conversion
 The tool converts three ESRI geometry types to GeoJSON using `utils/geometry_converters.py`:
 - **Point**: `{x, y}` → GeoJSON Point with coordinates `[x, y]`
@@ -1519,7 +1590,7 @@ config/ → utils/ → core/ → peit_map_creator.py
 
 ## Known Limitations
 
-1. **Server Feature Limits**: Most FeatureServers return max 1000-2000 features. Tool displays warning but doesn't paginate.
+1. **Server Feature Limits**: Most FeatureServers return max 1000-2000 features per request. **Pagination is supported** to automatically fetch all features, but some older FeatureServers (backed by FileGDB/shapefiles) don't support pagination. Incomplete results are marked with "(INCOMPLETE)" suffix.
 2. **Internet Required**: No offline mode - requires connection to FeatureServers.
 3. **Single Unified Geometry**: Multi-feature files are dissolved into single unified geometry (by design).
 4. **No Attribute Filtering**: Downloads all attributes from FeatureServer.
@@ -1692,10 +1763,12 @@ This prevents VSCode from showing red squiggles on template syntax while maintai
 - `read_input_polygon(file_path)`: Read polygon and reproject to WGS84
 
 ### core.arcgis_query
-**Purpose**: Query ArcGIS FeatureServers
+**Purpose**: Query ArcGIS FeatureServers with pagination support
 
 **Functions**:
-- `query_arcgis_layer(layer_url, layer_id, polygon_geom, layer_name, clip_boundary, geometry_type)`: Query single layer with optional clipping
+- `fetch_layer_metadata(layer_url, layer_id, timeout)`: Fetch layer metadata to check pagination support and find ObjectID field
+- `paginated_query(query_url, base_params, oid_field, max_record_count, layer_name, max_iterations, total_timeout, request_timeout)`: Execute paginated query to fetch all features beyond server limit
+- `query_arcgis_layer(layer_url, layer_id, polygon_geom, layer_name, clip_boundary, geometry_type, use_polygon_query, esri_polygon_json, polygon_query_metadata, pagination_enabled, pagination_max_iterations, pagination_total_timeout)`: Query single layer with optional clipping and pagination
 
 ### core.layer_processor
 **Purpose**: Batch process multiple layers

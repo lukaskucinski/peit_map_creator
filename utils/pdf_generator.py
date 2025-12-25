@@ -456,24 +456,34 @@ def prepare_resource_links(url_mapping: Dict[str, Dict[str, str]]) -> List[Dict]
 def prepare_table_rows(
     layer_results: Dict[str, gpd.GeoDataFrame],
     config: Dict,
-    category_resources: Dict[str, List[str]]
+    category_resources: Dict[str, List[str]],
+    metadata: Optional[Dict[str, Dict]] = None
 ) -> List[Dict]:
     """
     Prepare table rows for PDF from layer results.
 
     Each row contains category, layer name, and area name.
     Resource areas are determined by category mapping.
+    Layers with incomplete results are marked with "(INCOMPLETE)" suffix.
 
     Args:
         layer_results: Dictionary mapping layer names to GeoDataFrames
         config: Configuration dictionary with layer definitions
         category_resources: Category to resource area codes mapping
+        metadata: Optional query metadata for detecting incomplete results
 
     Returns:
         List of row dictionaries ready for rendering
     """
     rows = []
     layer_config_map = {layer['name']: layer for layer in config['layers']}
+
+    # Build set of incomplete layer names for quick lookup
+    incomplete_layers = set()
+    if metadata:
+        for lname, lmeta in metadata.items():
+            if lmeta.get('results_incomplete', False):
+                incomplete_layers.add(lname)
 
     for layer_name, gdf in layer_results.items():
         if gdf.empty:
@@ -486,6 +496,11 @@ def prepare_table_rows(
         category = layer_config.get('group', 'Other')
         area_name_field = layer_config.get('area_name_field')
 
+        # Add "(INCOMPLETE)" suffix if results are incomplete
+        display_layer_name = layer_name
+        if layer_name in incomplete_layers:
+            display_layer_name = f"{layer_name} (INCOMPLETE)"
+
         if not area_name_field or area_name_field not in gdf.columns:
             continue
 
@@ -497,7 +512,8 @@ def prepare_table_rows(
                 area_name = 'N/A'
 
             # Check if layer uses unique value symbology
-            layer_display_name = layer_name
+            # Start with display_layer_name which may include "(INCOMPLETE)" suffix
+            layer_display_name = display_layer_name
             if 'symbology' in layer_config and layer_config['symbology'].get('type') == 'unique_values':
                 symbology = layer_config['symbology']
                 field = symbology['field']
@@ -515,11 +531,11 @@ def prepare_table_rows(
                 if not category_label and 'default_category' in symbology:
                     category_label = symbology['default_category']['label']
 
-                # Append category label to layer name
+                # Append category label to layer name (preserving INCOMPLETE suffix if present)
                 if category_label:
-                    layer_display_name = f"{layer_name} ({category_label})"
+                    layer_display_name = f"{display_layer_name} ({category_label})"
                 else:
-                    layer_display_name = f"{layer_name} (Unclassified)"
+                    layer_display_name = f"{display_layer_name} (Unclassified)"
 
             rows.append({
                 'category': category,
@@ -536,7 +552,8 @@ def generate_pdf_report(
     output_path: Path,
     timestamp: str,
     project_name: str = "",
-    project_id: str = ""
+    project_id: str = "",
+    metadata: Optional[Dict[str, Dict]] = None
 ) -> Optional[Path]:
     """
     Generate a PDF report summarizing intersected environmental features.
@@ -547,6 +564,7 @@ def generate_pdf_report(
         - End page with BMP resource links
 
     All resource area codes in BMP table are hyperlinked to NTIA documentation.
+    Layers with incomplete results (due to server limits) are marked with "(INCOMPLETE)".
 
     Args:
         layer_results: Dictionary mapping layer names to GeoDataFrames
@@ -555,6 +573,7 @@ def generate_pdf_report(
         timestamp: Timestamp string for filename (YYYYMMDD_HHMMSS)
         project_name: Optional project name for cover page
         project_id: Optional project ID for cover page
+        metadata: Optional query metadata for detecting incomplete results
 
     Returns:
         Path to generated PDF file, or None if generation fails
@@ -573,7 +592,8 @@ def generate_pdf_report(
         table_rows = prepare_table_rows(
             layer_results,
             config,
-            category_resources
+            category_resources,
+            metadata
         )
 
         # Prepare resource links for end page

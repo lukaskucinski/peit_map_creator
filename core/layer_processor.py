@@ -113,6 +113,15 @@ def process_all_layers(
     max_query_vertices = geometry_settings.get('polygon_query_max_vertices', 1000)
     simplify_tolerance = geometry_settings.get('polygon_query_simplify_tolerance', 0.0001)
 
+    # Pagination settings - automatically fetch all features when server limit exceeded
+    pagination_enabled = geometry_settings.get('pagination_enabled', True)
+    pagination_max_iterations = geometry_settings.get('pagination_max_iterations', 10)
+    pagination_total_timeout = geometry_settings.get('pagination_total_timeout', 300.0)
+
+    if pagination_enabled:
+        logger.info(f"Pagination enabled: max {pagination_max_iterations} pages, "
+                    f"{pagination_total_timeout}s timeout")
+
     # Pre-compute ESRI polygon JSON ONCE for all layer queries (optimization)
     esri_polygon_json = None
     polygon_query_metadata = {}
@@ -202,7 +211,10 @@ def process_all_layers(
             geometry_type=geometry_type,
             use_polygon_query=use_polygon_query,
             esri_polygon_json=esri_polygon_json,
-            polygon_query_metadata=polygon_query_metadata
+            polygon_query_metadata=polygon_query_metadata,
+            pagination_enabled=pagination_enabled,
+            pagination_max_iterations=pagination_max_iterations,
+            pagination_total_timeout=pagination_total_timeout
         )
 
         if gdf is not None:
@@ -241,6 +253,36 @@ def process_all_layers(
             f"Query methods: {polygon_queries} polygon, "
             f"{envelope_queries} envelope, {fallback_queries} fallback"
         )
+
+    # Log pagination summary
+    layers_with_pagination = sum(
+        1 for m in metadata.values()
+        if m.get('pagination', {}).get('used', False)
+    )
+    layers_incomplete = sum(
+        1 for m in metadata.values()
+        if m.get('results_incomplete', False)
+    )
+
+    if layers_with_pagination > 0:
+        total_pages = sum(
+            m.get('pagination', {}).get('pages_fetched', 0)
+            for m in metadata.values()
+        )
+        logger.info(f"Pagination used: {layers_with_pagination} layers, {total_pages} total pages")
+
+    if layers_incomplete > 0:
+        incomplete_layers = [
+            m['layer_name'] for m in metadata.values()
+            if m.get('results_incomplete', False)
+        ]
+        logger.warning(
+            f"⚠ INCOMPLETE RESULTS: {layers_incomplete} layer(s) may have missing features"
+        )
+        for layer_name in incomplete_layers:
+            layer_meta = metadata.get(layer_name, {})
+            reason = layer_meta.get('incomplete_reason', 'unknown')
+            logger.warning(f"  - {layer_name}: {reason}")
 
     # Aggregate clipping statistics
     clip_summary = {

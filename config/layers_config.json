@@ -5004,7 +5004,10 @@
     "clip_results_to_buffer": true,
     "clip_buffer_miles": 0.2,
     "state_filter_enabled": true,
-    "max_input_area_sq_miles": 5000
+    "max_input_area_sq_miles": 5000,
+    "pagination_enabled": true,
+    "pagination_max_iterations": 10,
+    "pagination_total_timeout": 300
   },
   "settings": {
     "max_features_per_layer": 1000,
