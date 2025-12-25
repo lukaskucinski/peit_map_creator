@@ -15,6 +15,7 @@ Usage:
 """
 
 import modal
+from modal.exception import FunctionTimeoutError
 import os
 
 # Create Modal app
@@ -776,6 +777,9 @@ def fastapi_app():
         async def event_generator() -> AsyncGenerator[str, None]:
             """Generate SSE events for progress updates."""
 
+            # Get Supabase client for database updates on timeout
+            supabase = get_supabase_client()
+
             # Send initial event
             yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 5, 'job_id': job_id})}\n\n"
 
@@ -821,6 +825,28 @@ def fastapi_app():
                             yield f"data: {json.dumps(completion_data)}\n\n"
                         else:
                             yield f"data: {json.dumps({'stage': 'error', 'message': result.get('error', 'Unknown error'), 'progress': 0, 'error': result.get('error')})}\n\n"
+                        break
+                    except FunctionTimeoutError as e:
+                        # Modal cancelled the task due to execution timeout (~10 minutes)
+                        print(f"[TIMEOUT] Job {job_id} exceeded execution time limit: {str(e)}")
+
+                        # Release concurrent job slot
+                        release_job_slot(client_ip)
+
+                        # Update database to failed status (with error handling)
+                        if supabase:
+                            try:
+                                from datetime import datetime, timezone
+                                supabase.table('jobs').update({
+                                    'status': 'failed',
+                                    'completed_at': datetime.now(timezone.utc).isoformat(),
+                                    'error_message': 'Processing exceeded the 10-minute time limit. Try a smaller area or simpler geometry.',
+                                }).eq('id', job_id).execute()
+                            except Exception as db_err:
+                                print(f"Warning: Failed to update database for timed-out job {job_id}: {db_err}")
+
+                        # Emit SSE error event to frontend
+                        yield f"data: {json.dumps({'stage': 'error', 'message': 'Processing exceeded the 10-minute time limit. This usually happens with very large or complex areas. Try a smaller area, simpler geometry, or contact support.', 'progress': 0, 'error': 'timeout'})}\n\n"
                         break
                     except TimeoutError:
                         # Task still running - increment progress slowly
