@@ -327,7 +327,7 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, lo
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>1 ft</span>
-              <span>26,400 ft (5 mi)</span>
+              <span>5,280 ft (1 mi)</span>
             </div>
             {detectedGeomType && (
               <p className="text-xs text-muted-foreground">
