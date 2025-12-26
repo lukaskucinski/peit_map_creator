@@ -1975,7 +1975,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Project name and ID inputs with tooltips explaining their purpose
 - Buffer distance configuration (hidden for polygon inputs since polygons don't get buffered)
   - Minimum: 1ft (prevents empty geometries from 0ft buffer on points/lines)
-  - Maximum: 26,400ft (5 miles)
+  - Maximum: 5,280ft (1 mile)
   - Default: 500ft
   - Slider step: 100ft increments (slider label shows 1ft minimum)
   - Clickable value: Click the ft value to manually enter exact buffer distance
@@ -1986,7 +1986,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
   - Default: 0.2 mi
   - Clickable value: Click the mi value to manually enter exact clip distance
 - Real-time area estimation based on geometry and buffer settings
-- Area validation against 5,000 sq mi limit with warning at 2,500 sq mi
+- Area validation against 500 sq mi limit with warning at 250 sq mi
 - Uses `LabelWithTooltip` helper component for consistent tooltip UI
 
 **`components/processing-status.tsx`**
