@@ -61,6 +61,7 @@ export interface Job {
   zip_download_path: string | null
   error_message: string | null
   expires_at: string
+  input_area_sq_miles: number | null
 }
 
 interface JobHistoryListProps {
@@ -293,6 +294,14 @@ export function JobHistoryList({ jobs, userId }: JobHistoryListProps) {
                       <span className="font-medium">Layers:</span>{" "}
                       {job.layers_with_data}
                     </div>
+                    {job.input_area_sq_miles !== null && (
+                      <div>
+                        <span className="font-medium">Area:</span>{" "}
+                        {job.input_area_sq_miles.toLocaleString(undefined, {
+                          maximumFractionDigits: 1
+                        })} sq mi
+                      </div>
+                    )}
                   </>
                 )}
               </div>

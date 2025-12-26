@@ -43,7 +43,7 @@ global_rate_limit_dict = modal.Dict.from_name("peit-global-rate-limit", create_i
 MAX_GLOBAL_RUNS_PER_DAY = 50
 
 # Maximum input geometry area in square miles
-MAX_INPUT_AREA_SQ_MILES = 5000
+MAX_INPUT_AREA_SQ_MILES = 500
 
 # Modal Volume for storing results temporarily
 results_volume = modal.Volume.from_name("peit-results", create_if_missing=True)
