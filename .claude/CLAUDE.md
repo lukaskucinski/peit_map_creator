@@ -2551,6 +2551,30 @@ Reports (PDF/XLSX) are uploaded to blob storage **before** the map HTML is gener
 1. Create Vercel Blob store in Vercel dashboard
 2. Add Modal secret: `modal secret create vercel-blob BLOB_READ_WRITE_TOKEN=xxx`
 
+### Timeout Handling
+
+Modal cancels long-running jobs after ~10 minutes. The backend detects this via `FunctionTimeoutError`:
+
+**Behavior:**
+- `FunctionTimeoutError` caught in SSE polling loop (`modal_app.py` lines 829-850)
+- Database updated to `status='failed'` with descriptive error message
+- SSE error event emitted to frontend
+- Concurrent job slot released
+- User sees actionable error message in UI
+
+**Error Message:** "Processing exceeded the 10-minute time limit. This usually happens with very large or complex areas. Try a smaller area, simpler geometry, or contact support."
+
+**Implementation Details:**
+- Exception handler added BEFORE `TimeoutError` handler (order matters - `FunctionTimeoutError` inherits from `TimeoutError`)
+- Supabase client initialized in `event_generator()` for database updates
+- Database update wrapped in try/except to ensure SSE event is always sent even if DB update fails
+- Logs timeout events with `[TIMEOUT]` prefix for debugging
+
+**Status Values:**
+- `processing` - Job in progress
+- `complete` - Success
+- `failed` - Error or timeout
+
 ### Scheduled Cleanup
 
 **Cron Job:** `cleanup_old_results()` runs daily at 3 AM UTC
