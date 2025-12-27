@@ -367,7 +367,7 @@ export function ProcessingStatus({
             </p>
 
             {/* Layer progress details (only show during layer querying) */}
-            {latestUpdate?.stage === 'layer_querying' && latestUpdate?.totalLayers && (
+            {(latestUpdate?.stage === 'layer_querying' || latestUpdate?.stage === 'layer_query') && latestUpdate?.totalLayers && (
               <div className="mb-4 w-full max-w-md">
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>
@@ -395,7 +395,7 @@ export function ProcessingStatus({
             </p>
 
             {/* Running feature total */}
-            {latestUpdate?.stage === 'layer_querying' && runningFeatureTotal > 0 && (
+            {(latestUpdate?.stage === 'layer_querying' || latestUpdate?.stage === 'layer_query') && runningFeatureTotal > 0 && (
               <p className="text-xs text-primary font-medium mt-1">
                 Total: {runningFeatureTotal.toLocaleString()} features found
               </p>

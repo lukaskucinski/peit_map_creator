@@ -286,7 +286,13 @@ def process_file_task(
                 logger.warning(f"Failed to write progress: {e}")
 
         # Stage 1: Geometry input (2%)
-        emit_progress('geometry_input')
+        # Emit progress at start and end for smooth increments
+        emit_progress('geometry_input', completed=0, total=1)
+
+        # Geometry processing happens here (pipeline.process_geometry already ran)
+        # This stage represents validation and final geometry preparation
+
+        emit_progress('geometry_input', completed=1, total=1)
 
         # Layer callback for progress tracking
         def layer_callback(name, completed, total, features):
@@ -310,7 +316,7 @@ def process_file_task(
         temp_output.mkdir(parents=True, exist_ok=True)
 
         # Stage 3: Map generation (2%)
-        emit_progress('map_generation')
+        emit_progress('map_generation', completed=0, total=2)
 
         # Create web map (note: PDF/XLSX URLs will be added after blob upload)
         map_obj = create_web_map(
@@ -322,12 +328,16 @@ def process_file_task(
             original_geometry_gdf=original_gdf
         )
 
+        emit_progress('map_generation', completed=1, total=2)
+
         # Save map HTML temporarily
         map_file = temp_output / "index.html"
         map_obj.save(str(map_file))
 
+        emit_progress('map_generation', completed=2, total=2)
+
         # Stage 4: Report generation (2%)
-        emit_progress('report_generation')
+        emit_progress('report_generation', completed=0, total=2)
 
         # Generate reports
         from utils.xlsx_generator import generate_xlsx_report
@@ -336,12 +346,17 @@ def process_file_task(
         generate_xlsx_report(
             layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
         )
+
+        emit_progress('report_generation', completed=1, total=2)
+
         generate_pdf_report(
             layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
         )
 
+        emit_progress('report_generation', completed=2, total=2)
+
         # Stage 5: Blob upload (1%)
-        emit_progress('blob_upload')
+        emit_progress('blob_upload', completed=0, total=3)
 
         # Upload reports to Vercel Blob
         pdf_blob_url = None
@@ -358,6 +373,8 @@ def process_file_task(
                 )
                 logger.info(f"Uploaded PDF to blob: {pdf_blob_url}")
 
+            emit_progress('blob_upload', completed=1, total=3)
+
             xlsx_path = temp_output / xlsx_filename
             if xlsx_path.exists():
                 xlsx_content = xlsx_path.read_bytes()
@@ -367,6 +384,8 @@ def process_file_task(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
                 logger.info(f"Uploaded XLSX to blob: {xlsx_blob_url}")
+
+            emit_progress('blob_upload', completed=2, total=3)
         except Exception as blob_error:
             # Log but don't fail - map will work without report links
             logger.warning(f"Report blob upload failed (non-fatal): {blob_error}")
@@ -443,6 +462,9 @@ def process_file_task(
         except Exception as blob_error:
             # Log but don't fail - ZIP download still works
             logger.warning(f"Map blob upload failed (non-fatal): {blob_error}")
+
+        # Final progress update (completes blob_upload stage)
+        emit_progress('blob_upload', completed=3, total=3)
 
         logger.info(f"Job {job_id} completed successfully")
 
@@ -771,8 +793,16 @@ def fastapi_app():
                 # If total unknown, assume halfway through stage
                 completed_weight += STAGE_WEIGHTS['layer_querying'] * 0.5
         elif stage in STAGE_WEIGHTS:
-            # For other stages, assume halfway through when stage starts
-            completed_weight += STAGE_WEIGHTS[stage] * 0.5
+            # For other stages, check if we have completed/total info
+            completed = progress_data.get('completed_layers', 0)
+            total = progress_data.get('total_layers', 0)
+            if total > 0:
+                # Use actual progress within the stage
+                stage_progress = (completed / total) * STAGE_WEIGHTS[stage]
+                completed_weight += stage_progress
+            else:
+                # If no progress info, assume halfway through when stage starts
+                completed_weight += STAGE_WEIGHTS[stage] * 0.5
 
         # Round to nearest integer for smoother display (no jumps >1%)
         # Cap at 95 until actually complete (never show 100% during processing)
