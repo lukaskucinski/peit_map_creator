@@ -257,8 +257,47 @@ def process_file_task(
         # Use project name for input layer display if provided, otherwise use filename
         input_layer_name = project_name if project_name else input_filename
 
-        # Process all layers
-        layer_results, metadata, clip_summary, clip_boundary = process_all_layers(polygon_gdf, config)
+        # Progress tracking file on Modal Volume
+        progress_file = output_base / "progress.json"
+
+        def emit_progress(
+            stage: str,
+            layer_name: str = None,
+            completed: int = 0,
+            total: int = 0,
+            features: int = 0
+        ):
+            """Write progress update to volume file for SSE poller to read."""
+            import time
+            progress_data = {
+                'stage': stage,
+                'layer_name': layer_name,
+                'completed_layers': completed,
+                'total_layers': total,
+                'features_found': features,
+                'timestamp': time.time()
+            }
+            try:
+                with open(progress_file, 'w', encoding='utf-8') as f:
+                    json.dump(progress_data, f)
+                results_volume.commit()  # Persist immediately
+            except Exception as e:
+                # Don't fail processing if progress write fails
+                logger.warning(f"Failed to write progress: {e}")
+
+        # Stage 1: Geometry input (2%)
+        emit_progress('geometry_input')
+
+        # Layer callback for progress tracking
+        def layer_callback(name, completed, total, features):
+            """Called after each layer completes."""
+            emit_progress('layer_query', name, completed, total, features)
+
+        # Process all layers with progress callback
+        emit_progress('layer_querying', total=len(config['layers']))
+        layer_results, metadata, clip_summary, clip_boundary = process_all_layers(
+            polygon_gdf, config, progress_callback=layer_callback
+        )
 
         # Generate timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -270,6 +309,9 @@ def process_file_task(
         temp_output = temp_dir / output_name
         temp_output.mkdir(parents=True, exist_ok=True)
 
+        # Stage 3: Report generation (5%)
+        emit_progress('report_generation')
+
         # Generate reports BEFORE creating web map so we can get blob URLs
         from utils.xlsx_generator import generate_xlsx_report
         from utils.pdf_generator import generate_pdf_report
@@ -280,6 +322,9 @@ def process_file_task(
         generate_pdf_report(
             layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
         )
+
+        # Stage 4: Blob upload (3%)
+        emit_progress('blob_upload')
 
         # Upload reports to Vercel Blob BEFORE creating web map
         # This way we can embed the actual blob URLs in the map HTML
@@ -309,6 +354,9 @@ def process_file_task(
         except Exception as blob_error:
             # Log but don't fail - map will work without report links
             logger.warning(f"Report blob upload failed (non-fatal): {blob_error}")
+
+        # Stage 2: Map generation (5%)
+        emit_progress('map_generation')
 
         # Create web map with blob URLs for PDF/XLSX links
         map_obj = create_web_map(
@@ -667,6 +715,82 @@ def fastapi_app():
             "resets_at": "midnight UTC",
         }
 
+    # Stage weights for progress calculation (hardcoded for initial release)
+    STAGE_WEIGHTS = {
+        'upload': 0,  # Initial state, no weight
+        'geometry_input': 2,
+        'layer_querying': 85,
+        'map_generation': 5,
+        'report_generation': 5,
+        'blob_upload': 3,
+    }
+
+    def calculate_weighted_progress(progress_data: dict) -> int:
+        """Calculate progress percentage based on stage weights and layer completion."""
+        stage = progress_data.get('stage', 'upload')
+
+        # Stage order for calculating completed weight
+        stage_order = ['upload', 'geometry_input', 'layer_querying', 'map_generation', 'report_generation', 'blob_upload']
+        completed_weight = 0.0
+
+        try:
+            current_stage_idx = stage_order.index(stage)
+        except ValueError:
+            # Unknown stage - treat 'layer_query' same as 'layer_querying'
+            if stage == 'layer_query':
+                current_stage_idx = stage_order.index('layer_querying')
+            else:
+                return 5  # Default to 5% for unknown stages
+
+        # Add weights of all completed stages
+        for idx, s in enumerate(stage_order):
+            if idx < current_stage_idx:
+                completed_weight += STAGE_WEIGHTS.get(s, 0)
+
+        # Add partial progress from current stage
+        if stage in ['layer_querying', 'layer_query']:
+            completed = progress_data.get('completed_layers', 0)
+            total = progress_data.get('total_layers', 1)
+            if total > 0:
+                layer_progress = (completed / total) * STAGE_WEIGHTS['layer_querying']
+                completed_weight += layer_progress
+            else:
+                # If total unknown, assume halfway through stage
+                completed_weight += STAGE_WEIGHTS['layer_querying'] * 0.5
+        elif stage in STAGE_WEIGHTS:
+            # For other stages, assume halfway through when stage starts
+            completed_weight += STAGE_WEIGHTS[stage] * 0.5
+
+        # Cap at 95 until actually complete (never show 100% during processing)
+        return min(int(completed_weight), 95)
+
+    def format_progress_message(progress_data: dict) -> str:
+        """Format user-friendly progress message based on stage."""
+        stage = progress_data.get('stage')
+        layer_name = progress_data.get('layer_name')
+        completed = progress_data.get('completed_layers', 0)
+        total = progress_data.get('total_layers', 0)
+
+        if stage == 'upload':
+            return 'File received, starting processing...'
+        elif stage == 'geometry_input':
+            return 'Processing input geometry...'
+        elif stage in ['layer_querying', 'layer_query']:
+            if layer_name:
+                return f'Querying {layer_name}... ({completed}/{total} layers)'
+            elif total > 0:
+                return f'Querying environmental layers... ({completed}/{total})'
+            else:
+                return 'Querying environmental layers...'
+        elif stage == 'map_generation':
+            return 'Generating interactive map...'
+        elif stage == 'report_generation':
+            return 'Creating PDF and Excel reports...'
+        elif stage == 'blob_upload':
+            return 'Uploading to cloud storage...'
+        else:
+            return 'Processing...'
+
     @web_app.post("/api/process")
     async def process_endpoint(
         request: Request,
@@ -761,19 +885,6 @@ def fastapi_app():
         # Generate job ID (16 chars for security - prevents URL enumeration)
         job_id = str(uuid.uuid4()).replace("-", "")[:16]
 
-        def get_progress_message(progress: int) -> str:
-            """Get appropriate progress message based on progress percentage."""
-            if progress <= 15:
-                return "Processing input geometry..."
-            elif progress <= 40:
-                return "Querying environmental layers..."
-            elif progress <= 70:
-                return "Processing layer results..."
-            elif progress <= 85:
-                return "Generating interactive map..."
-            else:
-                return "Generating reports..."
-
         async def event_generator() -> AsyncGenerator[str, None]:
             """Generate SSE events for progress updates."""
 
@@ -796,10 +907,9 @@ def fastapi_app():
                     clip_buffer_miles=clip_buffer_miles,
                 )
 
-                # Poll for completion with realistic progress updates
-                progress = 5
-                poll_interval = 3  # seconds between updates
-                max_progress = 95  # Don't exceed this until actually complete
+                # Poll for completion with progress file reads
+                poll_interval = 1.0  # Poll every 1 second (faster than old 3s)
+                last_progress_data = None
 
                 while True:
                     await asyncio.sleep(poll_interval)
@@ -849,11 +959,42 @@ def fastapi_app():
                         yield f"data: {json.dumps({'stage': 'error', 'message': 'Processing exceeded the 10-minute time limit. This usually happens with very large or complex areas. Try a smaller area, simpler geometry, or contact support.', 'progress': 0, 'error': 'timeout'})}\n\n"
                         break
                     except TimeoutError:
-                        # Task still running - increment progress slowly
-                        if progress < max_progress:
-                            progress = min(progress + 5, max_progress)
-                            message = get_progress_message(progress)
-                            yield f"data: {json.dumps({'stage': 'processing', 'message': message, 'progress': progress})}\n\n"
+                        # Task still running - read progress file
+                        try:
+                            results_volume.reload()
+                            progress_file_path = Path(f"/results/{job_id}/progress.json")
+
+                            if progress_file_path.exists():
+                                with open(progress_file_path, 'r', encoding='utf-8') as f:
+                                    progress_data = json.load(f)
+
+                                # Only emit if progress changed (avoid duplicate events)
+                                if progress_data != last_progress_data:
+                                    last_progress_data = progress_data
+
+                                    # Calculate weighted progress
+                                    progress_percent = calculate_weighted_progress(progress_data)
+
+                                    # Format message
+                                    message = format_progress_message(progress_data)
+
+                                    # Build SSE event
+                                    event_data = {
+                                        'stage': progress_data.get('stage', 'processing'),
+                                        'message': message,
+                                        'progress': progress_percent,
+                                        'layer_name': progress_data.get('layer_name'),
+                                        'currentLayer': progress_data.get('completed_layers'),
+                                        'totalLayers': progress_data.get('total_layers'),
+                                        'features_found': progress_data.get('features_found'),
+                                    }
+
+                                    yield f"data: {json.dumps(event_data)}\n\n"
+                            # else: No progress file yet, wait for next poll
+
+                        except Exception as e:
+                            # Progress file read failed - log but continue polling
+                            print(f"Warning: Failed to read progress file for {job_id}: {e}")
 
             except asyncio.CancelledError:
                 # Client disconnected (closed browser tab) - release job slot

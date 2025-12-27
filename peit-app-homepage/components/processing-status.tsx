@@ -7,11 +7,13 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 
 export interface ProgressUpdate {
-  stage: 'upload' | 'geometry' | 'query' | 'map' | 'report' | 'complete' | 'error'
+  stage: 'upload' | 'geometry_input' | 'layer_querying' | 'layer_query' | 'map_generation' | 'report_generation' | 'blob_upload' | 'complete' | 'error'
   message: string
   progress: number
-  currentLayer?: number
-  totalLayers?: number
+  layer_name?: string         // Name of current layer being queried
+  currentLayer?: number       // Layers completed (1-indexed)
+  totalLayers?: number        // Total layers to process
+  features_found?: number     // Features found in current layer
   error?: string
 }
 
@@ -58,6 +60,7 @@ export function ProcessingStatus({
   const [startTime] = useState(Date.now())
   const [isDownloading, setIsDownloading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [runningFeatureTotal, setRunningFeatureTotal] = useState(0)
 
   // Copy map URL to clipboard
   const copyMapUrl = async () => {
@@ -93,6 +96,20 @@ export function ProcessingStatus({
 
     return () => clearInterval(interval)
   }, [startTime, isComplete, isError])
+
+  // Track running feature total
+  useEffect(() => {
+    if (latestUpdate?.stage === 'layer_query' && latestUpdate.features_found !== undefined) {
+      setRunningFeatureTotal(prev => prev + latestUpdate.features_found!)
+    }
+  }, [latestUpdate])
+
+  // Reset feature total when starting new job
+  useEffect(() => {
+    if (latestUpdate?.stage === 'upload') {
+      setRunningFeatureTotal(0)
+    }
+  }, [latestUpdate?.stage])
 
   // Get the latest progress update
   const latestUpdate = progressUpdates[progressUpdates.length - 1]
@@ -344,21 +361,45 @@ export function ProcessingStatus({
               {progress}%
             </div>
 
-            <p className="mb-4 text-sm text-muted-foreground min-h-[20px]">
+            {/* Current task message */}
+            <p className="mb-2 text-sm text-muted-foreground min-h-[20px]">
               {latestUpdate?.message || "Initializing..."}
             </p>
 
-            {/* Layer count if available */}
-            {latestUpdate?.currentLayer && latestUpdate?.totalLayers && (
-              <p className="mb-4 text-xs text-muted-foreground">
-                Layer {latestUpdate.currentLayer} of {latestUpdate.totalLayers}
-              </p>
+            {/* Layer progress details (only show during layer querying) */}
+            {latestUpdate?.stage === 'layer_querying' && latestUpdate?.totalLayers && (
+              <div className="mb-4 w-full max-w-md">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>
+                    Layer {latestUpdate.currentLayer || 0} of {latestUpdate.totalLayers}
+                  </span>
+                  {latestUpdate.features_found !== undefined && (
+                    <span className="text-primary font-medium">
+                      {latestUpdate.features_found} {latestUpdate.features_found === 1 ? 'feature' : 'features'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Current layer name (truncated if long) */}
+                {latestUpdate.layer_name && (
+                  <div className="text-xs text-muted-foreground/75 truncate text-left">
+                    {latestUpdate.layer_name}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Elapsed time */}
             <p className="text-xs text-muted-foreground">
               Elapsed: {formatTime(elapsedTime)}
             </p>
+
+            {/* Running feature total */}
+            {latestUpdate?.stage === 'layer_querying' && runningFeatureTotal > 0 && (
+              <p className="text-xs text-primary font-medium mt-1">
+                Total: {runningFeatureTotal.toLocaleString()} features found
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
