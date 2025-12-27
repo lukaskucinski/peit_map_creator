@@ -62,6 +62,10 @@ export function ProcessingStatus({
   const [copied, setCopied] = useState(false)
   const [runningFeatureTotal, setRunningFeatureTotal] = useState(0)
 
+  // Smooth progress display: separate backend progress from displayed progress
+  const [backendProgress, setBackendProgress] = useState(0)
+  const [displayProgress, setDisplayProgress] = useState(0)
+
   // Copy map URL to clipboard
   const copyMapUrl = async () => {
     if (mapUrl) {
@@ -88,7 +92,6 @@ export function ProcessingStatus({
 
   // Get the latest progress update
   const latestUpdate = progressUpdates[progressUpdates.length - 1]
-  const progress = latestUpdate?.progress ?? 0
 
   // Track elapsed time
   useEffect(() => {
@@ -114,6 +117,37 @@ export function ProcessingStatus({
       setRunningFeatureTotal(0)
     }
   }, [latestUpdate?.stage])
+
+  // Update backendProgress when new progress arrives from SSE
+  useEffect(() => {
+    if (latestUpdate?.progress != null) {
+      setBackendProgress(latestUpdate.progress)
+    }
+    // When complete, push to 100%
+    if (isComplete) {
+      setBackendProgress(100)
+    }
+  }, [latestUpdate, isComplete])
+
+  // Smooth animation from displayProgress to backendProgress
+  useEffect(() => {
+    // Only animate if displayProgress is behind backendProgress
+    if (displayProgress < backendProgress) {
+      const interval = setInterval(() => {
+        setDisplayProgress(prev => {
+          const next = prev + 1
+          // Stop at backendProgress
+          if (next >= backendProgress) {
+            clearInterval(interval)
+            return backendProgress
+          }
+          return next
+        })
+      }, 50) // Update every 50ms = 20 updates per second = smooth animation
+
+      return () => clearInterval(interval)
+    }
+  }, [backendProgress, displayProgress])
 
   // Format elapsed time
   const formatTime = (seconds: number): string => {
@@ -353,12 +387,12 @@ export function ProcessingStatus({
 
             {/* Progress bar */}
             <div className="w-full max-w-md mb-4">
-              <Progress value={progress} className="h-3" />
+              <Progress value={displayProgress} className="h-3" />
             </div>
 
             {/* Progress percentage and current task */}
             <div className="mb-2 text-2xl font-bold text-primary">
-              {progress}%
+              {displayProgress}%
             </div>
 
             {/* Current task message */}
