@@ -3,8 +3,8 @@ import type { Layer, FeatureGroup } from 'leaflet'
 import * as turf from '@turf/turf'
 
 // Area limit constants (in square miles)
-export const MAX_AREA_SQ_MILES = 5000
-export const WARN_AREA_SQ_MILES = 2500
+export const MAX_AREA_SQ_MILES = 500
+export const WARN_AREA_SQ_MILES = 250
 
 // US state abbreviations for filename generation
 const STATE_ABBREVIATIONS: Record<string, string> = {

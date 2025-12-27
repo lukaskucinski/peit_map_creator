@@ -43,7 +43,7 @@ interface ConfigPanelProps {
 const DEFAULT_BUFFER_FEET = 500
 const MIN_BUFFER_FEET = 1
 const SLIDER_MIN_BUFFER_FEET = 0 // Slider uses 0 for round increments, but value is clamped to MIN_BUFFER_FEET
-const MAX_BUFFER_FEET = 26400 // 5 miles in feet
+const MAX_BUFFER_FEET = 5280 // 1 mile in feet
 
 const DEFAULT_CLIP_MILES = 0.2
 const MIN_CLIP_MILES = 0.1
@@ -327,7 +327,7 @@ export function ConfigPanel({ filename, onRun, disabled = false, geojsonData, lo
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>1 ft</span>
-              <span>26,400 ft (5 mi)</span>
+              <span>5,280 ft (1 mi)</span>
             </div>
             {detectedGeomType && (
               <p className="text-xs text-muted-foreground">
