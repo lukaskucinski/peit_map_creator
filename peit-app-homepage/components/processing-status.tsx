@@ -86,6 +86,10 @@ export function ProcessingStatus({
     }
   }
 
+  // Get the latest progress update
+  const latestUpdate = progressUpdates[progressUpdates.length - 1]
+  const progress = latestUpdate?.progress ?? 0
+
   // Track elapsed time
   useEffect(() => {
     if (isComplete || isError) return
@@ -110,10 +114,6 @@ export function ProcessingStatus({
       setRunningFeatureTotal(0)
     }
   }, [latestUpdate?.stage])
-
-  // Get the latest progress update
-  const latestUpdate = progressUpdates[progressUpdates.length - 1]
-  const progress = latestUpdate?.progress ?? 0
 
   // Format elapsed time
   const formatTime = (seconds: number): string => {
