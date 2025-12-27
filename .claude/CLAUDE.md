@@ -1631,6 +1631,56 @@ config/ → utils/ → core/ → peit_map_creator.py
 5. **Client-Side Downloads**: Browser-based conversion for SHP/KMZ may have limitations with very large datasets.
 6. **Buffer Distance Limits**: Very large buffers (>10,000 feet for points, >5,000 feet for lines) may cause long query times or incomplete results.
 
+## Lessons Learned & Best Practices
+
+### pnpm + Turbopack + Vercel Build Issues
+
+**Issue**: Vercel builds failing with "Module not found: Can't resolve 'splaytree'" error
+
+**Root Cause**: Attempting to "fix" transitive dependency resolution with manual configurations (explicit dependencies, pnpm overrides, .npmrc hoisting, Turbopack aliases) actually **breaks** pnpm's natural dependency resolution.
+
+**Solution**: Trust pnpm's automatic transitive dependency resolution
+- ❌ DON'T add transitive dependencies explicitly to package.json
+- ❌ DON'T use pnpm overrides for transitive dependencies
+- ❌ DON'T create .npmrc with custom hoisting rules
+- ❌ DON'T add Turbopack resolveAlias for packages that should auto-resolve
+- ✅ DO let pnpm handle transitive dependencies automatically
+- ✅ DO use main branch's proven pnpm-lock.yaml when in doubt
+- ✅ DO check version differences in lockfiles (e.g., splaytree@3.2.1 vs 3.2.3)
+
+**Key Learning**: Sometimes the fix is to remove configurations, not add them.
+
+### Smooth Progress Display (1-100%)
+
+**Issue**: Progress bar jumping in large increments (20-30%) instead of showing smooth 1-100% progression
+
+**Root Cause**: Backend emits ~131 progress events during layer processing, so frontend can only show ~131 discrete values. SSE poller at 1s intervals misses fast final stages.
+
+**Solution**: Client-side interpolation with dual progress state
+```typescript
+const [backendProgress, setBackendProgress] = useState(0)   // Real server progress
+const [displayProgress, setDisplayProgress] = useState(0)   // Animated UI display
+
+// Increment displayProgress by 1 every 50ms to catch up to backendProgress
+useEffect(() => {
+  if (displayProgress < backendProgress) {
+    const interval = setInterval(() => {
+      setDisplayProgress(prev => prev + 1)
+    }, 50)
+    return () => clearInterval(interval)
+  }
+}, [backendProgress, displayProgress])
+```
+
+**Benefits**:
+- ✅ User sees EVERY number 1-100
+- ✅ Smooth visual animation (50ms JS + 500ms CSS transition)
+- ✅ Zero backend performance impact
+- ✅ Still synced to real progress milestones
+- ✅ Final 99% → 100% completion now visible
+
+**Key Learning**: UX smoothness can be achieved client-side without impacting backend performance.
+
 ## Input Format Support
 
 ### File Formats
