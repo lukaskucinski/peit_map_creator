@@ -2644,19 +2644,21 @@ The tool uses a weight-based progress tracking system that accurately reflects a
 **Stage Weights (Hardcoded):**
 ```python
 STAGE_WEIGHTS = {
+    'upload': 1,               # 1% - Initial file receipt
     'geometry_input': 2,       # 2% - Input geometry processing
-    'layer_querying': 85,      # 85% - Bulk of processing time
-    'map_generation': 5,       # 5% - Creating Folium map
-    'report_generation': 5,    # 5% - PDF/XLSX generation
-    'blob_upload': 3,          # 3% - Upload to Vercel Blob
+    'layer_querying': 92,      # 92% - Bulk of processing time
+    'map_generation': 2,       # 2% - Creating Folium map
+    'report_generation': 2,    # 2% - PDF/XLSX generation
+    'blob_upload': 1,          # 1% - Upload to Vercel Blob
 }
 ```
 
 **Progress Calculation:**
-For layer querying (85% of total time):
-- `layer_weight = 85 / total_layers` (e.g., ~0.65% per layer with 131 layers)
+For layer querying (92% of total time):
+- `layer_weight = 92 / total_layers` (e.g., ~0.70% per layer with 131 layers)
 - `layer_progress = completed_layers × layer_weight`
-- Each layer completion triggers small, predictable progress increment
+- Each layer completion triggers small, predictable progress increment (~1%)
+- Uses `round()` instead of `int()` for smoother single-digit increments
 
 **Backend Implementation** (`modal_app.py`):
 - `emit_progress()`: Writes progress data to volume file with immediate commit

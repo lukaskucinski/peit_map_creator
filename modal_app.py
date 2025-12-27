@@ -717,12 +717,12 @@ def fastapi_app():
 
     # Stage weights for progress calculation (hardcoded for initial release)
     STAGE_WEIGHTS = {
-        'upload': 0,  # Initial state, no weight
+        'upload': 1,  # Initial state (prevent 0% display)
         'geometry_input': 2,
-        'layer_querying': 85,
-        'map_generation': 5,
-        'report_generation': 5,
-        'blob_upload': 3,
+        'layer_querying': 92,  # Increased to 92% (bulk of processing)
+        'map_generation': 2,
+        'report_generation': 2,
+        'blob_upload': 1,
     }
 
     def calculate_weighted_progress(progress_data: dict) -> int:
@@ -761,8 +761,9 @@ def fastapi_app():
             # For other stages, assume halfway through when stage starts
             completed_weight += STAGE_WEIGHTS[stage] * 0.5
 
+        # Round to nearest integer for smoother display (no jumps >1%)
         # Cap at 95 until actually complete (never show 100% during processing)
-        return min(int(completed_weight), 95)
+        return min(round(completed_weight), 95)
 
     def format_progress_message(progress_data: dict) -> str:
         """Format user-friendly progress message based on stage."""
@@ -892,7 +893,7 @@ def fastapi_app():
             supabase = get_supabase_client()
 
             # Send initial event
-            yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 5, 'job_id': job_id})}\n\n"
+            yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 1, 'job_id': job_id})}\n\n"
 
             # Spawn the processing task (non-blocking)
             try:
