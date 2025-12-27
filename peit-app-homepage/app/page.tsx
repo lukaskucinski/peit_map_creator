@@ -70,6 +70,10 @@ function HomePageContent() {
   // Track the previous user state for detecting sign-in events
   const prevUserRef = useRef<User | null>(null)
 
+  // Track the active job ID to prevent abandoned jobs from interrupting new workflows
+  // Uses ref to avoid React closure staleness issues
+  const activeJobIdRef = useRef<string | null>(null)
+
   // Handle reset signal from header logo navigation (?reset=1)
   // This ensures clicking the logo always returns to a fresh upload state
   useEffect(() => {
@@ -78,6 +82,9 @@ function HomePageContent() {
       clearCompleteState()
       clearErrorState()
       // NOTE: Do NOT clear pending jobs (localStorage) - those persist for future sign-in
+
+      // Clear active job tracking
+      activeJobIdRef.current = null
 
       // Reset all React state
       setAppState({ step: 'upload' })
@@ -105,6 +112,9 @@ function HomePageContent() {
 
     const storedState = getCompleteState()
     if (storedState) {
+      // Set active job to restored job ID so we recognize it as the current job
+      activeJobIdRef.current = storedState.jobId ?? null
+
       // Create a dummy File object for display purposes
       // The actual file isn't needed since processing is complete
       const dummyFile = new File([], storedState.filename, { type: 'application/octet-stream' })
@@ -276,6 +286,7 @@ function HomePageContent() {
 
       // Detect sign-out event - reset to upload state
       if (event === 'SIGNED_OUT') {
+        activeJobIdRef.current = null // Clear active job tracking
         setAppState({ step: 'upload' })
         setProgressUpdates([])
         setWasRestoredFromStorage(false)
@@ -414,6 +425,12 @@ function HomePageContent() {
     if (appState.step !== 'configure') return
 
     const file = appState.file
+
+    // Generate temporary job ID to track this specific run
+    const tempJobId = crypto.randomUUID()
+    activeJobIdRef.current = tempJobId
+    console.log(`[JOB TRACKING] Starting new job: ${tempJobId}`)
+
     setAppState({ step: 'processing', file, config })
     setProgressUpdates([])
 
@@ -423,6 +440,15 @@ function HomePageContent() {
       const result = await runMockProcessing(file, config, (update) => {
         setProgressUpdates(prev => [...prev, update])
       })
+
+      // Check if this job is still active before updating state
+      console.log(`[JOB TRACKING] Job ${tempJobId} completed. Active job: ${activeJobIdRef.current}`)
+      if (activeJobIdRef.current !== tempJobId) {
+        console.log(`[JOB TRACKING] Ignoring completion for abandoned job: ${tempJobId}`)
+        return
+      }
+
+      console.log(`[JOB TRACKING] Processing completion for active job: ${tempJobId}`)
 
       if (result.success) {
         setAppState({ step: 'complete', file, config })
@@ -448,6 +474,15 @@ function HomePageContent() {
       const result = await processFile(file, config, user?.id ?? null, (update) => {
         setProgressUpdates(prev => [...prev, update])
       })
+
+      // Check if this job is still active before updating state
+      console.log(`[JOB TRACKING] Job ${tempJobId} completed. Active job: ${activeJobIdRef.current}`)
+      if (activeJobIdRef.current !== tempJobId) {
+        console.log(`[JOB TRACKING] Ignoring completion for abandoned job: ${tempJobId}`)
+        return
+      }
+
+      console.log(`[JOB TRACKING] Processing completion for active job: ${tempJobId}`)
 
       if (result.success) {
         // Store job ID to localStorage if user is not authenticated
@@ -518,6 +553,9 @@ function HomePageContent() {
 
   // Handle process another (from complete state - starts fresh)
   const handleProcessAnother = useCallback(() => {
+    // Clear active job tracking
+    activeJobIdRef.current = null
+
     // Clear the stored complete state
     clearCompleteState()
     clearErrorState()
