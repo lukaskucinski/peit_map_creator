@@ -309,10 +309,27 @@ def process_file_task(
         temp_output = temp_dir / output_name
         temp_output.mkdir(parents=True, exist_ok=True)
 
-        # Stage 3: Report generation (5%)
+        # Stage 3: Map generation (2%)
+        emit_progress('map_generation')
+
+        # Create web map (note: PDF/XLSX URLs will be added after blob upload)
+        map_obj = create_web_map(
+            polygon_gdf, layer_results, metadata, config, input_layer_name,
+            project_name=project_name,
+            xlsx_relative_path=None,  # Will be updated after blob upload
+            pdf_relative_path=None,   # Will be updated after blob upload
+            clip_boundary=clip_boundary,
+            original_geometry_gdf=original_gdf
+        )
+
+        # Save map HTML temporarily
+        map_file = temp_output / "index.html"
+        map_obj.save(str(map_file))
+
+        # Stage 4: Report generation (2%)
         emit_progress('report_generation')
 
-        # Generate reports BEFORE creating web map so we can get blob URLs
+        # Generate reports
         from utils.xlsx_generator import generate_xlsx_report
         from utils.pdf_generator import generate_pdf_report
 
@@ -323,11 +340,10 @@ def process_file_task(
             layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
         )
 
-        # Stage 4: Blob upload (3%)
+        # Stage 5: Blob upload (1%)
         emit_progress('blob_upload')
 
-        # Upload reports to Vercel Blob BEFORE creating web map
-        # This way we can embed the actual blob URLs in the map HTML
+        # Upload reports to Vercel Blob
         pdf_blob_url = None
         xlsx_blob_url = None
 
@@ -355,22 +371,19 @@ def process_file_task(
             # Log but don't fail - map will work without report links
             logger.warning(f"Report blob upload failed (non-fatal): {blob_error}")
 
-        # Stage 2: Map generation (5%)
-        emit_progress('map_generation')
-
-        # Create web map with blob URLs for PDF/XLSX links
-        map_obj = create_web_map(
-            polygon_gdf, layer_results, metadata, config, input_layer_name,
-            project_name=project_name,
-            xlsx_relative_path=xlsx_blob_url,  # Use blob URL instead of filename
-            pdf_relative_path=pdf_blob_url,    # Use blob URL instead of filename
-            clip_boundary=clip_boundary,
-            original_geometry_gdf=original_gdf
-        )
-
-        # Save map HTML
-        map_file = temp_output / "index.html"
-        map_obj.save(str(map_file))
+        # Update map HTML with blob URLs if needed
+        if pdf_blob_url or xlsx_blob_url:
+            # Re-create map with blob URLs
+            map_obj = create_web_map(
+                polygon_gdf, layer_results, metadata, config, input_layer_name,
+                project_name=project_name,
+                xlsx_relative_path=xlsx_blob_url,
+                pdf_relative_path=pdf_blob_url,
+                clip_boundary=clip_boundary,
+                original_geometry_gdf=original_gdf
+            )
+            # Re-save map HTML with updated URLs
+            map_obj.save(str(map_file))
 
         # Save input polygon and layer GeoJSONs
         data_path = temp_output / "data"
