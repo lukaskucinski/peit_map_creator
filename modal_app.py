@@ -442,6 +442,34 @@ def process_file_task(
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+# =============================================================================
+# TEST FUNCTION - For testing timeout handling
+# This function should be REMOVED before deploying to production
+# =============================================================================
+@app.function(
+    image=peit_image,
+    timeout=30,  # 30-second timeout - tasks exceeding this will raise FunctionTimeoutError
+)
+def test_timeout_task(duration_seconds: int) -> dict:
+    """
+    Test function that sleeps for a specified duration.
+
+    This is used to test timeout handling. Tasks that sleep longer than the
+    30-second timeout will raise FunctionTimeoutError.
+
+    Args:
+        duration_seconds: How long to sleep
+
+    Returns:
+        Success dict if task completes before timeout
+    """
+    import time
+    print(f"[TEST TASK] Sleeping for {duration_seconds} seconds (timeout at 30s)...")
+    time.sleep(duration_seconds)
+    print(f"[TEST TASK] Completed successfully after {duration_seconds} seconds")
+    return {"success": True, "duration": duration_seconds}
+
+
 # Mount the FastAPI app to Modal
 # All FastAPI imports and app creation happen inside this function
 # so they only run in the Modal container, not on the local machine
@@ -1074,6 +1102,131 @@ def fastapi_app():
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    # =============================================================================
+    # TEST ENDPOINT - For testing timeout handling
+    # This endpoint should be REMOVED before deploying to production
+    # =============================================================================
+
+    @web_app.post("/api/test-timeout")
+    async def test_timeout_endpoint(duration: int = 45):
+        """
+        TEST ENDPOINT - Simulates job timeout for testing.
+
+        Usage:
+            curl -X POST "https://lukaskucinski--peit-processor-fastapi-app.modal.run/api/test-timeout?duration=45"
+
+        This spawns a task that sleeps for 'duration' seconds. The task has a 30-second
+        timeout, so any duration > 30 will trigger a FunctionTimeoutError.
+
+        Expected behavior:
+        - duration <= 30: Task completes successfully
+        - duration > 30: Task times out, database updated to failed, SSE error emitted
+
+        Args:
+            duration: Seconds to sleep (default: 45 to trigger timeout)
+        """
+        from fastapi.responses import StreamingResponse
+        from typing import AsyncGenerator
+        import asyncio
+        import json
+        import uuid
+
+        # Generate test job ID
+        job_id = uuid.uuid4().hex[:16]
+        client_ip = "127.0.0.1"  # Test IP
+
+        print(f"[TEST] Starting timeout test with job_id={job_id}, duration={duration}s")
+
+        async def event_generator() -> AsyncGenerator[str, None]:
+            """Generate SSE events for timeout test."""
+
+            # Get Supabase client
+            supabase = get_supabase_client()
+
+            # Insert test job record
+            if supabase:
+                try:
+                    supabase.table('jobs').insert({
+                        'id': job_id,
+                        'user_id': None,  # Anonymous test
+                        'filename': f'test_timeout_{duration}s.txt',
+                        'project_name': 'Timeout Test',
+                        'project_id': f'TEST-{job_id[:8]}',
+                        'status': 'processing',
+                    }).execute()
+                    print(f"[TEST] Created test job record in database")
+                except Exception as e:
+                    print(f"[TEST] Warning: Failed to create job record: {e}")
+
+            # Send initial event
+            yield f"data: {json.dumps({'stage': 'upload', 'message': f'Test started: sleeping {duration}s (timeout at 30s)...', 'progress': 5, 'job_id': job_id})}\n\n"
+
+            # Spawn test task
+            try:
+                handle = test_timeout_task.spawn(duration_seconds=duration)
+
+                # Poll for completion
+                progress = 5
+                poll_interval = 3
+                max_progress = 95
+
+                while True:
+                    await asyncio.sleep(poll_interval)
+
+                    # Check if task is done
+                    try:
+                        result = handle.get(timeout=0)
+                        # Success
+                        yield f"data: {json.dumps({'stage': 'complete', 'message': f'Test completed successfully after {duration}s', 'progress': 100, 'job_id': job_id})}\n\n"
+
+                        # Update database
+                        if supabase:
+                            try:
+                                supabase.table('jobs').update({'status': 'complete'}).eq('id', job_id).execute()
+                            except Exception as e:
+                                print(f"[TEST] Warning: Failed to update job to complete: {e}")
+                        break
+                    except FunctionTimeoutError as e:
+                        # TIMEOUT OCCURRED - This is what we're testing!
+                        print(f"[TIMEOUT] Test job {job_id} timed out as expected: {str(e)}")
+
+                        # Update database to failed
+                        if supabase:
+                            try:
+                                from datetime import datetime, timezone
+                                supabase.table('jobs').update({
+                                    'status': 'failed',
+                                    'completed_at': datetime.now(timezone.utc).isoformat(),
+                                    'error_message': f'Test timeout: Task exceeded 30s limit (ran for {duration}s)',
+                                }).eq('id', job_id).execute()
+                                print(f"[TEST] ✓ Database updated to failed status")
+                            except Exception as db_err:
+                                print(f"[TEST] ✗ Failed to update database: {db_err}")
+
+                        # Emit error event
+                        yield f"data: {json.dumps({'stage': 'error', 'message': f'Test timeout triggered after 30s (requested {duration}s). Database should show failed status.', 'progress': 0, 'error': 'timeout'})}\n\n"
+                        print(f"[TEST] ✓ SSE error event emitted")
+                        break
+                    except TimeoutError:
+                        # Still running
+                        if progress < max_progress:
+                            progress = min(progress + 5, max_progress)
+                            yield f"data: {json.dumps({'stage': 'processing', 'message': f'Test running... (will timeout at 30s)', 'progress': progress})}\n\n"
+
+            except Exception as e:
+                print(f"[TEST] Unexpected error: {e}")
+                yield f"data: {json.dumps({'stage': 'error', 'message': f'Test error: {str(e)}', 'progress': 0, 'error': str(e)})}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            }
+        )
 
     return web_app
 
