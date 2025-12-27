@@ -13,9 +13,6 @@ const nextConfig = {
       fs: { browser: './lib/empty-module.js' },
       path: { browser: './lib/empty-module.js' },
       crypto: { browser: './lib/empty-module.js' },
-      // Force splaytree to resolve from hoisted node_modules location
-      // polygon-clipping imports splaytree but Turbopack can't resolve it from .pnpm structure
-      splaytree: { browser: 'splaytree/dist/splay.js' },
     },
   },
   webpack: (config, { isServer }) => {

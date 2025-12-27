@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  splaytree: ^3.2.1
-
 importers:
 
   .:
@@ -182,9 +179,6 @@ importers:
       sonner:
         specifier: ^1.7.4
         version: 1.7.4(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-      splaytree:
-        specifier: ^3.2.1
-        version: 3.2.1
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.6.0
@@ -2779,8 +2773,8 @@ packages:
   splaytree-ts@1.0.2:
     resolution: {integrity: sha512-0kGecIZNIReCSiznK3uheYB8sbstLjCZLiwcQwbmLhgHJj2gz6OnSPkVzJQCMnmEz1BQ4gPK59ylhBoEWOhGNA==}
 
-  splaytree@3.2.1:
-    resolution: {integrity: sha512-l0U2X2+2PejAVQfjMlD8i2ijYGqbGrDT3aXqqOvfZxiWUdmLsDpjFjKPzcYC+BdmTVLTCepQplMlEUejkP9H4g==}
+  splaytree@3.2.3:
+    resolution: {integrity: sha512-7OXrNWzy6CK+r7Ch9OLPBDTKfB6XlWHjX4P0RU5B3IgFuWPeYN0XtRtlexGRjgbQxpfaUve6jTAwBGWuGntz/w==}
     engines: {node: '>=18.20 || >=20'}
 
   split@1.0.1:
@@ -6025,7 +6019,7 @@ snapshots:
   polygon-clipping@0.15.7:
     dependencies:
       robust-predicates: 3.0.2
-      splaytree: 3.2.1
+      splaytree: 3.2.3
 
   postcss-value-parser@4.2.0: {}
 
@@ -6343,7 +6337,7 @@ snapshots:
 
   splaytree-ts@1.0.2: {}
 
-  splaytree@3.2.1: {}
+  splaytree@3.2.3: {}
 
   split@1.0.1:
     dependencies:
