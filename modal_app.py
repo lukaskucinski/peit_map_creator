@@ -267,7 +267,11 @@ def process_file_task(
             total: int = 0,
             features: int = 0
         ):
-            """Write progress update to volume file for SSE poller to read."""
+            """Write progress update to volume file for SSE poller to read.
+
+            Note: Does NOT commit volume - relies on Modal's internal caching.
+            Final commit happens at task completion to persist all results.
+            """
             import time
             progress_data = {
                 'stage': stage,
@@ -280,7 +284,8 @@ def process_file_task(
             try:
                 with open(progress_file, 'w', encoding='utf-8') as f:
                     json.dump(progress_data, f)
-                results_volume.commit()  # Persist immediately
+                # No commit - Modal's volume caching allows SSE poller to read recent writes
+                # Final commit at task completion ensures data persisted
             except Exception as e:
                 # Don't fail processing if progress write fails
                 logger.warning(f"Failed to write progress: {e}")
@@ -374,6 +379,7 @@ def process_file_task(
                 logger.info(f"Uploaded PDF to blob: {pdf_blob_url}")
 
             emit_progress('blob_upload', completed=1, total=3)
+            time.sleep(0.3)  # Allow SSE poller to catch this progress state
 
             xlsx_path = temp_output / xlsx_filename
             if xlsx_path.exists():
@@ -386,6 +392,7 @@ def process_file_task(
                 logger.info(f"Uploaded XLSX to blob: {xlsx_blob_url}")
 
             emit_progress('blob_upload', completed=2, total=3)
+            time.sleep(0.3)  # Allow SSE poller to catch this progress state
         except Exception as blob_error:
             # Log but don't fail - map will work without report links
             logger.warning(f"Report blob upload failed (non-fatal): {blob_error}")
@@ -465,6 +472,7 @@ def process_file_task(
 
         # Final progress update (completes blob_upload stage)
         emit_progress('blob_upload', completed=3, total=3)
+        time.sleep(0.3)  # Allow SSE poller to catch 100% before completion event
 
         logger.info(f"Job {job_id} completed successfully")
 
@@ -805,8 +813,8 @@ def fastapi_app():
                 completed_weight += STAGE_WEIGHTS[stage] * 0.5
 
         # Round to nearest integer for smoother display (no jumps >1%)
-        # Cap at 95 until actually complete (never show 100% during processing)
-        return min(round(completed_weight), 95)
+        # Cap at 100 (allow progress to reach 100% naturally through final stages)
+        return min(round(completed_weight), 100)
 
     def format_progress_message(progress_data: dict) -> str:
         """Format user-friendly progress message based on stage."""
@@ -955,6 +963,37 @@ def fastapi_app():
                 poll_interval = 1.0  # Poll every 1 second (faster than old 3s)
                 last_progress_data = None
 
+                # Fake progress for upload/geometry stages (provides smooth UX during file processing)
+                # These emits happen on poller side (zero task overhead), real progress from task overrides
+                progress_file_path = Path(f"/results/{job_id}/progress.json")
+                fake_progress_stages = [
+                    (0.5, {'stage': 'upload', 'message': 'Uploading file...', 'progress': 1}),
+                    (1.0, {'stage': 'upload', 'message': 'File received, validating...', 'progress': 2}),
+                    (1.5, {'stage': 'geometry_input', 'message': 'Processing input geometry...', 'progress': 3}),
+                    (2.0, {'stage': 'geometry_input', 'message': 'Validating geometry...', 'progress': 4}),
+                ]
+
+                import time
+                start_time = time.time()
+                fake_idx = 0
+
+                while True:
+                    await asyncio.sleep(0.1)  # Small sleep to allow checking both fake and real progress
+
+                    # Emit fake progress if real progress hasn't started yet
+                    elapsed = time.time() - start_time
+                    if fake_idx < len(fake_progress_stages) and not progress_file_path.exists():
+                        delay, fake_event = fake_progress_stages[fake_idx]
+                        if elapsed >= delay:
+                            yield f"data: {json.dumps(fake_event)}\n\n"
+                            fake_idx += 1
+                        continue  # Skip to next iteration
+
+                    # Real progress started or all fake progress emitted - switch to normal polling
+                    if fake_idx >= len(fake_progress_stages) or progress_file_path.exists():
+                        break
+
+                # Normal polling loop (1 second intervals)
                 while True:
                     await asyncio.sleep(poll_interval)
 

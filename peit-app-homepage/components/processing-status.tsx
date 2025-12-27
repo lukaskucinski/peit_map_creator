@@ -366,12 +366,15 @@ export function ProcessingStatus({
               {latestUpdate?.message || "Initializing..."}
             </p>
 
-            {/* Layer progress details (only show during layer querying) */}
-            {(latestUpdate?.stage === 'layer_querying' || latestUpdate?.stage === 'layer_query') && latestUpdate?.totalLayers && (
+            {/* Layer progress details (only show during layer querying AND when we have actual layer data) */}
+            {(latestUpdate?.stage === 'layer_querying' || latestUpdate?.stage === 'layer_query') &&
+             latestUpdate?.totalLayers &&
+             latestUpdate?.currentLayer &&
+             latestUpdate.currentLayer > 0 && (
               <div className="mb-4 w-full max-w-md">
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>
-                    Layer {latestUpdate.currentLayer || 0} of {latestUpdate.totalLayers}
+                    Layer {latestUpdate.currentLayer} of {latestUpdate.totalLayers}
                   </span>
                   {latestUpdate.features_found !== undefined && (
                     <span className="text-primary font-medium">
