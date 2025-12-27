@@ -1975,7 +1975,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Project name and ID inputs with tooltips explaining their purpose
 - Buffer distance configuration (hidden for polygon inputs since polygons don't get buffered)
   - Minimum: 1ft (prevents empty geometries from 0ft buffer on points/lines)
-  - Maximum: 26,400ft (5 miles)
+  - Maximum: 5,280ft (1 mile)
   - Default: 500ft
   - Slider step: 100ft increments (slider label shows 1ft minimum)
   - Clickable value: Click the ft value to manually enter exact buffer distance
@@ -1986,7 +1986,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
   - Default: 0.2 mi
   - Clickable value: Click the mi value to manually enter exact clip distance
 - Real-time area estimation based on geometry and buffer settings
-- Area validation against 5,000 sq mi limit with warning at 2,500 sq mi
+- Area validation against 500 sq mi limit with warning at 250 sq mi
 - Uses `LabelWithTooltip` helper component for consistent tooltip UI
 
 **`components/processing-status.tsx`**
@@ -2001,7 +2001,9 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 **`components/dashboard/job-history-list.tsx`**
 - Renders job cards in Map History dashboard
 - Search bar filters by run ID, project name, project ID, or filename
-- Displays: project name, project ID, filename, status, timestamps, feature/layer counts
+- Displays: project name, project ID, filename, status, timestamps, feature/layer counts, input area
+- Input area displayed for completed jobs as "Area: X sq mi" (1 decimal place precision, shown under Features/Layers)
+- Only shown for completed jobs with non-null area values
 - Run ID (16-char job ID) shown in monospace font with copy-to-clipboard button and auto-dismissing toast (3s)
 - Action buttons: View Map, Download ZIP, PDF, Excel (for completed jobs)
 - Delete button with confirmation dialog
@@ -2454,7 +2456,7 @@ When anonymous users create maps, the jobs are stored with `user_id = NULL`. If 
 | Daily rate limit (anonymous) | 4 runs per day per IP address |
 | Daily rate limit (global) | 50 runs per day across all users |
 | Concurrent limit | 3 simultaneous jobs per IP |
-| Input geometry area limit | 5000 sq miles maximum |
+| Input geometry area limit | 500 sq miles maximum |
 | File size | 5MB (validated after upload) |
 | Request size | 6MB (early rejection via middleware) |
 | File types | Whitelist of geo extensions |
@@ -2480,8 +2482,8 @@ When anonymous users create maps, the jobs are stored with `user_id = NULL`. If 
 - Configurable via `MAX_GLOBAL_RUNS_PER_DAY` constant (default: 50)
 
 **Input Geometry Area Limit:**
-- Maximum input area: 5000 sq miles (configurable in `geometry_settings.max_input_area_sq_miles`)
-- Warning threshold: 2500 sq miles (displays yellow warning)
+- Maximum input area: 500 sq miles (configurable in `geometry_settings.max_input_area_sq_miles`)
+- Warning threshold: 250 sq miles (displays yellow warning suggesting map performance may degrade)
 - Validated on backend after geometry processing (includes buffer)
 - Frontend displays estimated area for GeoJSON files and drawn geometries
 - Uses turf.js for client-side area estimation
