@@ -176,6 +176,7 @@ def process_file_task(
     import zipfile
     import tempfile
     import shutil
+    import time
     from datetime import datetime
     from pathlib import Path
 
@@ -272,7 +273,6 @@ def process_file_task(
             Note: Does NOT commit volume - relies on Modal's internal caching.
             Final commit happens at task completion to persist all results.
             """
-            import time
             progress_data = {
                 'stage': stage,
                 'layer_name': layer_name,
