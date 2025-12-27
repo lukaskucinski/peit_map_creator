@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  splaytree: ^3.2.1
+
 importers:
 
   .:
