@@ -699,6 +699,40 @@ window.addEventListener('load', function() {
 
 **Result:** Page automatically refreshes on browser back/forward navigation, ensuring layer visibility and checkbox states are always synchronized.
 
+### Active Job Tracking
+
+To prevent completion events from abandoned jobs from interrupting new workflows, the web frontend tracks the "active job ID" using a ref.
+
+**Problem:**
+When a user initiates a processing run and then starts a new workflow (drawing geometry, uploading a different file, or configuring settings), the completion of the **first run** would interrupt the current workflow by forcing the UI to the "Processing Complete!" screen. This happened because the SSE completion event triggered a state update regardless of what the user was currently doing.
+
+**Solution:**
+The app uses `activeJobIdRef` to track which job the user is currently interested in. When a completion event arrives, it checks if the completing job matches the active job - if not, the completion is ignored.
+
+**Implementation:**
+- `activeJobIdRef` (ref) stores UUID of the job the user is currently waiting for
+- Set when `handleRun()` starts processing (generates temporary UUID via `crypto.randomUUID()`)
+- Checked when completion event arrives - mismatched IDs are ignored and logged
+- Cleared when user clicks "Process Another File" or signs out
+- Restored from sessionStorage on OAuth redirect to preserve completion screen
+
+**Console Logging:**
+All job tracking events are logged with `[JOB TRACKING]` prefix for debugging:
+- `Starting new job: {uuid}`
+- `Job {uuid} completed. Active job: {uuid}`
+- `Ignoring completion for abandoned job: {uuid}`
+- `Processing completion for active job: {uuid}`
+
+**Key Files:**
+- `peit-app-homepage/app/page.tsx`: Active job tracking logic (lines 73-75, 430-537, 556-558, 289)
+
+**Edge Cases Handled:**
+- User clicks "Process Another" while job running → Active job cleared, completion ignored
+- Multiple jobs running simultaneously → Only most recent job's completion processed
+- OAuth redirect during processing → Active job ID restored from sessionStorage
+- Sign out during processing → Active job cleared on sign out
+- Page refresh → Session restoration sets active job from storage
+
 ### Layer Z-Index Management
 
 The tool maintains stable layer rendering order based on the layer list hierarchy in the right panel.
