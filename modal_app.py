@@ -33,7 +33,7 @@ MAX_RUNS_PER_DAY_ANONYMOUS = 2  # Anonymous users (IP-based)
 
 # Modal Dict for authenticated user rate limiting (user_id-based)
 user_rate_limit_dict = modal.Dict.from_name("peit-user-rate-limits", create_if_missing=True)
-MAX_RUNS_PER_DAY_AUTHENTICATED = 20  # Authenticated users
+MAX_RUNS_PER_DAY_AUTHENTICATED = 40  # Authenticated users
 
 # Modal Dict for tracking active jobs per IP
 active_jobs_dict = modal.Dict.from_name("peit-active-jobs", create_if_missing=True)
@@ -41,7 +41,7 @@ MAX_CONCURRENT_JOBS_PER_IP = 3
 
 # Modal Dict for global rate limit (across all users)
 global_rate_limit_dict = modal.Dict.from_name("peit-global-rate-limit", create_if_missing=True)
-MAX_GLOBAL_RUNS_PER_DAY = 50
+MAX_GLOBAL_RUNS_PER_DAY = 100
 
 # Maximum input geometry area in square miles
 MAX_INPUT_AREA_SQ_MILES = 500
