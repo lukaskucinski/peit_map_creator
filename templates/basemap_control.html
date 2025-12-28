@@ -20,6 +20,19 @@
         right: 10px !important;
     }
 
+    /* Mobile override - basemap always stays at right edge */
+    @media (max-width: 768px) {
+        .leaflet-control-basemap {
+            right: 10px !important;
+        }
+
+        /* Override desktop positioning rules on mobile */
+        body:not(.panel-right-collapsed) .leaflet-control-basemap,
+        body.panel-right-collapsed .leaflet-control-basemap {
+            right: 10px !important;
+        }
+    }
+
     /* Collapsed Button - Shows layers icon */
     .basemap-toggle-btn {
         width: 34px;
