@@ -137,7 +137,7 @@ export function ProcessingStatus({
   const loggedLayersRef = useRef(new Set<string>())
   const runningFeatureTotalRef = useRef(0)
 
-  // Client-side fun message rotation (changes every 1.5 seconds consistently)
+  // Client-side fun message rotation (changes every 3 seconds consistently)
   const [funMessage, setFunMessage] = useState('')
   const funMessageInitialized = useRef(false)
 
@@ -179,7 +179,7 @@ export function ProcessingStatus({
     return () => clearInterval(interval)
   }, [startTime, isComplete, isError])
 
-  // Client-side fun message rotation (every 1.5 seconds during layer querying)
+  // Client-side fun message rotation (every 3 seconds during layer querying)
   useEffect(() => {
     if (isComplete || isError) {
       funMessageInitialized.current = false
@@ -197,10 +197,10 @@ export function ProcessingStatus({
       funMessageInitialized.current = true
     }
 
-    // Set up interval to rotate messages every 1.5 seconds
+    // Set up interval to rotate messages every 3 seconds
     const interval = setInterval(() => {
       setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
-    }, 1500) // Change every 1.5 seconds
+    }, 3000) // Change every 3 seconds
 
     return () => clearInterval(interval)
   }, [latestUpdate?.stage, isComplete, isError])
