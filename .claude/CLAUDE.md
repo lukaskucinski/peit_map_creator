@@ -2683,13 +2683,15 @@ def cleanup_old_results():
 
 ### Enhanced Progress Tracking
 
-The tool uses a weight-based progress tracking system that accurately reflects actual processing work through layer-level SSE events.
+The tool uses a weight-based progress tracking system with runtime prediction and client-side fun messages that accurately reflects actual processing work through layer-level SSE events.
 
 **Architecture:**
 - Backend writes progress data to Modal Volume (`/results/{job_id}/progress.json`)
-- SSE poller reads progress file every 1 second (faster than old 3s)
+- SSE poller reads progress file every 1 second
 - Weighted progress calculation based on stage completion and layer counts
 - Frontend displays layer-by-layer progress with feature counts and running totals
+- **Bellwether-based runtime prediction** using first 3 layers (RCRA, NPDES, Wetlands)
+- **Client-side fun message rotation** (57 messages, 1.5s intervals)
 
 **Stage Weights (Hardcoded):**
 ```python
@@ -2703,6 +2705,35 @@ STAGE_WEIGHTS = {
 }
 ```
 
+**Runtime Prediction System:**
+
+The system uses **bellwether layers** (layers queried first that are highly predictive of total runtime) to estimate job completion time:
+
+1. **Bellwether Layers** (queried first via `prioritize_bellwether_layers()`):
+   - Resource Conservation and Recovery Act (RCRA)
+   - National Pollutant Discharge Elimination System Sites (NPDES)
+   - USFWS Wetlands
+
+2. **Initial Prediction** (after 3 layers):
+   - `predict_runtime(rcra_count, npdes_count, wetlands_count)` → estimated total time
+   - Feature count thresholds based on empirical data:
+     - 0-10 features: ~30s total
+     - 10-50 features: ~60s total
+     - 50-100 features: ~75s total
+     - 100-200 features: ~90s total
+     - 200-1000 features: ~165s total
+     - 1000-10000 features: 165s-600s (linear interpolation)
+
+3. **Refined Prediction** (every 10 layers after 20):
+   - Blends initial estimate (40%) with observed processing rate (60%)
+   - Prevents wild swings while adapting to actual performance
+   - `refine_prediction(elapsed, completed, total, initial_estimate)`
+
+4. **End-Stage Time Weighting** (client-side):
+   - Frontend receives `input_area_sq_miles` and `bellwether_feature_counts`
+   - Adds extra time for large areas (>50 sq mi) and high feature density (>500 features)
+   - Accounts for map/report generation time based on complexity
+
 **Progress Calculation:**
 For layer querying (92% of total time):
 - `layer_weight = 92 / total_layers` (e.g., ~0.70% per layer with 131 layers)
@@ -2710,59 +2741,111 @@ For layer querying (92% of total time):
 - Each layer completion triggers small, predictable progress increment (~1%)
 - Uses `round()` instead of `int()` for smoother single-digit increments
 
+**Dynamic Progress Caps** (prevents "stuck at 99%"):
+- `layer_querying`: 99% (allows final stages to show movement)
+- `map_generation`: 94% (shows map gen progress)
+- `report_generation`: 96% (shows report gen progress)
+- `blob_upload`: 98% (shows upload progress)
+- `complete`: 100%
+
+**Fun Message System:**
+
+During layer querying, users see rotating fun messages (57 total) instead of technical layer names:
+
+- **Client-side rotation**: Messages rotate every 1.5 seconds exactly
+- **No SSE dependency**: Uses React useEffect timer for consistency
+- **Constant array**: `FUN_MESSAGES` defined outside component to prevent re-creation
+- **Examples**:
+  - "Consulting the map spirits..."
+  - "Bribing the servers with cookies..."
+  - "Channeling the spirit of Mercator..."
+  - "Herding cats with GPS collars..."
+  - "Teaching patience to impatient queries..."
+
 **Backend Implementation** (`modal_app.py`):
 - `emit_progress()`: Writes progress data to volume file with immediate commit
 - `calculate_weighted_progress()`: Calculates progress percentage from stage/layer data
 - `format_progress_message()`: Generates user-friendly progress messages
 - `event_generator()`: SSE polling loop reads progress file and emits events
+- `prioritize_bellwether_layers()`: Reorders layer list to run bellwethers first
+- `predict_runtime()`: Calculates initial time estimate from bellwether feature counts
+- `refine_prediction()`: Adjusts estimate based on observed processing rate
 
 **Layer Callback** (`core/layer_processor.py`):
 - `process_all_layers()` accepts optional `progress_callback` parameter
 - Callback invoked after each layer completes with: `(layer_name, completed, total, features_found)`
+- Tracks bellwether feature counts for runtime prediction
+- Emits `estimated_completion_time` and `bellwether_feature_counts` in SSE events
 - Wrapped in try/except to prevent processing failure if callback fails
 
 **Progress File Format** (`progress.json`):
 ```json
 {
   "stage": "layer_query",
-  "layer_name": "RCRA Sites",
+  "layer_name": "Resource Conservation and Recovery Act (RCRA)",
   "completed_layers": 42,
   "total_layers": 131,
   "features_found": 156,
+  "estimated_completion_time": 82.5,
+  "input_area_sq_miles": 125.3,
+  "bellwether_feature_counts": {
+    "rcra": 45,
+    "npdes": 23,
+    "wetlands": 189
+  },
   "timestamp": 1704723456.789
 }
 ```
 
 **SSE Event Fields:**
 - `stage`: Current processing stage (geometry_input, layer_querying, etc.)
-- `message`: User-friendly progress message (e.g., "Querying RCRA Sites... (42/131 layers)")
-- `progress`: Weighted progress percentage (0-95 during processing, 100 on complete)
+- `message`: Fun message rotating client-side (during layer_querying)
+- `progress`: Weighted progress percentage (0-99 during processing, 100 on complete)
 - `layer_name`: Name of current layer being queried (during layer_querying)
 - `currentLayer`: Layers completed (1-indexed)
 - `totalLayers`: Total layers to process
 - `features_found`: Features found in current layer
+- `estimated_completion_time`: Predicted total job time in seconds (after 3 layers)
+- `input_area_sq_miles`: Input area size for end-stage time weighting
+- `bellwether_feature_counts`: Feature counts from RCRA, NPDES, Wetlands (after 3 layers)
 
 **Frontend Display** (`components/processing-status.tsx`):
-- Shows current layer name and "Layer X of Y" counter
-- Displays feature count for current layer
+- Shows fun messages rotating every 1.5 seconds during layer querying
+- Displays progress bar with dynamic caps (prevents stuck at 99%)
+- Time-based progress estimation using `estimated_completion_time`
 - Maintains running total of features across all layers
 - Progress bar moves smoothly with each layer completion (~0.65% per layer)
+
+**Performance Metrics Tracking:**
+
+After job completion, performance metrics are written to the `jobs` table in Supabase:
+
+- `rcra_feature_count`: Features found in RCRA layer
+- `npdes_feature_count`: Features found in NPDES layer
+- `wetlands_feature_count`: Features found in Wetlands layer
+- `total_runtime_seconds`: Total job processing time
+- `geometry_processing_seconds`: Time spent processing input geometry (~15s estimate)
+- `layer_querying_seconds`: Time spent querying all layers
+- `total_layers_queried`: Number of layers processed
+- `initial_prediction_seconds`: Initial bellwether-based prediction
+- `final_prediction_seconds`: Final refined prediction
+- `prediction_error_seconds`: Absolute error between prediction and actual runtime
 
 **Benefits:**
 - ✅ Progress accuracy within ±5% of actual completion
 - ✅ Layer-level visibility with names and feature counts
-- ✅ Smooth progress updates (1-2 events/second vs old 1 per 3s)
-- ✅ No "stuck at 85%" issues - progress matches actual work
+- ✅ Smooth progress updates (1-2 events/second)
+- ✅ No "stuck at 99%" issues - dynamic caps show end-stage movement
 - ✅ Minimal overhead (<0.3% of processing time, <100KB I/O per job)
+- ✅ Runtime prediction after first 3 layers (30-90s accuracy)
+- ✅ Fun messages keep users engaged during long processing
+- ✅ Performance metrics collected for analysis and optimization
 
 **Example User Experience:**
 ```
 Processing: vermont_sites.gpkg
 [===============>  ] 87%
-Querying USACE Navigable Waterways... (115/131 layers)
-Layer 115 of 131                     45 features
-USACE Navigable Waterways
-Total: 5,247 features found
+Bribing the servers with cookies...
 Elapsed: 2:15
 ```
 
