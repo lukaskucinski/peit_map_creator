@@ -11,7 +11,7 @@
         transition: right 0.3s ease-in-out;
     }
 
-    /* Responsive positioning - shift with right panel */
+    /* Responsive positioning - shift with right panel (DESKTOP ONLY) */
     body:not(.panel-right-collapsed) .leaflet-control-basemap {
         right: 360px !important;
     }
@@ -20,16 +20,17 @@
         right: 10px !important;
     }
 
-    /* Mobile override - basemap always stays at right edge */
+    /* Mobile override - use .panel-open-right class instead */
     @media (max-width: 768px) {
-        .leaflet-control-basemap {
-            right: 10px !important;
-        }
-
-        /* Override desktop positioning rules on mobile */
+        /* Reset desktop rules */
         body:not(.panel-right-collapsed) .leaflet-control-basemap,
         body.panel-right-collapsed .leaflet-control-basemap {
-            right: 10px !important;
+            right: 10px;  /* Default collapsed state */
+        }
+
+        /* When panel is OPEN on mobile, shift basemap left */
+        body.panel-open-right .leaflet-control-basemap {
+            right: 360px !important;
         }
     }
 
