@@ -139,6 +139,7 @@ export function ProcessingStatus({
 
   // Client-side fun message rotation (changes every 1.5 seconds consistently)
   const [funMessage, setFunMessage] = useState('')
+  const funMessageInitialized = useRef(false)
 
   // Copy map URL to clipboard
   const copyMapUrl = async () => {
@@ -180,20 +181,29 @@ export function ProcessingStatus({
 
   // Client-side fun message rotation (every 1.5 seconds during layer querying)
   useEffect(() => {
-    if (isComplete || isError) return
-    if (latestUpdate?.stage !== 'layer_query' && latestUpdate?.stage !== 'layer_querying') return
-
-    // Pick initial random message
-    if (!funMessage) {
-      setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
+    if (isComplete || isError) {
+      funMessageInitialized.current = false
+      return
     }
 
+    if (latestUpdate?.stage !== 'layer_query' && latestUpdate?.stage !== 'layer_querying') {
+      funMessageInitialized.current = false
+      return
+    }
+
+    // Pick initial random message only once when entering layer querying stage
+    if (!funMessageInitialized.current) {
+      setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
+      funMessageInitialized.current = true
+    }
+
+    // Set up interval to rotate messages every 1.5 seconds
     const interval = setInterval(() => {
       setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
     }, 1500) // Change every 1.5 seconds
 
     return () => clearInterval(interval)
-  }, [latestUpdate?.stage, isComplete, isError, funMessage])
+  }, [latestUpdate?.stage, isComplete, isError])
 
   // Track running feature total (no logging - for internal tracking only)
   useEffect(() => {
