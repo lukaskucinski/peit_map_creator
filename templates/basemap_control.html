@@ -22,10 +22,10 @@
 
     /* Mobile override - use .panel-open-right class instead */
     @media (max-width: 768px) {
-        /* Reset desktop rules */
+        /* Reset desktop rules - MUST use !important to override desktop !important */
         body:not(.panel-right-collapsed) .leaflet-control-basemap,
         body.panel-right-collapsed .leaflet-control-basemap {
-            right: 10px;  /* Default collapsed state */
+            right: 10px !important;  /* Override desktop !important */
         }
 
         /* When panel is OPEN on mobile, shift basemap left */
