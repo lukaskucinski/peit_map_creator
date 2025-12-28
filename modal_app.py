@@ -150,6 +150,117 @@ def get_supabase_client():
         return None
 
 
+def prioritize_bellwether_layers(layers_config: list) -> list:
+    """Reorder layers to run bellwether layers first for runtime prediction.
+
+    Bellwether layers (RCRA, NPDES, USFWS Wetlands) are ubiquitous across the US
+    and their feature counts are highly predictive of total job runtime.
+
+    Args:
+        layers_config: List of layer configuration dicts
+
+    Returns:
+        Reordered list with bellwethers first, then remaining layers
+    """
+    bellwether_names = [
+        'RCRA Sites',
+        'NPDES Sites',
+        'USFWS National Wetlands Inventory'
+    ]
+
+    bellwethers = []
+    others = []
+
+    for layer in layers_config:
+        if layer.get('name') in bellwether_names:
+            bellwethers.append(layer)
+        else:
+            others.append(layer)
+
+    return bellwethers + others
+
+
+def predict_runtime(rcra_count: int, npdes_count: int, wetlands_count: int) -> float:
+    """Predict total job runtime based on bellwether layer feature counts.
+
+    Uses empirically-derived thresholds from production data:
+    - 0-10 features: ~30s total
+    - 10-50 features: ~60s total
+    - 50-100 features: ~75s total
+    - 100-200 features: ~90s total
+    - 200-1000 features: ~165s total
+    - 1000-10000 features: 165s-600s (linear interpolation)
+
+    Args:
+        rcra_count: Feature count from RCRA Sites layer
+        npdes_count: Feature count from NPDES Sites layer
+        wetlands_count: Feature count from USFWS Wetlands layer
+
+    Returns:
+        Estimated total runtime in seconds
+    """
+    # Use max of the three as primary predictor
+    max_features = max(rcra_count, npdes_count, wetlands_count)
+
+    # Base time for file upload + geometry processing
+    base_time = 15.0
+
+    # Feature-based prediction using empirical thresholds
+    if max_features <= 10:
+        return base_time + 15  # ~30s total
+    elif max_features <= 50:
+        return base_time + 45  # ~60s total
+    elif max_features <= 100:
+        return base_time + 60  # ~75s total
+    elif max_features <= 200:
+        return base_time + 75  # ~90s total
+    elif max_features <= 1000:
+        return base_time + 150  # ~165s total
+    else:
+        # Linear interpolation for very large jobs (1000-10000 features)
+        # 10,000 features = ~10 minutes = 600s total
+        return base_time + 150 + ((max_features - 1000) / 9000 * 435)
+
+
+def refine_prediction(
+    elapsed: float,
+    completed: int,
+    total: int,
+    initial_estimate: float
+) -> float:
+    """Refine runtime prediction based on observed processing rate.
+
+    After ~20 layers, we have enough data to calculate actual processing rate
+    and adjust the initial bellwether-based prediction.
+
+    Args:
+        elapsed: Seconds elapsed since job start
+        completed: Number of layers completed
+        total: Total number of layers to process
+        initial_estimate: Initial prediction from bellwether features
+
+    Returns:
+        Refined estimated total runtime in seconds
+    """
+    if completed < 20:
+        # Not enough data yet, trust bellwether prediction
+        return initial_estimate
+
+    # Calculate observed processing rate
+    actual_rate = completed / elapsed
+
+    # Estimate remaining time based on observed rate
+    remaining_layers = total - completed
+    remaining_time = remaining_layers / actual_rate
+
+    # Blend initial estimate (40%) with observed projection (60%)
+    # This prevents wild swings while still adapting to actual performance
+    observed_total = elapsed + remaining_time
+    refined_estimate = (initial_estimate * 0.4) + (observed_total * 0.6)
+
+    return refined_estimate
+
+
 @app.function(
     image=peit_image,
     timeout=600,
@@ -229,6 +340,9 @@ def process_file_task(
         # Load configuration
         config = load_config()
 
+        # Prioritize bellwether layers for runtime prediction
+        config['layers'] = prioritize_bellwether_layers(config['layers'])
+
         # Override geometry settings with user parameters
         if "geometry_settings" not in config:
             config["geometry_settings"] = {}
@@ -266,7 +380,10 @@ def process_file_task(
             layer_name: str = None,
             completed: int = 0,
             total: int = 0,
-            features: int = 0
+            features: int = 0,
+            estimated_completion_time: float = None,
+            input_area_sq_miles: float = None,
+            bellwether_feature_counts: dict = None
         ):
             """Write progress update to volume file for SSE poller to read.
 
@@ -281,6 +398,19 @@ def process_file_task(
                 'features_found': features,
                 'timestamp': time.time()
             }
+
+            # Add estimated completion time if provided
+            if estimated_completion_time is not None:
+                progress_data['estimated_completion_time'] = estimated_completion_time
+
+            # Add input area size if provided (for end-stage time weighting)
+            if input_area_sq_miles is not None:
+                progress_data['input_area_sq_miles'] = input_area_sq_miles
+
+            # Add bellwether feature counts if provided (for end-stage weighting)
+            if bellwether_feature_counts is not None:
+                progress_data['bellwether_feature_counts'] = bellwether_feature_counts
+
             try:
                 with open(progress_file, 'w', encoding='utf-8') as f:
                     json.dump(progress_data, f)
@@ -297,12 +427,80 @@ def process_file_task(
         # Geometry processing happens here (pipeline.process_geometry already ran)
         # This stage represents validation and final geometry preparation
 
-        emit_progress('geometry_input', completed=1, total=1)
+        # Emit with area size for frontend end-stage time weighting
+        emit_progress(
+            'geometry_input',
+            completed=1,
+            total=1,
+            input_area_sq_miles=round(actual_area, 2) if actual_area else None
+        )
 
-        # Layer callback for progress tracking
+        # Track job start time for runtime prediction
+        job_start_time = time.time()
+        estimated_total_time = 45.0  # Initial default estimate (seconds)
+        bellwether_counts = {}  # Store feature counts from bellwether layers
+
+        # Layer callback for progress tracking with prediction
         def layer_callback(name, completed, total, features):
-            """Called after each layer completes."""
-            emit_progress('layer_query', name, completed, total, features)
+            """Called after each layer completes. Implements runtime prediction."""
+            nonlocal estimated_total_time, bellwether_counts
+
+            # Track bellwether layer feature counts
+            if name in ['Resource Conservation and Recovery Act (RCRA)',
+                        'National Pollutant Discharge Elimination System Sites (NPDES)',
+                        'USFWS Wetlands']:
+                bellwether_counts[name] = features
+                logger.info(f"[BELLWETHER] Captured {name}: {features} features")
+
+            # After first 3 layers (all bellwethers), make initial prediction
+            if completed == 3 and len(bellwether_counts) == 3:
+                rcra = bellwether_counts.get('Resource Conservation and Recovery Act (RCRA)', 0)
+                npdes = bellwether_counts.get('National Pollutant Discharge Elimination System Sites (NPDES)', 0)
+                wetlands = bellwether_counts.get('USFWS Wetlands', 0)
+
+                estimated_total_time = predict_runtime(rcra, npdes, wetlands)
+                logger.info(
+                    f"Bellwether prediction: {estimated_total_time:.0f}s "
+                    f"(RCRA={rcra}, NPDES={npdes}, Wetlands={wetlands})"
+                )
+
+                emit_progress(
+                    'layer_query',
+                    name,
+                    completed,
+                    total,
+                    features,
+                    estimated_completion_time=estimated_total_time,
+                    bellwether_feature_counts={
+                        'rcra': rcra,
+                        'npdes': npdes,
+                        'wetlands': wetlands
+                    }
+                )
+
+            # Every 10 layers after 20, refine prediction based on observed rate
+            elif completed >= 20 and completed % 10 == 0:
+                elapsed = time.time() - job_start_time
+                refined_estimate = refine_prediction(
+                    elapsed, completed, total, estimated_total_time
+                )
+                estimated_total_time = refined_estimate
+                logger.info(
+                    f"Refined prediction: {estimated_total_time:.0f}s "
+                    f"({completed}/{total} layers, {elapsed:.0f}s elapsed)"
+                )
+
+                emit_progress(
+                    'layer_query',
+                    name,
+                    completed,
+                    total,
+                    features,
+                    estimated_completion_time=estimated_total_time
+                )
+            else:
+                # Regular progress update
+                emit_progress('layer_query', name, completed, total, features)
 
         # Process all layers with progress callback
         emit_progress('layer_querying', total=len(config['layers']))
@@ -476,9 +674,51 @@ def process_file_task(
 
         logger.info(f"Job {job_id} completed successfully")
 
+        # Calculate total runtime
+        total_runtime = time.time() - job_start_time
+
         # Update job record with completion status
         if supabase:
             try:
+                # Prepare performance metrics if bellwether data available
+                performance_metrics = {}
+                if bellwether_counts and len(bellwether_counts) == 3:
+                    logger.info(f"[METRICS] Bellwether data available - calculating performance metrics")
+
+                    # Calculate geometry processing time (approximate)
+                    geometry_processing_time = 15.0  # Rough estimate based on base_time
+                    layer_querying_time = total_runtime - geometry_processing_time
+
+                    # Calculate prediction error
+                    initial_prediction = predict_runtime(
+                        bellwether_counts.get('Resource Conservation and Recovery Act (RCRA)', 0),
+                        bellwether_counts.get('National Pollutant Discharge Elimination System Sites (NPDES)', 0),
+                        bellwether_counts.get('USFWS Wetlands', 0)
+                    )
+                    prediction_error = abs(total_runtime - estimated_total_time)
+
+                    performance_metrics = {
+                        'rcra_feature_count': bellwether_counts.get('Resource Conservation and Recovery Act (RCRA)', 0),
+                        'npdes_feature_count': bellwether_counts.get('National Pollutant Discharge Elimination System Sites (NPDES)', 0),
+                        'wetlands_feature_count': bellwether_counts.get('USFWS Wetlands', 0),
+                        'total_runtime_seconds': round(total_runtime, 1),
+                        'geometry_processing_seconds': round(geometry_processing_time, 1),
+                        'layer_querying_seconds': round(layer_querying_time, 1),
+                        'total_layers_queried': len(config['layers']),
+                        'initial_prediction_seconds': round(initial_prediction, 1),
+                        'final_prediction_seconds': round(estimated_total_time, 1),
+                        'prediction_error_seconds': round(prediction_error, 1),
+                    }
+
+                    logger.info(
+                        f"[METRICS] Performance metrics calculated: {total_runtime:.0f}s actual, "
+                        f"{estimated_total_time:.0f}s predicted, "
+                        f"{prediction_error:.0f}s error"
+                    )
+                else:
+                    logger.info(f"[METRICS] Bellwether data incomplete - skipping metrics (dict has {len(bellwether_counts)} entries)")
+
+                # Update job record with completion status and performance metrics
                 supabase.table('jobs').update({
                     'status': 'complete',
                     'completed_at': datetime.now().isoformat(),
@@ -486,10 +726,15 @@ def process_file_task(
                     'layers_with_data': summary["layers_with_data"],
                     'input_area_sq_miles': round(actual_area, 2) if actual_area else None,
                     'map_url': f'https://peit-map-creator.com/maps/{job_id}',
+                    'map_blob_url': map_blob_url if 'map_blob_url' in locals() else None,
                     'pdf_url': pdf_blob_url,
                     'xlsx_url': xlsx_blob_url,
                     'zip_download_path': f'/api/download/{job_id}',
+                    **performance_metrics  # Merge performance metrics into update
                 }).eq('id', job_id).execute()
+
+                logger.info(f"[METRICS] Job record updated with performance metrics")
+
             except Exception as db_error:
                 logger.warning(f"Failed to update job record: {db_error}")
 
@@ -823,23 +1068,78 @@ def fastapi_app():
         completed = progress_data.get('completed_layers', 0)
         total = progress_data.get('total_layers', 0)
 
+        # Fun random messages for layer querying stage
+        fun_messages = [
+            "Charting the rivers...",
+            "Protecting the bald eagles...",
+            "Containing the toxic waste...",
+            "Mapping the wetlands...",
+            "Locating historic landmarks...",
+            "Tracking endangered species...",
+            "Surveying the floodplains...",
+            "Identifying tribal lands...",
+            "Monitoring air quality...",
+            "Checking water permits...",
+            "Scanning for hazardous sites...",
+            "Protecting the coral reefs...",
+            "Safeguarding the gray wolves...",
+            "Preserving the redwoods...",
+            "Documenting the pipelines...",
+            "Tracking the grizzly bears...",
+            "Mapping railroad crossings...",
+            "Locating power plants...",
+            "Surveying federal lands...",
+            "Checking navigable waters...",
+            "Protecting the sea turtles...",
+            "Monitoring landfill sites...",
+            "Tracking the whooping cranes...",
+            "Preserving the salmon habitat...",
+            "Identifying wilderness areas...",
+            "Safeguarding the manatees...",
+            "Charting the coastline...",
+            "Locating broadcast towers...",
+            "Mapping the aquifers...",
+            "Protecting the spotted owls...",
+            "Surveying the parklands...",
+            "Checking emission sites...",
+            "Tracking the desert tortoises...",
+            "Preserving the old growth forests...",
+            "Identifying critical habitats...",
+            "Safeguarding the condors...",
+            "Mapping the fault lines...",
+            "Locating the easements...",
+            "Surveying the conservation areas...",
+            "Protecting the butterfly sanctuaries...",
+            "Monitoring the superfund sites...",
+            "Tracking the peregrine falcons...",
+            "Preserving the grasslands...",
+            "Identifying the watersheds...",
+            "Safeguarding the lynx habitat...",
+            "Charting the mineral rights...",
+            "Locating the substations...",
+            "Mapping the wildlife corridors...",
+            "Protecting the kelp forests...",
+            "Surveying the heritage sites..."
+        ]
+
         if stage == 'upload':
             return 'File received, starting processing...'
         elif stage == 'geometry_input':
             return 'Processing input geometry...'
         elif stage in ['layer_querying', 'layer_query']:
-            if layer_name:
-                return f'Querying {layer_name}... ({completed}/{total} layers)'
-            elif total > 0:
-                return f'Querying environmental layers... ({completed}/{total})'
-            else:
-                return 'Querying environmental layers...'
+            # Use fun random message (changes every 2 seconds based on timestamp)
+            import random
+            import time
+            # Seed by 1.5-second intervals to rotate messages every 1.5 seconds
+            seed_value = int(time.time() // 1.5)
+            random.seed(seed_value)
+            return random.choice(fun_messages)
         elif stage == 'map_generation':
             return 'Generating interactive map...'
         elif stage == 'report_generation':
             return 'Creating PDF and Excel reports...'
         elif stage == 'blob_upload':
-            return 'Uploading to cloud storage...'
+            return 'Uploading to the cloud...'
         else:
             return 'Processing...'
 
@@ -964,13 +1264,18 @@ def fastapi_app():
                 last_progress_data = None
 
                 # Fake progress for upload/geometry stages (provides smooth UX during file processing)
+                # Extended to 15% to cover typical geometry processing time (10-15 seconds)
                 # These emits happen on poller side (zero task overhead), real progress from task overrides
                 progress_file_path = Path(f"/results/{job_id}/progress.json")
                 fake_progress_stages = [
                     (0.5, {'stage': 'upload', 'message': 'Uploading file...', 'progress': 1}),
                     (1.0, {'stage': 'upload', 'message': 'File received, validating...', 'progress': 2}),
-                    (1.5, {'stage': 'geometry_input', 'message': 'Processing input geometry...', 'progress': 3}),
-                    (2.0, {'stage': 'geometry_input', 'message': 'Validating geometry...', 'progress': 4}),
+                    (2.0, {'stage': 'geometry_input', 'message': 'Processing input geometry...', 'progress': 4}),
+                    (4.0, {'stage': 'geometry_input', 'message': 'Validating geometry...', 'progress': 6}),
+                    (6.0, {'stage': 'geometry_input', 'message': 'Reprojecting coordinates...', 'progress': 8}),
+                    (8.0, {'stage': 'geometry_input', 'message': 'Buffering geometry...', 'progress': 10}),
+                    (10.0, {'stage': 'geometry_input', 'message': 'Finalizing geometry...', 'progress': 12}),
+                    (12.0, {'stage': 'geometry_input', 'message': 'Preparing to query layers...', 'progress': 15}),
                 ]
 
                 import time
