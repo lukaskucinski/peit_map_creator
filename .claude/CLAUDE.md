@@ -1521,6 +1521,7 @@ The generated HTML map includes several interactive features:
 
 #### Mobile Responsiveness
 - On screens ≤768px wide, both panels are collapsed by default to maximize map visibility
+- **Body classes initialized on load**: `panel-right-collapsed` set for mobile to ensure basemap control positions correctly
 - Users can still expand panels by clicking the toggle buttons
 - Desktop behavior unchanged (panels open by default)
 - Leaflet controls adjust position based on panel state

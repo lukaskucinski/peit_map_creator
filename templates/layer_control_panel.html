@@ -1008,8 +1008,9 @@
         var icon = document.getElementById('layer-toggle-icon');
 
         if (isMobile) {
-            // On mobile, CSS handles the initial collapsed state via :not(.panel-open)
-            // Just update the icon to show correct direction
+            // On mobile, panel starts collapsed - set body class to match
+            document.body.classList.add('panel-right-collapsed');
+            // Update icon to show correct direction
             icon.textContent = '◄';
         }
     }
