@@ -2757,6 +2757,10 @@ During layer querying, users see rotating fun messages (57 total) instead of tec
 - **Constant array**: `FUN_MESSAGES` defined outside component to prevent re-creation
 - **Initialization tracking**: Uses ref (`funMessageInitialized`) to set initial message only once
 - **Stable interval**: `funMessage` state NOT in dependency array to prevent interval recreation
+- **No repeats**: Messages cycle through entire pool before repeating (uses `remainingMessages` ref)
+  - Pool refills automatically when empty
+  - Each message shown exactly once per cycle
+  - Random selection within remaining pool
 - **Examples**:
   - "Consulting the map spirits..."
   - "Bribing the servers with cookies..."

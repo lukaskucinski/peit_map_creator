@@ -140,6 +140,7 @@ export function ProcessingStatus({
   // Client-side fun message rotation (changes every 3 seconds consistently)
   const [funMessage, setFunMessage] = useState('')
   const funMessageInitialized = useRef(false)
+  const remainingMessages = useRef<string[]>([])  // Pool of unshown messages
 
   // Copy map URL to clipboard
   const copyMapUrl = async () => {
@@ -179,27 +180,46 @@ export function ProcessingStatus({
     return () => clearInterval(interval)
   }, [startTime, isComplete, isError])
 
+  // Helper function to get next random message without repeating until all shown
+  const getNextFunMessage = () => {
+    // If pool is empty, refill with all messages
+    if (remainingMessages.current.length === 0) {
+      remainingMessages.current = [...FUN_MESSAGES]
+    }
+
+    // Pick random message from remaining pool
+    const randomIndex = Math.floor(Math.random() * remainingMessages.current.length)
+    const message = remainingMessages.current[randomIndex]
+
+    // Remove selected message from pool
+    remainingMessages.current.splice(randomIndex, 1)
+
+    return message
+  }
+
   // Client-side fun message rotation (every 3 seconds during layer querying)
   useEffect(() => {
     if (isComplete || isError) {
       funMessageInitialized.current = false
+      remainingMessages.current = []  // Reset pool
       return
     }
 
     if (latestUpdate?.stage !== 'layer_query' && latestUpdate?.stage !== 'layer_querying') {
       funMessageInitialized.current = false
+      remainingMessages.current = []  // Reset pool
       return
     }
 
     // Pick initial random message only once when entering layer querying stage
     if (!funMessageInitialized.current) {
-      setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
+      setFunMessage(getNextFunMessage())
       funMessageInitialized.current = true
     }
 
     // Set up interval to rotate messages every 3 seconds
     const interval = setInterval(() => {
-      setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
+      setFunMessage(getNextFunMessage())
     }, 3000) // Change every 3 seconds
 
     return () => clearInterval(interval)
