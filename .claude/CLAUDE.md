@@ -2752,9 +2752,15 @@ For layer querying (92% of total time):
 
 During layer querying, users see rotating fun messages (57 total) instead of technical layer names:
 
-- **Client-side rotation**: Messages rotate every 1.5 seconds exactly
+- **Client-side rotation**: Messages rotate every 3 seconds exactly using `setInterval`
 - **No SSE dependency**: Uses React useEffect timer for consistency
 - **Constant array**: `FUN_MESSAGES` defined outside component to prevent re-creation
+- **Initialization tracking**: Uses ref (`funMessageInitialized`) to set initial message only once
+- **Stable interval**: `funMessage` state NOT in dependency array to prevent interval recreation
+- **No repeats**: Messages cycle through entire pool before repeating (uses `remainingMessages` ref)
+  - Pool refills automatically when empty
+  - Each message shown exactly once per cycle
+  - Random selection within remaining pool
 - **Examples**:
   - "Consulting the map spirits..."
   - "Bribing the servers with cookies..."
