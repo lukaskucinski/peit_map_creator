@@ -10,7 +10,7 @@ Functions:
 
 import json
 import geopandas as gpd
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Callable
 from pyproj import CRS
 from shapely.geometry.base import BaseGeometry
 from core.arcgis_query import query_arcgis_layer
@@ -32,7 +32,8 @@ logger = get_logger(__name__)
 
 def process_all_layers(
     polygon_gdf: gpd.GeoDataFrame,
-    config: Dict
+    config: Dict,
+    progress_callback: Optional[Callable[[str, int, int, int], None]] = None
 ) -> Tuple[Dict[str, gpd.GeoDataFrame], Dict[str, Dict], Dict, Optional[BaseGeometry]]:
     """
     Query all configured FeatureServer layers.
@@ -47,6 +48,9 @@ def process_all_layers(
         Input polygon for intersection
     config : Dict
         Configuration dictionary with layer definitions
+    progress_callback : Optional[Callable[[str, int, int, int], None]]
+        Optional callback function called after each layer completes.
+        Receives: (layer_name, completed_layers, total_layers, features_found)
 
     Returns:
     --------
@@ -191,6 +195,8 @@ def process_all_layers(
 
     results = {}
     metadata = {}
+    total_layers = len(layers_to_process)
+    completed_layers = 0
 
     for layer_config in layers_to_process:
         layer_name = layer_config['name']
@@ -221,6 +227,17 @@ def process_all_layers(
             results[layer_name] = gdf
 
         metadata[layer_name] = meta
+
+        # Emit progress callback after each layer completes
+        completed_layers += 1
+        if progress_callback:
+            features_found = meta.get('feature_count', 0)
+            try:
+                progress_callback(layer_name, completed_layers, total_layers, features_found)
+            except Exception as e:
+                # Don't fail processing if callback fails
+                logger.warning(f"Progress callback failed: {e}")
+
         logger.info("")  # Blank line between layers
 
     # Summary

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { list } from '@vercel/blob'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(
   request: NextRequest,
@@ -12,32 +13,55 @@ export async function GET(
     return NextResponse.redirect(new URL('/maps/expired', request.url))
   }
 
-  // Get token for server-side blob access
-  const token = process.env.BLOB_READ_WRITE_TOKEN
-  if (!token) {
-    console.error('BLOB_READ_WRITE_TOKEN not configured')
-    return NextResponse.redirect(new URL('/maps/expired', request.url))
-  }
-
   let blobUrl: string | null = null
 
-  try {
-    // List blobs with this job's prefix to find the index.html
-    const { blobs } = await list({
-      prefix: `maps/${jobId}/index.html`,
-      token
-    })
+  // Try to get direct blob URL from database (fast path - no Advanced Operations)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    console.log(`Blob lookup for ${jobId}: found ${blobs.length} blobs`)
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('map_blob_url')
+        .eq('id', jobId)
+        .single()
 
-    if (blobs.length > 0 && blobs[0].url) {
-      blobUrl = blobs[0].url
+      if (!error && data?.map_blob_url) {
+        blobUrl = data.map_blob_url
+        console.log(`Direct blob URL from database for ${jobId}`)
+      }
+    } catch (dbError) {
+      console.warn('Database lookup failed, falling back to list():', dbError)
     }
-  } catch (error) {
-    console.error('Blob lookup error:', error)
   }
 
-  // If no blob found, redirect to expired page
+  // Fallback: Use list() for older jobs without map_blob_url
+  if (!blobUrl) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      console.error('BLOB_READ_WRITE_TOKEN not configured')
+      return NextResponse.redirect(new URL('/maps/expired', request.url))
+    }
+
+    try {
+      const { blobs } = await list({
+        prefix: `maps/${jobId}/index.html`,
+        token
+      })
+
+      console.log(`Blob list() fallback for ${jobId}: found ${blobs.length} blobs`)
+
+      if (blobs.length > 0 && blobs[0].url) {
+        blobUrl = blobs[0].url
+      }
+    } catch (error) {
+      console.error('Blob list() error:', error)
+    }
+  }
+
+  // If no blob found via either method, redirect to expired page
   if (!blobUrl) {
     return NextResponse.redirect(new URL('/maps/expired', request.url))
   }

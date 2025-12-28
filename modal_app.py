@@ -150,6 +150,117 @@ def get_supabase_client():
         return None
 
 
+def prioritize_bellwether_layers(layers_config: list) -> list:
+    """Reorder layers to run bellwether layers first for runtime prediction.
+
+    Bellwether layers (RCRA, NPDES, USFWS Wetlands) are ubiquitous across the US
+    and their feature counts are highly predictive of total job runtime.
+
+    Args:
+        layers_config: List of layer configuration dicts
+
+    Returns:
+        Reordered list with bellwethers first, then remaining layers
+    """
+    bellwether_names = [
+        'RCRA Sites',
+        'NPDES Sites',
+        'USFWS National Wetlands Inventory'
+    ]
+
+    bellwethers = []
+    others = []
+
+    for layer in layers_config:
+        if layer.get('name') in bellwether_names:
+            bellwethers.append(layer)
+        else:
+            others.append(layer)
+
+    return bellwethers + others
+
+
+def predict_runtime(rcra_count: int, npdes_count: int, wetlands_count: int) -> float:
+    """Predict total job runtime based on bellwether layer feature counts.
+
+    Uses empirically-derived thresholds from production data:
+    - 0-10 features: ~30s total
+    - 10-50 features: ~60s total
+    - 50-100 features: ~75s total
+    - 100-200 features: ~90s total
+    - 200-1000 features: ~165s total
+    - 1000-10000 features: 165s-600s (linear interpolation)
+
+    Args:
+        rcra_count: Feature count from RCRA Sites layer
+        npdes_count: Feature count from NPDES Sites layer
+        wetlands_count: Feature count from USFWS Wetlands layer
+
+    Returns:
+        Estimated total runtime in seconds
+    """
+    # Use max of the three as primary predictor
+    max_features = max(rcra_count, npdes_count, wetlands_count)
+
+    # Base time for file upload + geometry processing
+    base_time = 15.0
+
+    # Feature-based prediction using empirical thresholds
+    if max_features <= 10:
+        return base_time + 15  # ~30s total
+    elif max_features <= 50:
+        return base_time + 45  # ~60s total
+    elif max_features <= 100:
+        return base_time + 60  # ~75s total
+    elif max_features <= 200:
+        return base_time + 75  # ~90s total
+    elif max_features <= 1000:
+        return base_time + 150  # ~165s total
+    else:
+        # Linear interpolation for very large jobs (1000-10000 features)
+        # 10,000 features = ~10 minutes = 600s total
+        return base_time + 150 + ((max_features - 1000) / 9000 * 435)
+
+
+def refine_prediction(
+    elapsed: float,
+    completed: int,
+    total: int,
+    initial_estimate: float
+) -> float:
+    """Refine runtime prediction based on observed processing rate.
+
+    After ~20 layers, we have enough data to calculate actual processing rate
+    and adjust the initial bellwether-based prediction.
+
+    Args:
+        elapsed: Seconds elapsed since job start
+        completed: Number of layers completed
+        total: Total number of layers to process
+        initial_estimate: Initial prediction from bellwether features
+
+    Returns:
+        Refined estimated total runtime in seconds
+    """
+    if completed < 20:
+        # Not enough data yet, trust bellwether prediction
+        return initial_estimate
+
+    # Calculate observed processing rate
+    actual_rate = completed / elapsed
+
+    # Estimate remaining time based on observed rate
+    remaining_layers = total - completed
+    remaining_time = remaining_layers / actual_rate
+
+    # Blend initial estimate (40%) with observed projection (60%)
+    # This prevents wild swings while still adapting to actual performance
+    observed_total = elapsed + remaining_time
+    refined_estimate = (initial_estimate * 0.4) + (observed_total * 0.6)
+
+    return refined_estimate
+
+
 @app.function(
     image=peit_image,
     timeout=600,
@@ -176,6 +287,7 @@ def process_file_task(
     import zipfile
     import tempfile
     import shutil
+    import time
     from datetime import datetime
     from pathlib import Path
 
@@ -228,6 +340,9 @@ def process_file_task(
         # Load configuration
         config = load_config()
 
+        # Prioritize bellwether layers for runtime prediction
+        config['layers'] = prioritize_bellwether_layers(config['layers'])
+
         # Override geometry settings with user parameters
         if "geometry_settings" not in config:
             config["geometry_settings"] = {}
@@ -257,8 +372,141 @@ def process_file_task(
         # Use project name for input layer display if provided, otherwise use filename
         input_layer_name = project_name if project_name else input_filename
 
-        # Process all layers
-        layer_results, metadata, clip_summary, clip_boundary = process_all_layers(polygon_gdf, config)
+        # Progress tracking file on Modal Volume
+        progress_file = output_base / "progress.json"
+
+        def emit_progress(
+            stage: str,
+            layer_name: str = None,
+            completed: int = 0,
+            total: int = 0,
+            features: int = 0,
+            estimated_completion_time: float = None,
+            input_area_sq_miles: float = None,
+            bellwether_feature_counts: dict = None
+        ):
+            """Write progress update to volume file for SSE poller to read.
+
+            Note: Does NOT commit volume - relies on Modal's internal caching.
+            Final commit happens at task completion to persist all results.
+            """
+            progress_data = {
+                'stage': stage,
+                'layer_name': layer_name,
+                'completed_layers': completed,
+                'total_layers': total,
+                'features_found': features,
+                'timestamp': time.time()
+            }
+
+            # Add estimated completion time if provided
+            if estimated_completion_time is not None:
+                progress_data['estimated_completion_time'] = estimated_completion_time
+
+            # Add input area size if provided (for end-stage time weighting)
+            if input_area_sq_miles is not None:
+                progress_data['input_area_sq_miles'] = input_area_sq_miles
+
+            # Add bellwether feature counts if provided (for end-stage weighting)
+            if bellwether_feature_counts is not None:
+                progress_data['bellwether_feature_counts'] = bellwether_feature_counts
+
+            try:
+                with open(progress_file, 'w', encoding='utf-8') as f:
+                    json.dump(progress_data, f)
+                # No commit - Modal's volume caching allows SSE poller to read recent writes
+                # Final commit at task completion ensures data persisted
+            except Exception as e:
+                # Don't fail processing if progress write fails
+                logger.warning(f"Failed to write progress: {e}")
+
+        # Stage 1: Geometry input (2%)
+        # Emit progress at start and end for smooth increments
+        emit_progress('geometry_input', completed=0, total=1)
+
+        # Geometry processing happens here (pipeline.process_geometry already ran)
+        # This stage represents validation and final geometry preparation
+
+        # Emit with area size for frontend end-stage time weighting
+        emit_progress(
+            'geometry_input',
+            completed=1,
+            total=1,
+            input_area_sq_miles=round(actual_area, 2) if actual_area else None
+        )
+
+        # Track job start time for runtime prediction
+        job_start_time = time.time()
+        estimated_total_time = 45.0  # Initial default estimate (seconds)
+        bellwether_counts = {}  # Store feature counts from bellwether layers
+
+        # Layer callback for progress tracking with prediction
+        def layer_callback(name, completed, total, features):
+            """Called after each layer completes. Implements runtime prediction."""
+            nonlocal estimated_total_time, bellwether_counts
+
+            # Track bellwether layer feature counts
+            if name in ['Resource Conservation and Recovery Act (RCRA)',
+                        'National Pollutant Discharge Elimination System Sites (NPDES)',
+                        'USFWS Wetlands']:
+                bellwether_counts[name] = features
+                logger.info(f"[BELLWETHER] Captured {name}: {features} features")
+
+            # After first 3 layers (all bellwethers), make initial prediction
+            if completed == 3 and len(bellwether_counts) == 3:
+                rcra = bellwether_counts.get('Resource Conservation and Recovery Act (RCRA)', 0)
+                npdes = bellwether_counts.get('National Pollutant Discharge Elimination System Sites (NPDES)', 0)
+                wetlands = bellwether_counts.get('USFWS Wetlands', 0)
+
+                estimated_total_time = predict_runtime(rcra, npdes, wetlands)
+                logger.info(
+                    f"Bellwether prediction: {estimated_total_time:.0f}s "
+                    f"(RCRA={rcra}, NPDES={npdes}, Wetlands={wetlands})"
+                )
+
+                emit_progress(
+                    'layer_query',
+                    name,
+                    completed,
+                    total,
+                    features,
+                    estimated_completion_time=estimated_total_time,
+                    bellwether_feature_counts={
+                        'rcra': rcra,
+                        'npdes': npdes,
+                        'wetlands': wetlands
+                    }
+                )
+
+            # Every 10 layers after 20, refine prediction based on observed rate
+            elif completed >= 20 and completed % 10 == 0:
+                elapsed = time.time() - job_start_time
+                refined_estimate = refine_prediction(
+                    elapsed, completed, total, estimated_total_time
+                )
+                estimated_total_time = refined_estimate
+                logger.info(
+                    f"Refined prediction: {estimated_total_time:.0f}s "
+                    f"({completed}/{total} layers, {elapsed:.0f}s elapsed)"
+                )
+
+                emit_progress(
+                    'layer_query',
+                    name,
+                    completed,
+                    total,
+                    features,
+                    estimated_completion_time=estimated_total_time
+                )
+            else:
+                # Regular progress update
+                emit_progress('layer_query', name, completed, total, features)
+
+        # Process all layers with progress callback
+        emit_progress('layer_querying', total=len(config['layers']))
+        layer_results, metadata, clip_summary, clip_boundary = process_all_layers(
+            polygon_gdf, config, progress_callback=layer_callback
+        )
 
         # Generate timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -270,19 +518,50 @@ def process_file_task(
         temp_output = temp_dir / output_name
         temp_output.mkdir(parents=True, exist_ok=True)
 
-        # Generate reports BEFORE creating web map so we can get blob URLs
+        # Stage 3: Map generation (2%)
+        emit_progress('map_generation', completed=0, total=2)
+
+        # Create web map (note: PDF/XLSX URLs will be added after blob upload)
+        map_obj = create_web_map(
+            polygon_gdf, layer_results, metadata, config, input_layer_name,
+            project_name=project_name,
+            xlsx_relative_path=None,  # Will be updated after blob upload
+            pdf_relative_path=None,   # Will be updated after blob upload
+            clip_boundary=clip_boundary,
+            original_geometry_gdf=original_gdf
+        )
+
+        emit_progress('map_generation', completed=1, total=2)
+
+        # Save map HTML temporarily
+        map_file = temp_output / "index.html"
+        map_obj.save(str(map_file))
+
+        emit_progress('map_generation', completed=2, total=2)
+
+        # Stage 4: Report generation (2%)
+        emit_progress('report_generation', completed=0, total=2)
+
+        # Generate reports
         from utils.xlsx_generator import generate_xlsx_report
         from utils.pdf_generator import generate_pdf_report
 
         generate_xlsx_report(
             layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
         )
+
+        emit_progress('report_generation', completed=1, total=2)
+
         generate_pdf_report(
             layer_results, config, temp_output, timestamp, project_name, project_id, metadata=metadata
         )
 
-        # Upload reports to Vercel Blob BEFORE creating web map
-        # This way we can embed the actual blob URLs in the map HTML
+        emit_progress('report_generation', completed=2, total=2)
+
+        # Stage 5: Blob upload (1%)
+        emit_progress('blob_upload', completed=0, total=3)
+
+        # Upload reports to Vercel Blob
         pdf_blob_url = None
         xlsx_blob_url = None
 
@@ -297,6 +576,9 @@ def process_file_task(
                 )
                 logger.info(f"Uploaded PDF to blob: {pdf_blob_url}")
 
+            emit_progress('blob_upload', completed=1, total=3)
+            time.sleep(0.3)  # Allow SSE poller to catch this progress state
+
             xlsx_path = temp_output / xlsx_filename
             if xlsx_path.exists():
                 xlsx_content = xlsx_path.read_bytes()
@@ -306,23 +588,26 @@ def process_file_task(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
                 logger.info(f"Uploaded XLSX to blob: {xlsx_blob_url}")
+
+            emit_progress('blob_upload', completed=2, total=3)
+            time.sleep(0.3)  # Allow SSE poller to catch this progress state
         except Exception as blob_error:
             # Log but don't fail - map will work without report links
             logger.warning(f"Report blob upload failed (non-fatal): {blob_error}")
 
-        # Create web map with blob URLs for PDF/XLSX links
-        map_obj = create_web_map(
-            polygon_gdf, layer_results, metadata, config, input_layer_name,
-            project_name=project_name,
-            xlsx_relative_path=xlsx_blob_url,  # Use blob URL instead of filename
-            pdf_relative_path=pdf_blob_url,    # Use blob URL instead of filename
-            clip_boundary=clip_boundary,
-            original_geometry_gdf=original_gdf
-        )
-
-        # Save map HTML
-        map_file = temp_output / "index.html"
-        map_obj.save(str(map_file))
+        # Update map HTML with blob URLs if needed
+        if pdf_blob_url or xlsx_blob_url:
+            # Re-create map with blob URLs
+            map_obj = create_web_map(
+                polygon_gdf, layer_results, metadata, config, input_layer_name,
+                project_name=project_name,
+                xlsx_relative_path=xlsx_blob_url,
+                pdf_relative_path=pdf_blob_url,
+                clip_boundary=clip_boundary,
+                original_geometry_gdf=original_gdf
+            )
+            # Re-save map HTML with updated URLs
+            map_obj.save(str(map_file))
 
         # Save input polygon and layer GeoJSONs
         data_path = temp_output / "data"
@@ -383,11 +668,57 @@ def process_file_task(
             # Log but don't fail - ZIP download still works
             logger.warning(f"Map blob upload failed (non-fatal): {blob_error}")
 
+        # Final progress update (completes blob_upload stage)
+        emit_progress('blob_upload', completed=3, total=3)
+        time.sleep(0.3)  # Allow SSE poller to catch 100% before completion event
+
         logger.info(f"Job {job_id} completed successfully")
+
+        # Calculate total runtime
+        total_runtime = time.time() - job_start_time
 
         # Update job record with completion status
         if supabase:
             try:
+                # Prepare performance metrics if bellwether data available
+                performance_metrics = {}
+                if bellwether_counts and len(bellwether_counts) == 3:
+                    logger.info(f"[METRICS] Bellwether data available - calculating performance metrics")
+
+                    # Calculate geometry processing time (approximate)
+                    geometry_processing_time = 15.0  # Rough estimate based on base_time
+                    layer_querying_time = total_runtime - geometry_processing_time
+
+                    # Calculate prediction error
+                    initial_prediction = predict_runtime(
+                        bellwether_counts.get('Resource Conservation and Recovery Act (RCRA)', 0),
+                        bellwether_counts.get('National Pollutant Discharge Elimination System Sites (NPDES)', 0),
+                        bellwether_counts.get('USFWS Wetlands', 0)
+                    )
+                    prediction_error = abs(total_runtime - estimated_total_time)
+
+                    performance_metrics = {
+                        'rcra_feature_count': bellwether_counts.get('Resource Conservation and Recovery Act (RCRA)', 0),
+                        'npdes_feature_count': bellwether_counts.get('National Pollutant Discharge Elimination System Sites (NPDES)', 0),
+                        'wetlands_feature_count': bellwether_counts.get('USFWS Wetlands', 0),
+                        'total_runtime_seconds': round(total_runtime, 1),
+                        'geometry_processing_seconds': round(geometry_processing_time, 1),
+                        'layer_querying_seconds': round(layer_querying_time, 1),
+                        'total_layers_queried': len(config['layers']),
+                        'initial_prediction_seconds': round(initial_prediction, 1),
+                        'final_prediction_seconds': round(estimated_total_time, 1),
+                        'prediction_error_seconds': round(prediction_error, 1),
+                    }
+
+                    logger.info(
+                        f"[METRICS] Performance metrics calculated: {total_runtime:.0f}s actual, "
+                        f"{estimated_total_time:.0f}s predicted, "
+                        f"{prediction_error:.0f}s error"
+                    )
+                else:
+                    logger.info(f"[METRICS] Bellwether data incomplete - skipping metrics (dict has {len(bellwether_counts)} entries)")
+
+                # Update job record with completion status and performance metrics
                 supabase.table('jobs').update({
                     'status': 'complete',
                     'completed_at': datetime.now().isoformat(),
@@ -395,10 +726,15 @@ def process_file_task(
                     'layers_with_data': summary["layers_with_data"],
                     'input_area_sq_miles': round(actual_area, 2) if actual_area else None,
                     'map_url': f'https://peit-map-creator.com/maps/{job_id}',
+                    'map_blob_url': map_blob_url if 'map_blob_url' in locals() else None,
                     'pdf_url': pdf_blob_url,
                     'xlsx_url': xlsx_blob_url,
                     'zip_download_path': f'/api/download/{job_id}',
+                    **performance_metrics  # Merge performance metrics into update
                 }).eq('id', job_id).execute()
+
+                logger.info(f"[METRICS] Job record updated with performance metrics")
+
             except Exception as db_error:
                 logger.warning(f"Failed to update job record: {db_error}")
 
@@ -667,6 +1003,146 @@ def fastapi_app():
             "resets_at": "midnight UTC",
         }
 
+    # Stage weights for progress calculation (hardcoded for initial release)
+    STAGE_WEIGHTS = {
+        'upload': 1,  # Initial state (prevent 0% display)
+        'geometry_input': 2,
+        'layer_querying': 92,  # Increased to 92% (bulk of processing)
+        'map_generation': 2,
+        'report_generation': 2,
+        'blob_upload': 1,
+    }
+
+    def calculate_weighted_progress(progress_data: dict) -> int:
+        """Calculate progress percentage based on stage weights and layer completion."""
+        stage = progress_data.get('stage', 'upload')
+
+        # Stage order for calculating completed weight
+        stage_order = ['upload', 'geometry_input', 'layer_querying', 'map_generation', 'report_generation', 'blob_upload']
+        completed_weight = 0.0
+
+        try:
+            current_stage_idx = stage_order.index(stage)
+        except ValueError:
+            # Unknown stage - treat 'layer_query' same as 'layer_querying'
+            if stage == 'layer_query':
+                current_stage_idx = stage_order.index('layer_querying')
+            else:
+                return 5  # Default to 5% for unknown stages
+
+        # Add weights of all completed stages
+        for idx, s in enumerate(stage_order):
+            if idx < current_stage_idx:
+                completed_weight += STAGE_WEIGHTS.get(s, 0)
+
+        # Add partial progress from current stage
+        if stage in ['layer_querying', 'layer_query']:
+            completed = progress_data.get('completed_layers', 0)
+            total = progress_data.get('total_layers', 1)
+            if total > 0:
+                layer_progress = (completed / total) * STAGE_WEIGHTS['layer_querying']
+                completed_weight += layer_progress
+            else:
+                # If total unknown, assume halfway through stage
+                completed_weight += STAGE_WEIGHTS['layer_querying'] * 0.5
+        elif stage in STAGE_WEIGHTS:
+            # For other stages, check if we have completed/total info
+            completed = progress_data.get('completed_layers', 0)
+            total = progress_data.get('total_layers', 0)
+            if total > 0:
+                # Use actual progress within the stage
+                stage_progress = (completed / total) * STAGE_WEIGHTS[stage]
+                completed_weight += stage_progress
+            else:
+                # If no progress info, assume halfway through when stage starts
+                completed_weight += STAGE_WEIGHTS[stage] * 0.5
+
+        # Round to nearest integer for smoother display (no jumps >1%)
+        # Cap at 100 (allow progress to reach 100% naturally through final stages)
+        return min(round(completed_weight), 100)
+
+    def format_progress_message(progress_data: dict) -> str:
+        """Format user-friendly progress message based on stage."""
+        stage = progress_data.get('stage')
+        layer_name = progress_data.get('layer_name')
+        completed = progress_data.get('completed_layers', 0)
+        total = progress_data.get('total_layers', 0)
+
+        # Fun random messages for layer querying stage
+        fun_messages = [
+            "Charting the rivers...",
+            "Protecting the bald eagles...",
+            "Containing the toxic waste...",
+            "Mapping the wetlands...",
+            "Locating historic landmarks...",
+            "Tracking endangered species...",
+            "Surveying the floodplains...",
+            "Identifying tribal lands...",
+            "Monitoring air quality...",
+            "Checking water permits...",
+            "Scanning for hazardous sites...",
+            "Protecting the coral reefs...",
+            "Safeguarding the gray wolves...",
+            "Preserving the redwoods...",
+            "Documenting the pipelines...",
+            "Tracking the grizzly bears...",
+            "Mapping railroad crossings...",
+            "Locating power plants...",
+            "Surveying federal lands...",
+            "Checking navigable waters...",
+            "Protecting the sea turtles...",
+            "Monitoring landfill sites...",
+            "Tracking the whooping cranes...",
+            "Preserving the salmon habitat...",
+            "Identifying wilderness areas...",
+            "Safeguarding the manatees...",
+            "Charting the coastline...",
+            "Locating broadcast towers...",
+            "Mapping the aquifers...",
+            "Protecting the spotted owls...",
+            "Surveying the parklands...",
+            "Checking emission sites...",
+            "Tracking the desert tortoises...",
+            "Preserving the old growth forests...",
+            "Identifying critical habitats...",
+            "Safeguarding the condors...",
+            "Mapping the fault lines...",
+            "Locating the easements...",
+            "Surveying the conservation areas...",
+            "Protecting the butterfly sanctuaries...",
+            "Monitoring the superfund sites...",
+            "Tracking the peregrine falcons...",
+            "Preserving the grasslands...",
+            "Identifying the watersheds...",
+            "Safeguarding the lynx habitat...",
+            "Charting the mineral rights...",
+            "Locating the substations...",
+            "Mapping the wildlife corridors...",
+            "Protecting the kelp forests...",
+            "Surveying the heritage sites..."
+        ]
+
+        if stage == 'upload':
+            return 'File received, starting processing...'
+        elif stage == 'geometry_input':
+            return 'Processing input geometry...'
+        elif stage in ['layer_querying', 'layer_query']:
+            # Use fun random message (changes every 2 seconds based on timestamp)
+            import random
+            import time
+            # Seed by 1.5-second intervals to rotate messages every 1.5 seconds
+            seed_value = int(time.time() // 1.5)
+            random.seed(seed_value)
+            return random.choice(fun_messages)
+        elif stage == 'map_generation':
+            return 'Generating interactive map...'
+        elif stage == 'report_generation':
+            return 'Creating PDF and Excel reports...'
+        elif stage == 'blob_upload':
+            return 'Uploading to the cloud...'
+        else:
+            return 'Processing...'
+
     @web_app.post("/api/process")
     async def process_endpoint(
         request: Request,
@@ -761,19 +1237,6 @@ def fastapi_app():
         # Generate job ID (16 chars for security - prevents URL enumeration)
         job_id = str(uuid.uuid4()).replace("-", "")[:16]
 
-        def get_progress_message(progress: int) -> str:
-            """Get appropriate progress message based on progress percentage."""
-            if progress <= 15:
-                return "Processing input geometry..."
-            elif progress <= 40:
-                return "Querying environmental layers..."
-            elif progress <= 70:
-                return "Processing layer results..."
-            elif progress <= 85:
-                return "Generating interactive map..."
-            else:
-                return "Generating reports..."
-
         async def event_generator() -> AsyncGenerator[str, None]:
             """Generate SSE events for progress updates."""
 
@@ -781,7 +1244,7 @@ def fastapi_app():
             supabase = get_supabase_client()
 
             # Send initial event
-            yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 5, 'job_id': job_id})}\n\n"
+            yield f"data: {json.dumps({'stage': 'upload', 'message': 'File received, starting processing...', 'progress': 1, 'job_id': job_id})}\n\n"
 
             # Spawn the processing task (non-blocking)
             try:
@@ -796,11 +1259,46 @@ def fastapi_app():
                     clip_buffer_miles=clip_buffer_miles,
                 )
 
-                # Poll for completion with realistic progress updates
-                progress = 5
-                poll_interval = 3  # seconds between updates
-                max_progress = 95  # Don't exceed this until actually complete
+                # Poll for completion with progress file reads
+                poll_interval = 1.0  # Poll every 1 second (faster than old 3s)
+                last_progress_data = None
 
+                # Fake progress for upload/geometry stages (provides smooth UX during file processing)
+                # Extended to 15% to cover typical geometry processing time (10-15 seconds)
+                # These emits happen on poller side (zero task overhead), real progress from task overrides
+                progress_file_path = Path(f"/results/{job_id}/progress.json")
+                fake_progress_stages = [
+                    (0.5, {'stage': 'upload', 'message': 'Uploading file...', 'progress': 1}),
+                    (1.0, {'stage': 'upload', 'message': 'File received, validating...', 'progress': 2}),
+                    (2.0, {'stage': 'geometry_input', 'message': 'Processing input geometry...', 'progress': 4}),
+                    (4.0, {'stage': 'geometry_input', 'message': 'Validating geometry...', 'progress': 6}),
+                    (6.0, {'stage': 'geometry_input', 'message': 'Reprojecting coordinates...', 'progress': 8}),
+                    (8.0, {'stage': 'geometry_input', 'message': 'Buffering geometry...', 'progress': 10}),
+                    (10.0, {'stage': 'geometry_input', 'message': 'Finalizing geometry...', 'progress': 12}),
+                    (12.0, {'stage': 'geometry_input', 'message': 'Preparing to query layers...', 'progress': 15}),
+                ]
+
+                import time
+                start_time = time.time()
+                fake_idx = 0
+
+                while True:
+                    await asyncio.sleep(0.1)  # Small sleep to allow checking both fake and real progress
+
+                    # Emit fake progress if real progress hasn't started yet
+                    elapsed = time.time() - start_time
+                    if fake_idx < len(fake_progress_stages) and not progress_file_path.exists():
+                        delay, fake_event = fake_progress_stages[fake_idx]
+                        if elapsed >= delay:
+                            yield f"data: {json.dumps(fake_event)}\n\n"
+                            fake_idx += 1
+                        continue  # Skip to next iteration
+
+                    # Real progress started or all fake progress emitted - switch to normal polling
+                    if fake_idx >= len(fake_progress_stages) or progress_file_path.exists():
+                        break
+
+                # Normal polling loop (1 second intervals)
                 while True:
                     await asyncio.sleep(poll_interval)
 
@@ -849,11 +1347,42 @@ def fastapi_app():
                         yield f"data: {json.dumps({'stage': 'error', 'message': 'Processing exceeded the 10-minute time limit. This usually happens with very large or complex areas. Try a smaller area, simpler geometry, or contact support.', 'progress': 0, 'error': 'timeout'})}\n\n"
                         break
                     except TimeoutError:
-                        # Task still running - increment progress slowly
-                        if progress < max_progress:
-                            progress = min(progress + 5, max_progress)
-                            message = get_progress_message(progress)
-                            yield f"data: {json.dumps({'stage': 'processing', 'message': message, 'progress': progress})}\n\n"
+                        # Task still running - read progress file
+                        try:
+                            results_volume.reload()
+                            progress_file_path = Path(f"/results/{job_id}/progress.json")
+
+                            if progress_file_path.exists():
+                                with open(progress_file_path, 'r', encoding='utf-8') as f:
+                                    progress_data = json.load(f)
+
+                                # Only emit if progress changed (avoid duplicate events)
+                                if progress_data != last_progress_data:
+                                    last_progress_data = progress_data
+
+                                    # Calculate weighted progress
+                                    progress_percent = calculate_weighted_progress(progress_data)
+
+                                    # Format message
+                                    message = format_progress_message(progress_data)
+
+                                    # Build SSE event
+                                    event_data = {
+                                        'stage': progress_data.get('stage', 'processing'),
+                                        'message': message,
+                                        'progress': progress_percent,
+                                        'layer_name': progress_data.get('layer_name'),
+                                        'currentLayer': progress_data.get('completed_layers'),
+                                        'totalLayers': progress_data.get('total_layers'),
+                                        'features_found': progress_data.get('features_found'),
+                                    }
+
+                                    yield f"data: {json.dumps(event_data)}\n\n"
+                            # else: No progress file yet, wait for next poll
+
+                        except Exception as e:
+                            # Progress file read failed - log but continue polling
+                            print(f"Warning: Failed to read progress file for {job_id}: {e}")
 
             except asyncio.CancelledError:
                 # Client disconnected (closed browser tab) - release job slot
