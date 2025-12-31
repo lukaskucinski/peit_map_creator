@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, Loader2, AlertTriangle } from "lucide-react"
+import { clearCompleteState, clearPendingJobs } from "@/lib/pending-jobs"
 
 interface DeleteAccountProps {
   userEmail: string
@@ -61,6 +62,10 @@ export function DeleteAccount({ userEmail, userId }: DeleteAccountProps) {
         throw new Error(data.detail || "Failed to delete account")
       }
 
+      // Clear all stored state before signing out
+      clearCompleteState() // Clear sessionStorage complete state
+      clearPendingJobs() // Clear localStorage pending jobs
+
       // Sign out locally - may fail with 403 since user is already deleted on server
       // That's OK, we just need to clear the local session
       try {
@@ -69,8 +74,8 @@ export function DeleteAccount({ userEmail, userId }: DeleteAccountProps) {
         // Ignore signOut errors - user is already deleted
       }
 
-      // Redirect to home with success message
-      router.push("/?deleted=true")
+      // Redirect to home (will be in 'upload' state due to cleared storage)
+      router.push("/")
     } catch (err) {
       console.error("Delete error:", err)
       setError(err instanceof Error ? err.message : "Failed to delete account")
