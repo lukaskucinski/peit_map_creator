@@ -1495,9 +1495,16 @@ def fastapi_app():
         """Delete a user account and all associated data.
 
         Requires user_id in JSON body. This endpoint:
-        1. Deletes all jobs associated with the user from Supabase
-        2. Deletes the user account from Supabase Auth
+        1. Fetches all jobs with blob URLs (before database deletion!)
+        2. Deletes all Vercel Blob files for each job
+        3. Deletes all Modal Volume folders for each job
+        4. Deletes all job records from Supabase
+        5. Deletes the user account from Supabase Auth
         """
+        import shutil
+        from pathlib import Path
+        from vercel.blob import BlobClient
+
         try:
             body = await request.json()
             user_id = body.get("user_id")
@@ -1509,23 +1516,107 @@ def fastapi_app():
             if not supabase:
                 raise HTTPException(status_code=500, detail="Database not configured")
 
-            # Delete user's jobs from database
+            # CRITICAL: Fetch all job data BEFORE deleting from database
+            # We need blob URLs which are stored in the database
+            try:
+                jobs_result = supabase.table('jobs').select(
+                    'id, map_blob_url, pdf_url, xlsx_url'
+                ).eq('user_id', user_id).execute()
+                jobs = jobs_result.data if jobs_result.data else []
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to fetch user jobs: {str(e)}"
+                )
+
+            deletion_stats = {
+                "jobs_count": len(jobs),
+                "blobs_deleted": 0,
+                "volumes_deleted": 0,
+                "database_deleted": False,
+                "account_deleted": False
+            }
+
+            # Delete Vercel Blobs for all jobs
+            token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+            if token and len(jobs) > 0:
+                try:
+                    client = BlobClient(token=token)
+
+                    # Collect all blob URLs from all jobs
+                    all_blob_urls = []
+                    for job in jobs:
+                        blob_urls = [
+                            url for url in [
+                                job.get('map_blob_url'),
+                                job.get('pdf_url'),
+                                job.get('xlsx_url')
+                            ] if url  # Filter out None values
+                        ]
+                        all_blob_urls.extend(blob_urls)
+
+                    # Batch delete all blobs at once (more efficient)
+                    if all_blob_urls:
+                        client.delete(all_blob_urls)
+                        deletion_stats["blobs_deleted"] = len(all_blob_urls)
+                        print(f"Deleted {len(all_blob_urls)} blobs for user {user_id}")
+
+                except Exception as e:
+                    # Log but continue - storage cleanup failure shouldn't block account deletion
+                    print(f"Warning: Failed to delete blobs for user {user_id}: {e}")
+
+            # Delete Modal Volume folders for all jobs
+            if len(jobs) > 0:
+                try:
+                    results_volume.reload()
+
+                    for job in jobs:
+                        job_id = job.get('id')
+                        job_dir = Path("/results") / job_id
+
+                        if job_dir.exists():
+                            try:
+                                shutil.rmtree(job_dir)
+                                deletion_stats["volumes_deleted"] += 1
+                            except Exception as e:
+                                print(f"Warning: Failed to delete volume for job {job_id}: {e}")
+
+                    # Commit volume changes once at the end
+                    if deletion_stats["volumes_deleted"] > 0:
+                        results_volume.commit()
+                        print(f"Deleted {deletion_stats['volumes_deleted']} volume folders for user {user_id}")
+
+                except Exception as e:
+                    # Log but continue - storage cleanup failure shouldn't block account deletion
+                    print(f"Warning: Failed to delete volumes for user {user_id}: {e}")
+
+            # Delete job records from database
             try:
                 supabase.table('jobs').delete().eq('user_id', user_id).execute()
+                deletion_stats["database_deleted"] = True
+                print(f"Deleted {len(jobs)} job records for user {user_id}")
             except Exception as e:
-                # Log but continue - user deletion is more important
-                print(f"Warning: Failed to delete jobs for user {user_id}: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to delete job records: {str(e)}"
+                )
 
             # Delete user account using Supabase Admin API
             try:
                 supabase.auth.admin.delete_user(user_id)
+                deletion_stats["account_deleted"] = True
+                print(f"Deleted user account: {user_id}")
             except Exception as e:
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed to delete user account: {str(e)}"
                 )
 
-            return {"success": True, "message": "Account deleted successfully"}
+            return {
+                "success": True,
+                "message": "Account and all associated data deleted successfully",
+                "deleted": deletion_stats
+            }
 
         except HTTPException:
             raise
