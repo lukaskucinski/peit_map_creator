@@ -1472,6 +1472,11 @@ The generated HTML map includes several interactive features:
   - Uses embedded GeoJSON data (no CORS issues)
   - Client-side conversion using @mapbox/shp-write and tokml libraries
 - **Positioning**: Menu offsets 45px from button in both panel states to prevent overlap
+- **Input Downloads**:
+  - For polygon inputs: Single "Input Area" download (original geometry)
+  - For point/line/mixed inputs: Two downloads available:
+    - "Original Input" - Pre-buffer geometry (point, line, or mixed features)
+    - "Input Area" - Buffered polygon used for intersection queries
 
 **Shapefile Download Implementation:**
 - Uses `@mapbox/shp-write@0.4.3` (official Mapbox fork, JSZip 3.x compatible)
@@ -1632,6 +1637,7 @@ config/ → utils/ → core/ → peit_map_creator.py
 4. **No Attribute Filtering**: Downloads all attributes from FeatureServer.
 5. **Client-Side Downloads**: Browser-based conversion for SHP/KMZ may have limitations with very large datasets.
 6. **Buffer Distance Limits**: Very large buffers (>10,000 feet for points, >5,000 feet for lines) may cause long query times or incomplete results.
+7. **Vercel Blob Storage Limit**: Free tier has 1GB storage limit. If maps show "Map Expired" error when storage is not actually expired, check Vercel Blob dashboard and delete old maps to free space.
 
 ## Lessons Learned & Best Practices
 
