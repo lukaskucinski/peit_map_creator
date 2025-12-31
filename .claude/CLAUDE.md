@@ -1472,6 +1472,11 @@ The generated HTML map includes several interactive features:
   - Uses embedded GeoJSON data (no CORS issues)
   - Client-side conversion using @mapbox/shp-write and tokml libraries
 - **Positioning**: Menu offsets 45px from button in both panel states to prevent overlap
+- **Input Downloads**:
+  - For polygon inputs: Single "Input Area" download (original geometry)
+  - For point/line/mixed inputs: Two downloads available:
+    - "Original Input" - Pre-buffer geometry (point, line, or mixed features)
+    - "Input Area" - Buffered polygon used for intersection queries
 
 **Shapefile Download Implementation:**
 - Uses `@mapbox/shp-write@0.4.3` (official Mapbox fork, JSZip 3.x compatible)

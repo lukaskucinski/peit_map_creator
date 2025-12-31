@@ -846,8 +846,8 @@ def create_web_map(
     logger.info("  - Adding download control...")
     download_template = env.get_template('download_control.html')
     download_html = download_template.render(
-        layer_sections=generate_layer_download_sections(layer_results, config, input_filename),
-        layer_data=generate_layer_data_mapping(layer_results, polygon_gdf)
+        layer_sections=generate_layer_download_sections(layer_results, config, input_filename, original_geometry_gdf),
+        layer_data=generate_layer_data_mapping(layer_results, polygon_gdf, original_geometry_gdf)
     )
     m.get_root().html.add_child(Element(download_html))
 

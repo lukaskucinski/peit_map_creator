@@ -11,13 +11,14 @@ Functions:
 
 import json
 import geopandas as gpd
-from typing import Dict
+from typing import Dict, Optional
 
 
 def generate_layer_download_sections(
     layer_results: Dict[str, gpd.GeoDataFrame],
     config: Dict,
-    input_filename: str
+    input_filename: str,
+    original_geometry_gdf: Optional[gpd.GeoDataFrame] = None
 ) -> str:
     """
     Generate HTML for individual layer download sections.
@@ -33,6 +34,8 @@ def generate_layer_download_sections(
         Configuration dictionary with layer definitions
     input_filename : str
         Name of input file for the input polygon section
+    original_geometry_gdf : Optional[gpd.GeoDataFrame]
+        Original pre-buffer geometry (None if no buffering was applied)
 
     Returns:
     --------
@@ -51,7 +54,20 @@ def generate_layer_download_sections(
     """
     sections_html = ""
 
-    # Add input polygon section first
+    # Add original input geometry section (if buffer was applied)
+    if original_geometry_gdf is not None:
+        sections_html += f"""
+        <div class="download-section">
+            <div class="download-layer-name">{input_filename} (Original Input)</div>
+            <div class="download-format-buttons">
+                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'geojson'); event.stopPropagation();">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'shp'); event.stopPropagation();">SHP</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'kmz'); event.stopPropagation();">KMZ</button>
+            </div>
+        </div>
+        """
+
+    # Add input polygon section (buffered polygon or original if no buffering)
     sections_html += f"""
         <div class="download-section">
             <div class="download-layer-name">{input_filename} (Input Area)</div>
@@ -89,7 +105,8 @@ def generate_layer_download_sections(
 
 def generate_layer_data_mapping(
     layer_results: Dict[str, gpd.GeoDataFrame],
-    polygon_gdf: gpd.GeoDataFrame
+    polygon_gdf: gpd.GeoDataFrame,
+    original_geometry_gdf: Optional[gpd.GeoDataFrame] = None
 ) -> str:
     """
     Generate JavaScript object with embedded GeoJSON data.
@@ -102,7 +119,9 @@ def generate_layer_data_mapping(
     layer_results : Dict[str, gpd.GeoDataFrame]
         Dictionary of layer results (layer name -> GeoDataFrame)
     polygon_gdf : gpd.GeoDataFrame
-        Input polygon GeoDataFrame
+        Input polygon GeoDataFrame (buffered polygon or original if no buffering)
+    original_geometry_gdf : Optional[gpd.GeoDataFrame]
+        Original pre-buffer geometry (None if no buffering was applied)
 
     Returns:
     --------
@@ -110,10 +129,19 @@ def generate_layer_data_mapping(
         JavaScript string defining layerData object
 
     Example Output:
+        "Original Input": {type: "FeatureCollection", features: [...]},
         "Input Polygon": {type: "FeatureCollection", features: [...]},
         "RCRA Sites": {type: "FeatureCollection", features: [...]}
     """
     mappings = []
+
+    # Add original input geometry (if buffer was applied)
+    if original_geometry_gdf is not None:
+        original_geojson = json.loads(original_geometry_gdf.to_json())
+        original_geojson_str = json.dumps(original_geojson, separators=(',', ':'))
+        # Escape forward slashes to prevent </script> breaking out of script context
+        original_geojson_str = original_geojson_str.replace('</', '<\\/')
+        mappings.append(f'"Original Input": {original_geojson_str}')
 
     # Add input polygon (convert GeoDataFrame to GeoJSON dict)
     input_geojson = json.loads(polygon_gdf.to_json())
