@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Loader2, CheckCircle, Download, RotateCcw, XCircle, ExternalLink, Copy, Check, FileText, FileSpreadsheet } from "lucide-react"
+import { CheckCircle, Download, RotateCcw, XCircle, ExternalLink, Copy, Check, FileText, FileSpreadsheet } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
+import { StackingLoader } from "@/components/ui/stacking-loader"
 
 // Fun messages for layer querying stage (defined outside component to prevent re-creation)
 const FUN_MESSAGES = [
@@ -566,8 +567,8 @@ export function ProcessingStatus({
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-              <Loader2 className="h-7 w-7 text-primary animate-spin" />
+            <div className="mb-6 -mt-9">
+              <StackingLoader size={56} />
             </div>
 
             <h2 className="mb-2 text-xl font-semibold text-foreground">

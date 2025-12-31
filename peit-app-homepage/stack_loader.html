@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stacking Diamond Loader (Grayscale)</title>
+    <style>
+      :root {
+        /* Geometry */
+        --size: 96px;                 /* overall loader size */
+        --slab: calc(var(--size) * 0.62); /* square top face => perfect diamond */
+        --thickness: calc(var(--size) * 0.22);
+
+        /* Timing (slower) */
+        --duration: 3.2s;
+
+        /* Colors (default to dark mode, overridden below for light mode) */
+        --bg: #0b0c0f;
+        --text: rgba(255, 255, 255, 0.72);
+
+        --top-a: #f2f2f2;
+        --top-b: #cfcfcf;
+
+        --right-a: #bdbdbd;
+        --right-b: #7a7a7a;
+
+        --left-a: #d6d6d6;
+        --left-b: #9a9a9a;
+
+        --shadow: rgba(0, 0, 0, 0.38);
+      }
+
+      /* Light mode overrides */
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f6f7fb;
+          --text: rgba(0, 0, 0, 0.62);
+
+          --top-a: #2a2a2a;
+          --top-b: #4a4a4a;
+
+          --right-a: #5b5b5b;
+          --right-b: #1f1f1f;
+
+          --left-a: #6a6a6a;
+          --left-b: #303030;
+
+          --shadow: rgba(0, 0, 0, 0.18);
+        }
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: var(--bg);
+        display: grid;
+        place-items: center;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+
+      /* ===== smoother continuous cycle: stack stays 3 deep ===== */
+
+      /* Tuning knobs */
+      :root {
+        --duration: 5.8s;            /* slower + smoother */
+        --slot: 12px;                /* vertical spacing between visible layers */
+        --drop: 44px;                /* where the bottom exits */
+        --inY: -10px;                /* small lift when entering */
+        --inX: 22px;                 /* how far from left/right it enters */
+      }
+
+      /* Left-entry cycle */
+      @keyframes cycle-left {
+        /* Enter (invisible) */
+        0% {
+          opacity: 0;
+          translate: calc(-1 * var(--inX)) var(--inY);
+          z-index: 30;
+        }
+
+        /* Snap into top slot */
+        12% {
+          opacity: 1;
+          translate: 0px 0px;
+          z-index: 20;
+        }
+
+        /* Drift down to middle slot */
+        44% {
+          opacity: 1;
+          translate: 0px var(--slot);
+          z-index: 15;
+        }
+
+        /* Drift down to bottom slot */
+        76% {
+          opacity: 1;
+          translate: 0px calc(var(--slot) * 2);
+          z-index: 10;
+        }
+
+        /* Drop out (fade) */
+        100% {
+          opacity: 0;
+          translate: 0px var(--drop);
+          z-index: 5;
+        }
+      }
+
+      /* Right-entry cycle */
+      @keyframes cycle-right {
+        0% {
+          opacity: 0;
+          translate: var(--inX) var(--inY);
+          z-index: 30;
+        }
+
+        12% {
+          opacity: 1;
+          translate: 0px 0px;
+          z-index: 20;
+        }
+
+        44% {
+          opacity: 1;
+          translate: 0px var(--slot);
+          z-index: 15;
+        }
+
+        76% {
+          opacity: 1;
+          translate: 0px calc(var(--slot) * 2);
+          z-index: 10;
+        }
+
+        100% {
+          opacity: 0;
+          translate: 0px var(--drop);
+          z-index: 5;
+        }
+      }
+
+
+
+      /* ===== loader container ===== */
+      .loader {
+        width: var(--size);
+        height: calc(var(--size) * 1.15);
+        position: relative;
+        display: grid;
+        place-items: center;
+        isolation: isolate;
+      }
+
+      .shadow {
+        position: absolute;
+        bottom: calc(var(--size) * 0.07);
+        left: 50%;
+        width: calc(var(--size) * 0.90);
+        height: calc(var(--size) * 0.20);
+        translate: -50% 0;
+        background: radial-gradient(closest-side, var(--shadow), rgba(0, 0, 0, 0));
+        filter: blur(2px);
+        transform: skewX(-18deg);
+        opacity: 0.85;
+        z-index: 1;
+      }
+
+      /* ===== slab (square => perfect diamond) ===== */
+      .box {
+        position: absolute;
+        width: var(--slab);
+        height: var(--slab);
+        transform-style: preserve-3d;
+
+        /* isometric-ish */
+        transform: rotateX(55deg) rotateZ(45deg);
+
+        opacity: 0;
+      }
+
+      /* Assign the cycles. 4 boxes, staggered evenly.
+         At any moment you’ll see ~3 of them, with one entering/exiting briefly. */
+      .box-1 { animation: cycle-left  var(--duration) cubic-bezier(.4, 0, .2, 1) infinite; animation-delay: calc(var(--duration) * 0.00); }
+      .box-2 { animation: cycle-right var(--duration) cubic-bezier(.4, 0, .2, 1) infinite; animation-delay: calc(var(--duration) * 0.25); }
+      .box-3 { animation: cycle-left  var(--duration) cubic-bezier(.4, 0, .2, 1) infinite; animation-delay: calc(var(--duration) * 0.50); }
+      .box-4 { animation: cycle-right var(--duration) cubic-bezier(.4, 0, .2, 1) infinite; animation-delay: calc(var(--duration) * 0.75); }
+
+
+      /* Sharp corners */
+      .side-top,
+      .side-left,
+      .side-right {
+        position: absolute;
+        inset: 0;
+        border-radius: 0;
+        backface-visibility: hidden;
+      }
+
+      /* top face */
+      .side-top {
+        background: linear-gradient(135deg, var(--top-a), var(--top-b));
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.22);
+        transform: translateZ(var(--thickness));
+      }
+
+      /* right face */
+      .side-right {
+        width: 100%;
+        height: var(--thickness);
+        top: 100%;
+        left: 0;
+        background: linear-gradient(135deg, var(--right-a), var(--right-b));
+        transform-origin: top;
+        transform: rotateX(-90deg);
+      }
+
+      /* left face */
+      .side-left {
+        width: var(--thickness);
+        height: 100%;
+        top: 0;
+        left: calc(-1 * var(--thickness));
+        background: linear-gradient(135deg, var(--left-a), var(--left-b));
+        transform-origin: right;
+        transform: rotateY(90deg);
+      }
+
+      .caption {
+        position: absolute;
+        top: calc(100% + 18px);
+        left: 50%;
+        translate: -50% 0;
+        color: var(--text);
+        font-size: 12px;
+        letter-spacing: 0.02em;
+        user-select: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="loader" role="status" aria-label="Loading">
+      <div class="box box-1">
+        <div class="side-left"></div>
+        <div class="side-right"></div>
+        <div class="side-top"></div>
+      </div>
+      <div class="box box-2">
+        <div class="side-left"></div>
+        <div class="side-right"></div>
+        <div class="side-top"></div>
+      </div>
+      <div class="box box-3">
+        <div class="side-left"></div>
+        <div class="side-right"></div>
+        <div class="side-top"></div>
+      </div>
+      <div class="box box-4">
+        <div class="side-left"></div>
+        <div class="side-right"></div>
+        <div class="side-top"></div>
+      </div>
+
+      <div class="shadow"></div>
+      <div class="caption">Loading…</div>
+    </div>
+  </body>
+</html>

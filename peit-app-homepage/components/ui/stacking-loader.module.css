@@ -1,0 +1,254 @@
+/* ===== Stacking Diamond Loader - CSS Module ===== */
+
+/* CSS Custom Properties for size scaling */
+.loader {
+  --size: var(--loader-size, 56px); /* Default 56px, overridable via inline style */
+  --slab: calc(var(--size) * 0.62); /* Square top face => perfect diamond */
+  --thickness: calc(var(--size) * 0.22);
+
+  /* Animation timing */
+  --duration: 5.8s; /* Slower + smoother */
+  --slot: 12px; /* Vertical spacing between visible layers */
+  --drop: 44px; /* Where the bottom exits */
+  --inY: -10px; /* Small lift when entering */
+  --inX: 22px; /* How far from left/right it enters */
+
+  /* Theme-aware colors */
+  /* Light mode defaults - solid black throughout, no gradients */
+  --top-a: #000000;
+  --top-b: #000000;
+  --right-a: #000000;
+  --right-b: #000000;
+  --left-a: #000000;
+  --left-b: #000000;
+  --shadow: rgba(0, 0, 0, 1);
+
+  /* Container styles */
+  width: var(--size);
+  height: calc(var(--size) * 1.15);
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+/* Dark mode overrides - light gray diamonds with darker edges for contrast */
+@media (prefers-color-scheme: dark) {
+  .loader {
+    --top-a: #ffffff;
+    --top-b: #a0a0a0;
+    --right-a: #c0c0c0;
+    --right-b: #606060;
+    --left-a: #d0d0d0;
+    --left-b: #707070;
+    --shadow: rgba(0, 0, 0, 0.98);
+  }
+}
+
+/* Support for next-themes .dark class */
+:global(.dark) .loader {
+  --top-a: #ffffff;
+  --top-b: #a0a0a0;
+  --right-a: #c0c0c0;
+  --right-b: #606060;
+  --left-a: #d0d0d0;
+  --left-b: #707070;
+  --shadow: rgba(0, 0, 0, 0.38);
+}
+
+/* ===== Keyframe Animations ===== */
+
+/* Left-entry cycle */
+@keyframes cycleLeft {
+  /* Enter (invisible) */
+  0% {
+    opacity: 0;
+    translate: calc(-1 * var(--inX)) var(--inY);
+    z-index: 30;
+  }
+
+  /* Snap into top slot */
+  12% {
+    opacity: 1;
+    translate: 0px 0px;
+    z-index: 20;
+  }
+
+  /* Drift down to middle slot */
+  44% {
+    opacity: 1;
+    translate: 0px var(--slot);
+    z-index: 15;
+  }
+
+  /* Drift down to bottom slot */
+  76% {
+    opacity: 1;
+    translate: 0px calc(var(--slot) * 2);
+    z-index: 10;
+  }
+
+  /* Drop out (fade) */
+  100% {
+    opacity: 0;
+    translate: 0px var(--drop);
+    z-index: 5;
+  }
+}
+
+/* Right-entry cycle */
+@keyframes cycleRight {
+  0% {
+    opacity: 0;
+    translate: var(--inX) var(--inY);
+    z-index: 30;
+  }
+
+  12% {
+    opacity: 1;
+    translate: 0px 0px;
+    z-index: 20;
+  }
+
+  44% {
+    opacity: 1;
+    translate: 0px var(--slot);
+    z-index: 15;
+  }
+
+  76% {
+    opacity: 1;
+    translate: 0px calc(var(--slot) * 2);
+    z-index: 10;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 0px var(--drop);
+    z-index: 5;
+  }
+}
+
+/* ===== Box Styles ===== */
+
+.box {
+  position: absolute;
+  width: var(--slab);
+  height: var(--slab);
+  transform-style: preserve-3d;
+
+  /* Isometric-ish perspective */
+  transform: rotateX(55deg) rotateZ(45deg);
+
+  opacity: 0;
+}
+
+/* Animation assignments - 4 boxes, staggered evenly */
+.box1 {
+  animation: cycleLeft var(--duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: calc(var(--duration) * 0);
+}
+
+.box2 {
+  animation: cycleRight var(--duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: calc(var(--duration) * 0.25);
+}
+
+.box3 {
+  animation: cycleLeft var(--duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: calc(var(--duration) * 0.5);
+}
+
+.box4 {
+  animation: cycleRight var(--duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: calc(var(--duration) * 0.75);
+}
+
+/* ===== Diamond Faces ===== */
+
+/* Shared styles for all faces */
+.sideTop,
+.sideLeft,
+.sideRight {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  backface-visibility: hidden;
+}
+
+/* Top face */
+.sideTop {
+  background: linear-gradient(135deg, var(--top-a), var(--top-b));
+  transform: translateZ(var(--thickness));
+  box-shadow: inset 0 0 0 1px rgba(114, 114, 114, 0.3);
+}
+
+/* Right face */
+.sideRight {
+  width: 100%;
+  height: var(--thickness);
+  top: 100%;
+  left: 0;
+  background: linear-gradient(135deg, var(--right-a), var(--right-b));
+  transform-origin: top;
+  transform: rotateX(-90deg);
+  box-shadow: inset 0 0 0 1px rgba(114, 114, 114, 0.3);
+}
+
+/* Left face */
+.sideLeft {
+  width: var(--thickness);
+  height: 100%;
+  top: 0;
+  left: calc(-1 * var(--thickness));
+  background: linear-gradient(135deg, var(--left-a), var(--left-b));
+  transform-origin: right;
+  transform: rotateY(90deg);
+  box-shadow: inset 0 0 0 1px rgba(114, 114, 114, 0.3);
+}
+
+/* ===== Shadow ===== */
+
+.shadow {
+  position: absolute;
+  bottom: calc(var(--size) * 0.07);
+  left: 50%;
+  width: calc(var(--size) * 0.9);
+  height: calc(var(--size) * 0.2);
+  translate: -50% 0;
+  background: radial-gradient(closest-side, var(--shadow), rgba(0, 0, 0, 0));
+  filter: blur(2px);
+  transform: skewX(-18deg);
+  opacity: 0.85;
+  z-index: 1;
+}
+
+/* ===== Caption ===== */
+
+.caption {
+  position: absolute;
+  top: calc(100% + 18px);
+  left: 50%;
+  translate: -50% 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+/* ===== Accessibility ===== */
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* Show only first box when animations are disabled */
+  .box2,
+  .box3,
+  .box4 {
+    display: none;
+  }
+}
