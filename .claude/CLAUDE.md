@@ -2534,6 +2534,15 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 - Returns: `{ success: true, deleted: { database: bool, volume: bool, blobs: [...] } }`
 - Error codes: 400 (invalid format), 403 (not authorized), 404 (not found), 500 (server error)
 
+**`DELETE /api/account`**
+- Deletes a user account and all associated data
+- Body: `{ user_id: string }`
+- Order of operations: Fetch job data → Delete blobs → Delete volumes → Delete DB records → Delete account
+- Returns: `{ success: true, message: string, deleted: { jobs_count, blobs_deleted, volumes_deleted, database_deleted, account_deleted } }`
+- Batch deletes all blobs at once for efficiency (e.g., 20 jobs = 60 DELETE operations)
+- Frontend clears sessionStorage and localStorage before redirect to prevent stuck state
+- Error codes: 400 (missing user_id), 500 (server error)
+
 ### Anonymous Job Claiming
 
 When anonymous users create maps, the jobs are stored with `user_id = NULL`. If they later sign up or log in, they can claim these jobs.
