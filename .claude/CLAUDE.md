@@ -1526,6 +1526,7 @@ The generated HTML map includes several interactive features:
 - Desktop behavior unchanged (panels open by default, basemap shifts with panel state using `.panel-right-collapsed` class)
 - Leaflet controls adjust position based on panel state
 - CSS media queries handle initial visual state; JavaScript syncs body classes and toggle icons
+- **Bottom padding for mobile browsers**: Both panels use `padding-bottom: 80px` on mobile to prevent content from being hidden behind browser chrome (address bar, navigation buttons, safe area insets on notched devices). This ensures all layer items are fully scrollable into view.
 
 ### Map Controls
 - **Base Layer Control**: Custom-named base maps (top-right)
