@@ -288,7 +288,7 @@ def process_file_task(
     import tempfile
     import shutil
     import time
-    from datetime import datetime
+    from datetime import datetime, timezone
     from pathlib import Path
 
     sys.path.insert(0, "/root/peit")
@@ -730,6 +730,7 @@ def process_file_task(
                     'pdf_url': pdf_blob_url,
                     'xlsx_url': xlsx_blob_url,
                     'zip_download_path': f'/api/download/{job_id}',
+                    'blob_uploaded_at': datetime.now(timezone.utc).isoformat(),
                     **performance_metrics  # Merge performance metrics into update
                 }).eq('id', job_id).execute()
 
@@ -1576,17 +1577,25 @@ def fastapi_app():
             except Exception as e:
                 print(f"Warning: Failed to delete volume files for job {job_id}: {e}")
 
-            # Delete from Vercel Blob using official SDK
+            # Delete from Vercel Blob using URLs from database
             token = os.environ.get("BLOB_READ_WRITE_TOKEN")
             if token:
                 try:
                     client = BlobClient(token=token)
-                    # List all blobs with job prefix
-                    listing = client.list_objects(prefix=f"maps/{job_id}/")
-                    blob_urls = [blob.url for blob in listing.blobs]
+
+                    # Get blob URLs from database (already fetched at line 1560)
+                    blob_urls = [
+                        url for url in [
+                            result.data.get('map_blob_url'),
+                            result.data.get('pdf_url'),
+                            result.data.get('xlsx_url')
+                        ] if url  # Filter out None values
+                    ]
+
                     if blob_urls:
                         client.delete(blob_urls)
-                        deleted_items["blobs"] = [blob.pathname for blob in listing.blobs]
+                        # Extract pathnames from URLs for logging
+                        deleted_items["blobs"] = [url.split('/')[-1] for url in blob_urls]
                 except Exception as e:
                     print(f"Warning: Failed to delete blobs for job {job_id}: {e}")
 
@@ -1611,7 +1620,7 @@ def fastapi_app():
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
-    secrets=[vercel_blob_secret],
+    secrets=[vercel_blob_secret, supabase_secret],
     schedule=modal.Cron("0 3 * * *"),  # 3 AM UTC daily
 )
 def cleanup_old_results():
@@ -1642,32 +1651,51 @@ def cleanup_old_results():
     results_volume.commit()
     print(f"Volume cleanup: deleted {deleted_count} expired job folders")
 
-    # Clean up Vercel Blob using official SDK
+    # Clean up Vercel Blob using database-driven queries
     token = os.environ.get("BLOB_READ_WRITE_TOKEN")
     if token:
         try:
             from vercel.blob import BlobClient
 
-            client = BlobClient(token=token)
-            # List all blobs with "maps/" prefix
-            listing = client.list_objects(prefix="maps/")
-            urls_to_delete = []
+            # Query database for expired jobs (no blob LIST needed)
+            supabase = get_supabase_client()
+            if not supabase:
+                print("Blob cleanup skipped: Database not configured")
+                return {
+                    "volume_deleted": deleted_count,
+                    "blob_deleted": 0,
+                    "cutoff_date": cutoff.isoformat()
+                }
 
-            for blob in listing.blobs:
-                try:
-                    # Check blob upload date
-                    if blob.uploaded_at:
-                        if blob.uploaded_at < cutoff_utc:
-                            urls_to_delete.append(blob.url)
-                            blob_deleted_count += 1
-                except Exception as e:
-                    print(f"Error checking blob {blob.pathname}: {e}")
+            # Find jobs with blobs older than 7 days
+            cutoff_iso = cutoff_utc.isoformat()
+            expired_jobs = supabase.table('jobs').select(
+                'id, map_blob_url, pdf_url, xlsx_url'
+            ).lt('blob_uploaded_at', cutoff_iso) \
+             .not_.is_('blob_uploaded_at', 'null') \
+             .execute()
+
+            # Collect all blob URLs from expired jobs
+            blob_urls = []
+            for job in expired_jobs.data:
+                blob_urls.extend([
+                    url for url in [
+                        job.get('map_blob_url'),
+                        job.get('pdf_url'),
+                        job.get('xlsx_url')
+                    ] if url
+                ])
+
+            blob_deleted_count = len(blob_urls)
 
             # Batch delete expired blobs
-            if urls_to_delete:
-                client.delete(urls_to_delete)
+            if blob_urls:
+                client = BlobClient(token=token)
+                client.delete(blob_urls)
+                print(f"Blob cleanup: deleted {blob_deleted_count} expired blobs from {len(expired_jobs.data)} jobs")
+            else:
+                print("Blob cleanup: no expired blobs found")
 
-            print(f"Blob cleanup: deleted {blob_deleted_count} expired blobs")
         except Exception as e:
             print(f"Blob cleanup error: {e}")
     else:

@@ -2657,6 +2657,22 @@ Reports (PDF/XLSX) are uploaded to blob storage **before** the map HTML is gener
 **Environment Setup:**
 1. Create Vercel Blob store in Vercel dashboard
 2. Add Modal secret: `modal secret create vercel-blob BLOB_READ_WRITE_TOKEN=xxx`
+3. Add Vercel env var: `SUPABASE_SERVICE_ROLE_KEY` (for frontend map viewer database lookups)
+
+**Database-Tracked Blob URLs (Optimization):**
+To minimize expensive `list()` operations on Vercel Blob, blob URLs are stored in the Supabase `jobs` table:
+- `map_blob_url`, `pdf_url`, `xlsx_url` - Direct URLs to blob files
+- `blob_uploaded_at` - Timestamp for cleanup queries (indexed for performance)
+
+This eliminates the need to list blobs dynamically:
+- **Backend job deletion**: Uses database URLs directly (no LIST operation)
+- **Backend scheduled cleanup**: Queries database for expired jobs (no LIST operation)
+- **Frontend map viewer**: Gets blob URL from database, falls back to `list()` only for old jobs
+- **Impact**: ~65-70% reduction in advanced operations (1,700/month → 500-600/month)
+
+**Vercel Blob Quotas:**
+- Advanced operations: 2,000/month (put, copy, list calls) - resets 1st of month
+- Simple operations: 10,000/month (URL access, head calls)
 
 ### Timeout Handling
 
@@ -2686,18 +2702,20 @@ Modal cancels long-running jobs after ~10 minutes. The backend detects this via 
 
 **Cron Job:** `cleanup_old_results()` runs daily at 3 AM UTC
 - Deletes Modal Volume job folders older than 7 days
-- Deletes Vercel Blob files older than 7 days
-- Uses file modification time (`st_mtime`) for volume, `uploadedAt` for blobs
+- Queries Supabase for jobs with `blob_uploaded_at < NOW() - INTERVAL '7 days'`
+- Deletes Vercel Blob files using URLs from database (no LIST operation)
+- Uses file modification time (`st_mtime`) for volume folders
 
 ```python
 @app.function(
     image=peit_image,
     volumes={"/results": results_volume},
-    secrets=[vercel_blob_secret],
+    secrets=[vercel_blob_secret, supabase_secret],
     schedule=modal.Cron("0 3 * * *"),  # 3 AM UTC daily
 )
 def cleanup_old_results():
-    # Deletes volume folders and blobs older than 7 days
+    # Deletes volume folders and queries database for expired blobs
+    # No blob listing - uses database-tracked URLs
 ```
 
 **Future Enhancement (auth):** When authentication is added:
