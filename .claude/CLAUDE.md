@@ -2657,6 +2657,7 @@ Reports (PDF/XLSX) are uploaded to blob storage **before** the map HTML is gener
 **Environment Setup:**
 1. Create Vercel Blob store in Vercel dashboard
 2. Add Modal secret: `modal secret create vercel-blob BLOB_READ_WRITE_TOKEN=xxx`
+3. Add Vercel env var: `SUPABASE_SERVICE_ROLE_KEY` (for frontend map viewer database lookups)
 
 **Database-Tracked Blob URLs (Optimization):**
 To minimize expensive `list()` operations on Vercel Blob, blob URLs are stored in the Supabase `jobs` table:
@@ -2664,12 +2665,14 @@ To minimize expensive `list()` operations on Vercel Blob, blob URLs are stored i
 - `blob_uploaded_at` - Timestamp for cleanup queries (indexed for performance)
 
 This eliminates the need to list blobs dynamically:
-- **Job deletion**: Uses database URLs directly (no LIST operation)
-- **Scheduled cleanup**: Queries database for expired jobs (no LIST operation)
+- **Backend job deletion**: Uses database URLs directly (no LIST operation)
+- **Backend scheduled cleanup**: Queries database for expired jobs (no LIST operation)
+- **Frontend map viewer**: Gets blob URL from database, falls back to `list()` only for old jobs
 - **Impact**: ~65-70% reduction in advanced operations (1,700/month → 500-600/month)
 
-Advanced operations quota: 2,000/month (put, copy, list calls)
-Simple operations quota: 10,000/month (URL access, head calls)
+**Vercel Blob Quotas:**
+- Advanced operations: 2,000/month (put, copy, list calls) - resets 1st of month
+- Simple operations: 10,000/month (URL access, head calls)
 
 ### Timeout Handling
 
