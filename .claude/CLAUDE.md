@@ -2085,7 +2085,9 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Custom animated loader component for processing states
 - 3D isometric diamond stacking animation (replaces lucide-react Loader2)
 - Theme-aware styling with optimized contrast for both light and dark modes
-- Configurable size prop (default: 56px, can scale to any size)
+- Configurable size prop (default: 56px, used at 66px in processing-status)
+- Compact slab spacing (7px) for tighter vertical stack
+- Smooth exit animation with 24px drop distance for gradual disappearance
 - Optional caption text (hidden by default)
 - GPU-accelerated CSS animations (no JavaScript overhead)
 - Inset box-shadow borders for enhanced edge definition and visibility
@@ -2095,7 +2097,7 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 
 **`components/processing-status.tsx`**
 - Real-time progress display via SSE
-- **Custom stacking loader animation** (StackingLoader component at 56px size)
+- **Custom stacking loader animation** (StackingLoader component at 66px size, positioned with -mt-6)
 - Layer-by-layer processing status
 - "View Live Map" button - opens shareable map URL in new tab
 - "Download ZIP" button - downloads full results package

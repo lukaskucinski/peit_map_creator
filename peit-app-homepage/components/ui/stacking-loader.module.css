@@ -8,8 +8,8 @@
 
   /* Animation timing */
   --duration: 5.8s; /* Slower + smoother */
-  --slot: 12px; /* Vertical spacing between visible layers */
-  --drop: 44px; /* Where the bottom exits */
+  --slot: 7px; /* Vertical spacing between visible layers (reduced for tighter stack) */
+  --drop: 24px; /* Where the bottom exits (closer to stack for smoother disappearance) */
   --inY: -10px; /* Small lift when entering */
   --inX: 22px; /* How far from left/right it enters */
 

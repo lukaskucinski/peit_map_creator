@@ -567,8 +567,8 @@ export function ProcessingStatus({
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-6 -mt-9">
-              <StackingLoader size={56} />
+            <div className="mb-6 -mt-6">
+              <StackingLoader size={66} />
             </div>
 
             <h2 className="mb-2 text-xl font-semibold text-foreground">
