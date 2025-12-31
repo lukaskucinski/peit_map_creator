@@ -2081,8 +2081,21 @@ The web frontend is a Next.js 16 application providing a user-friendly interface
 - Area validation against 500 sq mi limit with warning at 250 sq mi
 - Uses `LabelWithTooltip` helper component for consistent tooltip UI
 
+**`components/ui/stacking-loader.tsx`**
+- Custom animated loader component for processing states
+- 3D isometric diamond stacking animation (replaces lucide-react Loader2)
+- Theme-aware styling with optimized contrast for both light and dark modes
+- Configurable size prop (default: 56px, can scale to any size)
+- Optional caption text (hidden by default)
+- GPU-accelerated CSS animations (no JavaScript overhead)
+- Inset box-shadow borders for enhanced edge definition and visibility
+- Accessible with `role="status"` and `aria-label` attributes
+- Respects `prefers-reduced-motion` accessibility preference
+- Scoped styles via CSS Module (`.module.css`)
+
 **`components/processing-status.tsx`**
 - Real-time progress display via SSE
+- **Custom stacking loader animation** (StackingLoader component at 56px size)
 - Layer-by-layer processing status
 - "View Live Map" button - opens shareable map URL in new tab
 - "Download ZIP" button - downloads full results package
