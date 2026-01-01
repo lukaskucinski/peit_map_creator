@@ -1465,20 +1465,23 @@ The generated HTML map includes several interactive features:
 
 ### Download Control
 - **Location**: Fixed bottom-right corner, shifts with right panel
-- **Formats**: GeoJSON, Shapefile (ZIP), KMZ
+- **Formats**: GeoJSON, Shapefile (ZIP), KMZ, GPKG
+- **Menu Width**: 340px desktop (was 240px), 290px mobile (was 240px) to accommodate 4 format buttons
 - **Functionality**:
   - Download individual layers in any format
   - Download all layers at once as a ZIP file
-  - Uses embedded GeoJSON data (no CORS issues)
-  - Client-side conversion using @mapbox/shp-write and tokml libraries
+  - Uses embedded GeoJSON data for client-side formats (no CORS issues)
+  - Client-side conversion: @mapbox/shp-write (SHP), tokml (KMZ)
+  - Server-side conversion: Modal API endpoints (GPKG)
 - **Positioning**: Menu offsets 45px from button in both panel states to prevent overlap
+- **Mobile Responsive**: Smaller buttons and text on screens ≤768px
 - **Input Downloads**:
   - For polygon inputs: Single "Input Area" download (original geometry)
   - For point/line/mixed inputs: Two downloads available:
     - "Original Input" - Pre-buffer geometry (point, line, or mixed features)
     - "Input Area" - Buffered polygon used for intersection queries
 
-**Shapefile Download Implementation:**
+**Shapefile Download Implementation (Client-Side):**
 - Uses `@mapbox/shp-write@0.4.3` (official Mapbox fork, JSZip 3.x compatible)
 - Requires `outputType: 'blob'` option which returns a Promise
 - Both `downloadShapefile()` and `downloadAll()` use `async`/`await` pattern
@@ -1489,6 +1492,14 @@ The generated HTML map includes several interactive features:
   - Must await the Promise before passing to `saveAs()` or `JSZip.file()`
   - Version 0.4.0+ fixed JSZip 3.0 compatibility (old `generate()` → new `generateAsync()`)
   - Fallback error messages show `constructor.name` for debugging
+
+**GPKG Download Implementation (Server-Side):**
+- Uses GeoPandas `gdf.to_file(..., driver='GPKG')` for conversion
+- Endpoints: `GET /api/download-gpkg/{job_id}/{layer_name}` and `GET /api/download-gpkg-all/{job_id}`
+- 1.5-2x faster than client-side WASM for typical datasets
+- Requires job_id passed through template rendering
+- Error handling with fallback suggestion to use GeoJSON
+- Converts each GeoJSON layer to separate GPKG file (one per layer, not multi-layer)
 
 ### Dual Collapsible Panel System
 
@@ -2542,6 +2553,20 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 - Batch deletes all blobs at once for efficiency (e.g., 20 jobs = 60 DELETE operations)
 - Frontend clears sessionStorage and localStorage before redirect to prevent stuck state
 - Error codes: 400 (missing user_id), 500 (server error)
+
+**`GET /api/download-gpkg/{job_id}/{layer_name}`**
+- Downloads a single layer as GPKG file (server-side conversion)
+- Path params: `job_id` (16-char hex), `layer_name` (e.g., "RCRA Sites" or "Input Polygon")
+- Converts GeoJSON from volume to GPKG using GeoPandas `to_file(..., driver='GPKG')`
+- Returns: StreamingResponse with GPKG file (MIME type: `application/geopackage+sqlite3`)
+- Error codes: 400 (invalid job ID), 404 (layer not found), 500 (conversion failed)
+
+**`GET /api/download-gpkg-all/{job_id}`**
+- Downloads all layers as separate GPKG files in a ZIP archive
+- Path param: `job_id` (16-char hex)
+- Converts each GeoJSON layer to separate GPKG file (one file per layer, not multi-layer)
+- Returns: StreamingResponse with ZIP file containing GPKG files
+- Error codes: 400 (invalid job ID), 404 (job data not found), 500 (conversion failed)
 
 ### Anonymous Job Claiming
 
