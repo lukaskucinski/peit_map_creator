@@ -261,7 +261,8 @@ def create_web_map(
     xlsx_relative_path: Optional[str] = None,
     pdf_relative_path: Optional[str] = None,
     clip_boundary: Optional[BaseGeometry] = None,
-    original_geometry_gdf: Optional[gpd.GeoDataFrame] = None
+    original_geometry_gdf: Optional[gpd.GeoDataFrame] = None,
+    job_id: Optional[str] = None
 ) -> folium.Map:
     """
     Create an interactive Leaflet map with all layers.
@@ -847,7 +848,8 @@ def create_web_map(
     download_template = env.get_template('download_control.html')
     download_html = download_template.render(
         layer_sections=generate_layer_download_sections(layer_results, config, input_filename, original_geometry_gdf),
-        layer_data=generate_layer_data_mapping(layer_results, polygon_gdf, original_geometry_gdf)
+        layer_data=generate_layer_data_mapping(layer_results, polygon_gdf, original_geometry_gdf),
+        job_id=job_id or ""  # Empty string if None (for CLI runs)
     )
     m.get_root().html.add_child(Element(download_html))
 

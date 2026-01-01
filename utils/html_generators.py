@@ -23,7 +23,7 @@ def generate_layer_download_sections(
     """
     Generate HTML for individual layer download sections.
 
-    Creates download button groups for each layer (GeoJSON, SHP, KMZ formats).
+    Creates download button groups for each layer (GeoJSON, SHP, KMZ, GPKG formats).
     Only includes layers that have features.
 
     Parameters:
@@ -63,6 +63,7 @@ def generate_layer_download_sections(
                 <button class="download-format-btn" onclick="downloadLayer('Original Input', 'geojson'); event.stopPropagation();">GeoJSON</button>
                 <button class="download-format-btn" onclick="downloadLayer('Original Input', 'shp'); event.stopPropagation();">SHP</button>
                 <button class="download-format-btn" onclick="downloadLayer('Original Input', 'kmz'); event.stopPropagation();">KMZ</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'gpkg'); event.stopPropagation();">GPKG</button>
             </div>
         </div>
         """
@@ -75,6 +76,7 @@ def generate_layer_download_sections(
                 <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'geojson'); event.stopPropagation();">GeoJSON</button>
                 <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'shp'); event.stopPropagation();">SHP</button>
                 <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'kmz'); event.stopPropagation();">KMZ</button>
+                <button class="download-format-btn" onclick="downloadLayer('Input Polygon', 'gpkg'); event.stopPropagation();">GPKG</button>
             </div>
         </div>
         """
@@ -96,6 +98,7 @@ def generate_layer_download_sections(
                 <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'geojson'); event.stopPropagation();">GeoJSON</button>
                 <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'shp'); event.stopPropagation();">SHP</button>
                 <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'kmz'); event.stopPropagation();">KMZ</button>
+                <button class="download-format-btn" onclick="downloadLayer('{layer_name}', 'gpkg'); event.stopPropagation();">GPKG</button>
             </div>
         </div>
         """

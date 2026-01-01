@@ -48,7 +48,7 @@
         border-radius: 4px;
         box-shadow: 0 1px 5px rgba(0,0,0,0.65);
         padding: 12px;
-        min-width: 240px;
+        min-width: 340px;  /* Was 240px - increased for 4 buttons (GeoJSON/SHP/KMZ/GPKG) */
         display: none;
         max-height: 500px;
         overflow-y: auto;
@@ -193,6 +193,26 @@
         opacity: 1;
         transform: translateX(-50%) translateY(0);
     }
+
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+        .download-menu {
+            min-width: 290px;  /* Was 240px - increased by 50px for mobile */
+        }
+
+        .download-format-btn {
+            padding: 4px 8px;  /* Slightly smaller buttons for mobile */
+            font-size: 10px;
+        }
+
+        .download-layer-name {
+            font-size: 11px;  /* Smaller layer names for mobile */
+        }
+
+        .download-menu-header {
+            font-size: 13px;  /* Slightly smaller header on mobile */
+        }
+    }
 </style>
 
 <div class="leaflet-control-download">
@@ -212,6 +232,7 @@
                 <button class="download-format-btn" onclick="downloadAll('geojson'); event.stopPropagation();">GeoJSON</button>
                 <button class="download-format-btn" onclick="downloadAll('shp'); event.stopPropagation();">Shapefile</button>
                 <button class="download-format-btn" onclick="downloadAll('kmz'); event.stopPropagation();">KMZ</button>
+                <button class="download-format-btn" onclick="downloadAll('gpkg'); event.stopPropagation();">GPKG</button>
             </div>
         </div>
 
@@ -275,24 +296,35 @@
 
     // Download individual layer in specified format
     async function downloadLayer(layerName, format) {
-        const geojson = await loadGeoJSON(layerName);
         const fileName = layerName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
         switch(format) {
             case 'geojson':
+                const geojson = await loadGeoJSON(layerName);
                 downloadGeoJSON(geojson, fileName);
                 break;
             case 'shp':
-                downloadShapefile(geojson, fileName);
+                const geojson2 = await loadGeoJSON(layerName);
+                downloadShapefile(geojson2, fileName);
                 break;
             case 'kmz':
-                downloadKMZ(geojson, fileName);
+                const geojson3 = await loadGeoJSON(layerName);
+                downloadKMZ(geojson3, fileName);
+                break;
+            case 'gpkg':
+                downloadLayerGPKG(layerName);  // Server-side conversion
                 break;
         }
     }
 
     // Download all layers as a single ZIP file
     async function downloadAll(format) {
+        // Handle GPKG separately (server-side conversion)
+        if (format === 'gpkg') {
+            await downloadAllGPKG();
+            return;
+        }
+
         try {
             const zip = new JSZip();
             let successCount = 0;
@@ -403,6 +435,63 @@
         const zip = new JSZip();
         zip.file('doc.kml', kml);
         return await zip.generateAsync({type: 'blob'});
+    }
+
+    // ========== GPKG Download Functions (Server-Side) ==========
+
+    // Helper: Get job ID from template or extract from path
+    function getJobId() {
+        // Embed job_id via Jinja2 template variable (passed from map_builder.py)
+        return "{{ job_id }}";
+    }
+
+    // Download layer as GPKG (server-side conversion)
+    async function downloadLayerGPKG(layerName) {
+        try {
+            const jobId = getJobId();
+
+            if (!jobId) {
+                throw new Error('Job ID not available');
+            }
+
+            // Fetch GPKG from server
+            const response = await fetch(`/api/download-gpkg/${jobId}/${encodeURIComponent(layerName)}`);
+
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+
+            // Download file
+            const blob = await response.blob();
+            const fileName = layerName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+            saveAs(blob, fileName + '.gpkg');
+        } catch (error) {
+            console.error('GPKG download failed:', error);
+            alert('Failed to generate GPKG file. Please try GeoJSON format instead.');
+        }
+    }
+
+    // Download all layers as GPKG ZIP
+    async function downloadAllGPKG() {
+        try {
+            const jobId = getJobId();
+
+            if (!jobId) {
+                throw new Error('Job ID not available');
+            }
+
+            const response = await fetch(`/api/download-gpkg-all/${jobId}`);
+
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            saveAs(blob, 'all_layers_gpkg.zip');
+        } catch (error) {
+            console.error('Bulk GPKG download failed:', error);
+            alert('Failed to generate GPKG files. Please try downloading layers individually.');
+        }
     }
 
     // ========== Coordinate Context Menu Functions ==========
