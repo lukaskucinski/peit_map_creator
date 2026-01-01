@@ -1460,11 +1460,12 @@ def fastapi_app():
             # List available files for debugging
             data_dir = Path(f"/results/{job_id}/data")
             available_files = list(data_dir.glob('*.geojson')) if data_dir.exists() else []
-            logger.error(f"Layer file not found: {geojson_path}")
-            logger.error(f"Available files: {[f.name for f in available_files]}")
+            available_names = [f.name for f in available_files]
+            print(f"[GPKG] Layer file not found: {geojson_path}")
+            print(f"[GPKG] Available files: {available_names}")
             raise HTTPException(
                 status_code=404,
-                detail=f"Layer '{layer_name}' not found (looked for: {safe_name}.geojson)"
+                detail=f"Layer '{layer_name}' not found (looked for: {safe_name}.geojson, available: {available_names})"
             )
 
         # Read as GeoDataFrame
