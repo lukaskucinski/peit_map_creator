@@ -456,6 +456,10 @@
             const jobId = getJobId();
             const apiUrl = getApiUrl();
 
+            console.log('[GPKG DEBUG] jobId:', jobId);
+            console.log('[GPKG DEBUG] apiUrl:', apiUrl);
+            console.log('[GPKG DEBUG] layerName:', layerName);
+
             if (!jobId) {
                 throw new Error('Job ID not available');
             }
@@ -464,10 +468,20 @@
                 throw new Error('API URL not available');
             }
 
+            // Construct full URL
+            const fullUrl = `${apiUrl}/api/download-gpkg/${jobId}/${encodeURIComponent(layerName)}`;
+            console.log('[GPKG DEBUG] Full URL:', fullUrl);
+
             // Fetch GPKG from Modal backend (absolute URL)
-            const response = await fetch(`${apiUrl}/api/download-gpkg/${jobId}/${encodeURIComponent(layerName)}`);
+            const response = await fetch(fullUrl);
+
+            console.log('[GPKG DEBUG] Response status:', response.status);
+            console.log('[GPKG DEBUG] Response statusText:', response.statusText);
 
             if (!response.ok) {
+                // Try to get error details from response body
+                const errorText = await response.text();
+                console.error('[GPKG DEBUG] Error response body:', errorText);
                 throw new Error(`Server returned ${response.status}: ${response.statusText}`);
             }
 
@@ -487,6 +501,9 @@
             const jobId = getJobId();
             const apiUrl = getApiUrl();
 
+            console.log('[GPKG DEBUG] (All Layers) jobId:', jobId);
+            console.log('[GPKG DEBUG] (All Layers) apiUrl:', apiUrl);
+
             if (!jobId) {
                 throw new Error('Job ID not available');
             }
@@ -495,10 +512,20 @@
                 throw new Error('API URL not available');
             }
 
+            // Construct full URL
+            const fullUrl = `${apiUrl}/api/download-gpkg-all/${jobId}`;
+            console.log('[GPKG DEBUG] (All Layers) Full URL:', fullUrl);
+
             // Fetch GPKG ZIP from Modal backend (absolute URL)
-            const response = await fetch(`${apiUrl}/api/download-gpkg-all/${jobId}`);
+            const response = await fetch(fullUrl);
+
+            console.log('[GPKG DEBUG] (All Layers) Response status:', response.status);
+            console.log('[GPKG DEBUG] (All Layers) Response statusText:', response.statusText);
 
             if (!response.ok) {
+                // Try to get error details from response body
+                const errorText = await response.text();
+                console.error('[GPKG DEBUG] (All Layers) Error response body:', errorText);
                 throw new Error(`Server returned ${response.status}: ${response.statusText}`);
             }
 
