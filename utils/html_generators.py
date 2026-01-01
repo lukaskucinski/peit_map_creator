@@ -60,10 +60,10 @@ def generate_layer_download_sections(
         <div class="download-section">
             <div class="download-layer-name">{input_filename} (Original Input)</div>
             <div class="download-format-buttons">
-                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'geojson'); event.stopPropagation();">GeoJSON</button>
-                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'shp'); event.stopPropagation();">SHP</button>
-                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'kmz'); event.stopPropagation();">KMZ</button>
-                <button class="download-format-btn" onclick="downloadLayer('Original Input', 'gpkg'); event.stopPropagation();">GPKG</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Geometry', 'geojson'); event.stopPropagation();">GeoJSON</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Geometry', 'shp'); event.stopPropagation();">SHP</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Geometry', 'kmz'); event.stopPropagation();">KMZ</button>
+                <button class="download-format-btn" onclick="downloadLayer('Original Geometry', 'gpkg'); event.stopPropagation();">GPKG</button>
             </div>
         </div>
         """
@@ -144,7 +144,7 @@ def generate_layer_data_mapping(
         original_geojson_str = json.dumps(original_geojson, separators=(',', ':'))
         # Escape forward slashes to prevent </script> breaking out of script context
         original_geojson_str = original_geojson_str.replace('</', '<\\/')
-        mappings.append(f'"Original Input": {original_geojson_str}')
+        mappings.append(f'"Original Geometry": {original_geojson_str}')
 
     # Add input polygon (convert GeoDataFrame to GeoJSON dict)
     input_geojson = json.loads(polygon_gdf.to_json())
