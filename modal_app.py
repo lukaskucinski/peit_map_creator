@@ -528,7 +528,8 @@ def process_file_task(
             xlsx_relative_path=None,  # Will be updated after blob upload
             pdf_relative_path=None,   # Will be updated after blob upload
             clip_boundary=clip_boundary,
-            original_geometry_gdf=original_gdf
+            original_geometry_gdf=original_gdf,
+            job_id=job_id
         )
 
         emit_progress('map_generation', completed=1, total=2)
@@ -604,7 +605,8 @@ def process_file_task(
                 xlsx_relative_path=xlsx_blob_url,
                 pdf_relative_path=pdf_blob_url,
                 clip_boundary=clip_boundary,
-                original_geometry_gdf=original_gdf
+                original_geometry_gdf=original_gdf,
+                job_id=job_id
             )
             # Re-save map HTML with updated URLs
             map_obj.save(str(map_file))
@@ -615,6 +617,11 @@ def process_file_task(
 
         polygon_file = data_path / "input_polygon.geojson"
         polygon_gdf.to_file(polygon_file, driver="GeoJSON")
+
+        # Save original geometry if buffer was applied (points/lines before buffering)
+        if original_gdf is not None:
+            original_file = data_path / "original_geometry.geojson"
+            original_gdf.to_file(original_file, driver="GeoJSON")
 
         for layer_name, gdf in layer_results.items():
             safe_name = layer_name.replace(" ", "_").replace("/", "_").lower()
@@ -638,6 +645,16 @@ def process_file_task(
         metadata_file = temp_output / "metadata.json"
         with open(metadata_file, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
+
+        # Copy data directory to volume for GPKG download endpoint access
+        volume_data_path = output_base / "data"
+        volume_data_path.mkdir(parents=True, exist_ok=True)
+
+        for geojson_file in data_path.glob("*.geojson"):
+            dest_file = volume_data_path / geojson_file.name
+            import shutil
+            shutil.copy2(geojson_file, dest_file)
+            logger.info(f"Copied {geojson_file.name} to volume")
 
         # Create ZIP file
         zip_filename = f"peit_results_{job_id}.zip"
@@ -1421,6 +1438,171 @@ def fastapi_app():
             path=str(zip_path),
             filename=zip_filename,
             media_type="application/zip"
+        )
+
+    @web_app.get("/api/download-gpkg/{job_id}/{layer_name}")
+    async def download_gpkg_layer(job_id: str, layer_name: str):
+        """Download a single layer as GPKG file.
+
+        Args:
+            job_id: Job ID (16-char hex)
+            layer_name: Layer name (e.g., "RCRA Sites" or "Input Polygon")
+
+        Returns:
+            StreamingResponse with GPKG file
+        """
+        import re
+        import tempfile
+        import geopandas as gpd
+
+        # Validate job_id format
+        if not re.match(r'^[a-f0-9]{16}$', job_id):
+            raise HTTPException(status_code=400, detail="Invalid job ID format")
+
+        # Sanitize layer name for filename lookup (must match output_generator.py logic)
+        def sanitize_filename(name: str) -> str:
+            """Sanitize layer name for filename - matches core/output_generator.py."""
+            return name.replace(' ', '_').replace('/', '_').lower()
+
+        # Reload volume to see recent writes
+        results_volume.reload()
+
+        # Try to find the GeoJSON file
+        safe_name = sanitize_filename(layer_name)
+        geojson_path = Path(f"/results/{job_id}/data/{safe_name}.geojson")
+
+        if not geojson_path.exists():
+            # List available files for debugging
+            data_dir = Path(f"/results/{job_id}/data")
+            available_files = list(data_dir.glob('*.geojson')) if data_dir.exists() else []
+            available_names = [f.name for f in available_files]
+            print(f"[GPKG] Layer file not found: {geojson_path}")
+            print(f"[GPKG] Available files: {available_names}")
+
+            raise HTTPException(
+                status_code=404,
+                detail=f"Layer '{layer_name}' not found (looked for: {safe_name}.geojson, available: {available_names})"
+            )
+
+        # Read as GeoDataFrame
+        try:
+            gdf = gpd.read_file(geojson_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to read layer data: {str(e)}")
+
+        # Create GPKG in temp file
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.gpkg', delete=False) as tmp:
+                gdf.to_file(tmp.name, driver='GPKG', layer=layer_name)
+                tmp_path = tmp.name
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate GPKG: {str(e)}")
+
+        # Stream GPKG file and cleanup
+        def iter_file():
+            try:
+                with open(tmp_path, 'rb') as f:
+                    yield from f
+            finally:
+                # Cleanup temp file
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+
+        return StreamingResponse(
+            iter_file(),
+            media_type='application/geopackage+sqlite3',
+            headers={
+                'Content-Disposition': f'attachment; filename="{safe_name}.gpkg"'
+            }
+        )
+
+    @web_app.get("/api/download-gpkg-all/{job_id}")
+    async def download_all_gpkg(job_id: str):
+        """Download all layers as separate GPKG files in a ZIP.
+
+        Args:
+            job_id: Job ID (16-char hex)
+
+        Returns:
+            StreamingResponse with ZIP containing GPKG files
+        """
+        import re
+        import tempfile
+        import zipfile
+        import geopandas as gpd
+
+        # Validate job_id
+        if not re.match(r'^[a-f0-9]{16}$', job_id):
+            raise HTTPException(status_code=400, detail="Invalid job ID format")
+
+        # Reload volume to see recent writes
+        results_volume.reload()
+
+        data_dir = Path(f"/results/{job_id}/data")
+        if not data_dir.exists():
+            raise HTTPException(status_code=404, detail="Job data not found")
+
+        # Create ZIP with all GPKG files
+        print(f"[GPKG ALL] Starting bulk GPKG conversion for job {job_id}")
+        geojson_files = list(data_dir.glob('*.geojson'))
+        print(f"[GPKG ALL] Found {len(geojson_files)} GeoJSON files to convert")
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
+                with zipfile.ZipFile(tmp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    # Convert each GeoJSON to GPKG
+                    converted_count = 0
+                    for geojson_file in geojson_files:
+                        # Reconstruct layer name from filename
+                        layer_name = geojson_file.stem.replace('_', ' ').title()
+
+                        try:
+                            # Read GeoJSON
+                            gdf = gpd.read_file(geojson_file)
+
+                            # Write to temp GPKG
+                            with tempfile.NamedTemporaryFile(suffix='.gpkg', delete=False) as tmp_gpkg:
+                                gdf.to_file(tmp_gpkg.name, driver='GPKG', layer=layer_name)
+                                tmp_gpkg_path = tmp_gpkg.name
+
+                            # Add to ZIP
+                            zf.write(tmp_gpkg_path, f"{geojson_file.stem}.gpkg")
+                            converted_count += 1
+
+                            # Cleanup temp GPKG
+                            try:
+                                os.unlink(tmp_gpkg_path)
+                            except:
+                                pass
+                        except Exception as e:
+                            print(f"[GPKG ALL] Warning: Failed to convert {geojson_file.name}: {e}")
+                            continue
+
+                zip_path = tmp_zip.name
+                print(f"[GPKG ALL] Successfully converted {converted_count}/{len(geojson_files)} files")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate GPKG ZIP: {str(e)}")
+
+        # Stream ZIP and cleanup
+        def iter_file():
+            try:
+                with open(zip_path, 'rb') as f:
+                    yield from f
+            finally:
+                # Cleanup temp ZIP
+                try:
+                    os.unlink(zip_path)
+                except:
+                    pass
+
+        return StreamingResponse(
+            iter_file(),
+            media_type='application/zip',
+            headers={
+                'Content-Disposition': f'attachment; filename="all_layers_gpkg.zip"'
+            }
         )
 
     @web_app.post("/api/claim-jobs")
