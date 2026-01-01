@@ -618,6 +618,11 @@ def process_file_task(
         polygon_file = data_path / "input_polygon.geojson"
         polygon_gdf.to_file(polygon_file, driver="GeoJSON")
 
+        # Save original geometry if buffer was applied (points/lines before buffering)
+        if original_gdf is not None:
+            original_file = data_path / "original_geometry.geojson"
+            original_gdf.to_file(original_file, driver="GeoJSON")
+
         for layer_name, gdf in layer_results.items():
             safe_name = layer_name.replace(" ", "_").replace("/", "_").lower()
             layer_file = data_path / f"{safe_name}.geojson"
@@ -1467,28 +1472,12 @@ def fastapi_app():
         geojson_path = Path(f"/results/{job_id}/data/{safe_name}.geojson")
 
         if not geojson_path.exists():
-            # Check if job directory exists at all
-            job_dir = Path(f"/results/{job_id}")
+            # List available files for debugging
             data_dir = Path(f"/results/{job_id}/data")
-
-            if not job_dir.exists():
-                print(f"[GPKG] Job directory not found: {job_dir}")
-                raise HTTPException(
-                    status_code=410,  # Gone - resource existed but is no longer available
-                    detail="Map data has expired (7-day retention). GPKG downloads are only available for recent maps. Use GeoJSON/Shapefile/KMZ downloads instead (they work from embedded data)."
-                )
-
-            # Job exists but layer file doesn't
             available_files = list(data_dir.glob('*.geojson')) if data_dir.exists() else []
             available_names = [f.name for f in available_files]
             print(f"[GPKG] Layer file not found: {geojson_path}")
             print(f"[GPKG] Available files: {available_names}")
-
-            if not available_files:
-                raise HTTPException(
-                    status_code=410,
-                    detail="Map data has expired (7-day retention). GPKG downloads are only available for recent maps. Use GeoJSON/Shapefile/KMZ downloads instead."
-                )
 
             raise HTTPException(
                 status_code=404,
@@ -1556,11 +1545,16 @@ def fastapi_app():
             raise HTTPException(status_code=404, detail="Job data not found")
 
         # Create ZIP with all GPKG files
+        print(f"[GPKG ALL] Starting bulk GPKG conversion for job {job_id}")
+        geojson_files = list(data_dir.glob('*.geojson'))
+        print(f"[GPKG ALL] Found {len(geojson_files)} GeoJSON files to convert")
+
         try:
             with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
                 with zipfile.ZipFile(tmp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zf:
                     # Convert each GeoJSON to GPKG
-                    for geojson_file in data_dir.glob('*.geojson'):
+                    converted_count = 0
+                    for geojson_file in geojson_files:
                         # Reconstruct layer name from filename
                         layer_name = geojson_file.stem.replace('_', ' ').title()
 
@@ -1575,6 +1569,7 @@ def fastapi_app():
 
                             # Add to ZIP
                             zf.write(tmp_gpkg_path, f"{geojson_file.stem}.gpkg")
+                            converted_count += 1
 
                             # Cleanup temp GPKG
                             try:
@@ -1582,10 +1577,11 @@ def fastapi_app():
                             except:
                                 pass
                         except Exception as e:
-                            print(f"Warning: Failed to convert {geojson_file.name} to GPKG: {e}")
+                            print(f"[GPKG ALL] Warning: Failed to convert {geojson_file.name}: {e}")
                             continue
 
                 zip_path = tmp_zip.name
+                print(f"[GPKG ALL] Successfully converted {converted_count}/{len(geojson_files)} files")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to generate GPKG ZIP: {str(e)}")
 

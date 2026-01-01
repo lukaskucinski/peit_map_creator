@@ -494,12 +494,6 @@
                     // Not JSON, use statusText
                 }
 
-                // Handle 410 Gone (expired data) specially
-                if (response.status === 410) {
-                    alert(`GPKG Download Unavailable\n\n${errorDetail}\n\nTip: GeoJSON, Shapefile, and KMZ downloads work from embedded data and never expire.`);
-                    return;
-                }
-
                 throw new Error(`Server returned ${response.status}: ${errorDetail}`);
             }
 
@@ -554,12 +548,6 @@
                     }
                 } catch (e) {
                     // Not JSON, use statusText
-                }
-
-                // Handle 410 Gone (expired data) specially
-                if (response.status === 410) {
-                    alert(`GPKG Download Unavailable\n\n${errorDetail}\n\nTip: GeoJSON, Shapefile, and KMZ downloads work from embedded data and never expire.`);
-                    return;
                 }
 
                 throw new Error(`Server returned ${response.status}: ${errorDetail}`);
