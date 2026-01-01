@@ -1494,12 +1494,14 @@ The generated HTML map includes several interactive features:
   - Fallback error messages show `constructor.name` for debugging
 
 **GPKG Download Implementation (Server-Side):**
-- Uses GeoPandas `gdf.to_file(..., driver='GPKG')` for conversion
-- Endpoints: `GET /api/download-gpkg/{job_id}/{layer_name}` and `GET /api/download-gpkg-all/{job_id}`
-- 1.5-2x faster than client-side WASM for typical datasets
-- Requires job_id passed through template rendering
-- Error handling with fallback suggestion to use GeoJSON
-- Converts each GeoJSON layer to separate GPKG file (one per layer, not multi-layer)
+- **Conversion**: GeoPandas `gdf.to_file(..., driver='GPKG')` - 1.5-2x faster than client-side WASM
+- **Endpoints**:
+  - `GET /api/download-gpkg/{job_id}/{layer_name}` - Single layer
+  - `GET /api/download-gpkg-all/{job_id}` - All layers as ZIP
+- **Storage**: GeoJSON files copied to Modal Volume (`/results/{job_id}/data/`) for 7-day retention
+- **Template Variables**: Requires `{{ job_id }}` and `{{ api_url }}` (absolute Modal URL for Vercel Blob-served maps)
+- **File Naming**: Sanitization matches output_generator.py, preserves parentheses in server filenames
+- **Limitations**: Bulk download may timeout on first try (~30-60s browser fetch limit), retry usually succeeds
 
 ### Dual Collapsible Panel System
 
@@ -2530,6 +2532,16 @@ Serverless backend running on Modal.com for cloud-based geospatial processing.
 
 **`GET /api/rate-limit`**
 - Returns remaining runs for current IP
+
+**`GET /api/download-gpkg/{job_id}/{layer_name}`**
+- Downloads single layer as GPKG file
+- Converts GeoJSON from volume to GPKG on-demand using GeoPandas
+- Returns: StreamingResponse with `application/geopackage+sqlite3` content type
+
+**`GET /api/download-gpkg-all/{job_id}`**
+- Downloads all layers as ZIP of separate GPKG files
+- Converts each GeoJSON in `/results/{job_id}/data/` to GPKG and zips them
+- Returns: StreamingResponse with ZIP file
 
 **`POST /api/claim-jobs`**
 - Claims unclaimed jobs for a newly authenticated user
