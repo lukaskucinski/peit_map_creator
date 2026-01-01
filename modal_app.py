@@ -1444,10 +1444,10 @@ def fastapi_app():
         if not re.match(r'^[a-f0-9]{16}$', job_id):
             raise HTTPException(status_code=400, detail="Invalid job ID format")
 
-        # Sanitize layer name for filename lookup
+        # Sanitize layer name for filename lookup (must match output_generator.py logic)
         def sanitize_filename(name: str) -> str:
-            """Sanitize layer name for filename."""
-            return name.replace(' ', '_').replace('/', '_').replace('(', '').replace(')', '').lower()
+            """Sanitize layer name for filename - matches core/output_generator.py."""
+            return name.replace(' ', '_').replace('/', '_').lower()
 
         # Reload volume to see recent writes
         results_volume.reload()
@@ -1457,7 +1457,15 @@ def fastapi_app():
         geojson_path = Path(f"/results/{job_id}/data/{safe_name}.geojson")
 
         if not geojson_path.exists():
-            raise HTTPException(status_code=404, detail=f"Layer '{layer_name}' not found")
+            # List available files for debugging
+            data_dir = Path(f"/results/{job_id}/data")
+            available_files = list(data_dir.glob('*.geojson')) if data_dir.exists() else []
+            logger.error(f"Layer file not found: {geojson_path}")
+            logger.error(f"Available files: {[f.name for f in available_files]}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Layer '{layer_name}' not found (looked for: {safe_name}.geojson)"
+            )
 
         # Read as GeoDataFrame
         try:
