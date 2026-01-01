@@ -439,23 +439,33 @@
 
     // ========== GPKG Download Functions (Server-Side) ==========
 
-    // Helper: Get job ID from template or extract from path
+    // Helper: Get job ID and API URL from template
     function getJobId() {
         // Embed job_id via Jinja2 template variable (passed from map_builder.py)
         return "{{ job_id }}";
+    }
+
+    function getApiUrl() {
+        // Embed Modal API URL via Jinja2 template variable
+        return "{{ api_url }}";
     }
 
     // Download layer as GPKG (server-side conversion)
     async function downloadLayerGPKG(layerName) {
         try {
             const jobId = getJobId();
+            const apiUrl = getApiUrl();
 
             if (!jobId) {
                 throw new Error('Job ID not available');
             }
 
-            // Fetch GPKG from server
-            const response = await fetch(`/api/download-gpkg/${jobId}/${encodeURIComponent(layerName)}`);
+            if (!apiUrl) {
+                throw new Error('API URL not available');
+            }
+
+            // Fetch GPKG from Modal backend (absolute URL)
+            const response = await fetch(`${apiUrl}/api/download-gpkg/${jobId}/${encodeURIComponent(layerName)}`);
 
             if (!response.ok) {
                 throw new Error(`Server returned ${response.status}: ${response.statusText}`);
@@ -475,12 +485,18 @@
     async function downloadAllGPKG() {
         try {
             const jobId = getJobId();
+            const apiUrl = getApiUrl();
 
             if (!jobId) {
                 throw new Error('Job ID not available');
             }
 
-            const response = await fetch(`/api/download-gpkg-all/${jobId}`);
+            if (!apiUrl) {
+                throw new Error('API URL not available');
+            }
+
+            // Fetch GPKG ZIP from Modal backend (absolute URL)
+            const response = await fetch(`${apiUrl}/api/download-gpkg-all/${jobId}`);
 
             if (!response.ok) {
                 throw new Error(`Server returned ${response.status}: ${response.statusText}`);

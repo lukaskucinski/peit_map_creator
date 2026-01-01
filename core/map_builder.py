@@ -849,7 +849,8 @@ def create_web_map(
     download_html = download_template.render(
         layer_sections=generate_layer_download_sections(layer_results, config, input_filename, original_geometry_gdf),
         layer_data=generate_layer_data_mapping(layer_results, polygon_gdf, original_geometry_gdf),
-        job_id=job_id or ""  # Empty string if None (for CLI runs)
+        job_id=job_id or "",  # Empty string if None (for CLI runs)
+        api_url="https://lukaskucinski--peit-processor-fastapi-app.modal.run"  # Modal API URL for GPKG downloads
     )
     m.get_root().html.add_child(Element(download_html))
 
