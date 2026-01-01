@@ -482,7 +482,25 @@
                 // Try to get error details from response body
                 const errorText = await response.text();
                 console.error('[GPKG DEBUG] Error response body:', errorText);
-                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+
+                // Parse error detail if available
+                let errorDetail = response.statusText;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.detail) {
+                        errorDetail = errorJson.detail;
+                    }
+                } catch (e) {
+                    // Not JSON, use statusText
+                }
+
+                // Handle 410 Gone (expired data) specially
+                if (response.status === 410) {
+                    alert(`GPKG Download Unavailable\n\n${errorDetail}\n\nTip: GeoJSON, Shapefile, and KMZ downloads work from embedded data and never expire.`);
+                    return;
+                }
+
+                throw new Error(`Server returned ${response.status}: ${errorDetail}`);
             }
 
             // Download file
@@ -526,7 +544,25 @@
                 // Try to get error details from response body
                 const errorText = await response.text();
                 console.error('[GPKG DEBUG] (All Layers) Error response body:', errorText);
-                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+
+                // Parse error detail if available
+                let errorDetail = response.statusText;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.detail) {
+                        errorDetail = errorJson.detail;
+                    }
+                } catch (e) {
+                    // Not JSON, use statusText
+                }
+
+                // Handle 410 Gone (expired data) specially
+                if (response.status === 410) {
+                    alert(`GPKG Download Unavailable\n\n${errorDetail}\n\nTip: GeoJSON, Shapefile, and KMZ downloads work from embedded data and never expire.`);
+                    return;
+                }
+
+                throw new Error(`Server returned ${response.status}: ${errorDetail}`);
             }
 
             const blob = await response.blob();

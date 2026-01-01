@@ -1457,12 +1457,29 @@ def fastapi_app():
         geojson_path = Path(f"/results/{job_id}/data/{safe_name}.geojson")
 
         if not geojson_path.exists():
-            # List available files for debugging
+            # Check if job directory exists at all
+            job_dir = Path(f"/results/{job_id}")
             data_dir = Path(f"/results/{job_id}/data")
+
+            if not job_dir.exists():
+                print(f"[GPKG] Job directory not found: {job_dir}")
+                raise HTTPException(
+                    status_code=410,  # Gone - resource existed but is no longer available
+                    detail="Map data has expired (7-day retention). GPKG downloads are only available for recent maps. Use GeoJSON/Shapefile/KMZ downloads instead (they work from embedded data)."
+                )
+
+            # Job exists but layer file doesn't
             available_files = list(data_dir.glob('*.geojson')) if data_dir.exists() else []
             available_names = [f.name for f in available_files]
             print(f"[GPKG] Layer file not found: {geojson_path}")
             print(f"[GPKG] Available files: {available_names}")
+
+            if not available_files:
+                raise HTTPException(
+                    status_code=410,
+                    detail="Map data has expired (7-day retention). GPKG downloads are only available for recent maps. Use GeoJSON/Shapefile/KMZ downloads instead."
+                )
+
             raise HTTPException(
                 status_code=404,
                 detail=f"Layer '{layer_name}' not found (looked for: {safe_name}.geojson, available: {available_names})"
