@@ -641,6 +641,16 @@ def process_file_task(
         with open(metadata_file, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
 
+        # Copy data directory to volume for GPKG download endpoint access
+        volume_data_path = output_base / "data"
+        volume_data_path.mkdir(parents=True, exist_ok=True)
+
+        for geojson_file in data_path.glob("*.geojson"):
+            dest_file = volume_data_path / geojson_file.name
+            import shutil
+            shutil.copy2(geojson_file, dest_file)
+            logger.info(f"Copied {geojson_file.name} to volume")
+
         # Create ZIP file
         zip_filename = f"peit_results_{job_id}.zip"
         zip_path = output_base / zip_filename
